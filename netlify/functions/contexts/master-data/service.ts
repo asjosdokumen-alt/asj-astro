@@ -107,7 +107,8 @@ export const MASTER_COLUMN_MAP: Record<string, string> = {
   bahasaLain: 'bahasa_lain', levelJepang: 'level_bahasa_jepang',
   sertifikatLain: 'sertifikat_lain', catatanCv: 'catatan_cv',
   tesHitung: 'tes_hitung', tesPushup: 'tes_pushup', tesSquat: 'tes_squat',
-  tinggalKursus: 'tinggal_kursus_tahun', olahraga: 'olahraga', mbti: 'mbti',
+  tinggalKursus: 'tinggal_kursus_tahun', lamakerja: 'lamakerjadiharapkan',
+  olahraga: 'olahraga', mbti: 'mbti',
   kenalanStatusTinggal: 'kenalan_di_jepang_status_tinggal',
 };
 
@@ -527,6 +528,8 @@ export function buildMasterNested(row: any): any {
           perusahaan: toText(r.perusahaan), nama_perusahaan: toText(r.perusahaan),
           perusahaan_jp: r.perusahaan_jp ?? '', jabatan: r.jabatan ?? '',
           jabatan_jp: r.jabatan_jp ?? '', masuk: r.tahun_masuk ?? '',
+          jenis_jp: r.jenis_jp ?? '', bidang_jp: r.bidang_jp ?? '',
+          catatan_jp: r.catatan_jp ?? '',
           tahun_masuk: r.tahun_masuk ?? '', keluar: r.tahun_keluar ?? '',
           tahun_keluar: r.tahun_keluar ?? '', gaji: r.gaji ?? '',
           jenis: r.jenis ?? '', bidang: r.bidang ?? '', catatan: r.catatan ?? '',

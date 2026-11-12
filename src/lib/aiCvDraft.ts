@@ -90,7 +90,7 @@ export const AI_CV_FLAT_KEYS = [
   /* Migrasi 047: pasangan Jepang dari field teks di atas. */
   'level_jepang_jp', 'bhs_inggris_jp', 'bahasa_lain_jp', 'sertifikat_lain_jp', 'catatan_cv_jp',
   'darurat_nama_jp',
-  'tes_hitung', 'tes_pushup', 'tes_squat', 'tinggal_kursus', 'olahraga', 'mbti',
+  'tes_hitung', 'tes_pushup', 'tes_squat', 'tinggal_kursus', 'lamakerja', 'olahraga', 'mbti',
 ] as const;
 
 /** Kunci flat AiCvForm → path bersarang, urut prioritas. */
@@ -227,6 +227,7 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   tes_pushup: ['fisik.tes_pushup'],
   tes_squat: ['fisik.tes_squat'],
   tinggal_kursus: ['fisik.tinggal_kursus_tahun'],
+  lamakerja: ['wawancara.lamakerja_diharapkan'],
   olahraga: ['fisik.olahraga'],
   mbti: ['wawancara.mbti'],
   lama_belajar_jp: ['sertifikasi.lama_belajar_jp'],

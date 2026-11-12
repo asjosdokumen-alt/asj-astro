@@ -67,7 +67,7 @@ interface MasterData {
   lamaBelajarJp: string; statusBelajarJp: string; babBelajarJp: string;
   levelJepang: string; bhsInggris: string; bahasaLain: string;
   sertifikatLain: string; catatanCv: string;
-  tesHitung: string; tesPushup: string; tesSquat: string; tinggalKursus: string;
+  tesHitung: string; tesPushup: string; tesSquat: string; tinggalKursus: string; lamakerja: string;
   olahraga: string; mbti: string; kenalanStatusTinggal: string;
   [key: string]: string;
 }
@@ -108,7 +108,7 @@ const EMPTY: MasterData = {
   bhsJepang:'-', nilai:'', lisensi:'', lisensiManual:'', lisensi2:'', lisensi2Manual:'',
   visa:'', negaraLain:'', jarakJakarta:'', lamaPenerbangan:'', rencanaSim:'', wilayahSekolah:'',
   lamaBelajarJp:'', statusBelajarJp:'', babBelajarJp:'', levelJepang:'', bhsInggris:'', bahasaLain:'',
-  sertifikatLain:'', catatanCv:'', tesHitung:'', tesPushup:'', tesSquat:'', tinggalKursus:'',
+  sertifikatLain:'', catatanCv:'', tesHitung:'', tesPushup:'', tesSquat:'', tinggalKursus:'', lamakerja:'',
   olahraga:'', mbti:'', kenalanStatusTinggal:'',
 };
 
@@ -818,7 +818,8 @@ export default function MasterFullForm() {
               <F label="Olahraga (スポーツ)" k="olahraga" opts={OLAHRAGA} />
               <div class="grid grid-cols-2 gap-3">
                 <F label="Tes hitung (計算テスト)" k="tesHitung" ph="mis. 85" twoCol />
-                <F label="Lama tinggal di asrama (tahun)" k="tinggalKursus" ph="mis. 2" twoCol />
+                <F label="Lama tinggal di asrama (bulan)" k="tinggalKursus" ph="mis. 6" twoCol />
+                <F label="Harapan lama kerja di Jepang (年)" k="lamakerja" ph="mis. 5" twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
                 <F label="Push-up (回)" k="tesPushup" type="number" ph="mis. 30" twoCol />

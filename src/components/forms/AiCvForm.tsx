@@ -105,7 +105,7 @@ interface CvData {
   kenalan_status: string;
   visa: string; negara_lain: string; jarak_jakarta: string; lama_penerbangan: string;
   rencana_sim: string; wilayah_sekolah: string;
-  tes_hitung: string; tes_pushup: string; tes_squat: string; tinggal_kursus: string; olahraga: string;
+  tes_hitung: string; tes_pushup: string; tes_squat: string; tinggal_kursus: string; lamakerja: string; olahraga: string;
   mbti: string;
   lama_belajar_jp: string; status_belajar_jp: string; bab_belajar_jp: string;
   level_jepang: string; bhs_inggris: string; bahasa_lain: string;
@@ -283,7 +283,7 @@ const SUGGESTIONS = [
    DI DALAM field (span absolut di kanan), bukan di label: `170 cm` tetap
    terbaca sebagai angka bersatuan, dan lebar kolom tidak ikut melar.
    Tidak diterjemahkan: legacy pun menampilkannya sama di kedua bahasa. */
-type Unit = 'thn' | 'cm' | 'kg' | 'yen' | 'km';
+type Unit = 'thn' | 'bln' | 'cm' | 'kg' | 'yen' | 'km';
 
 /* ── Warna aksen per seksi ──────────────────────────────────────────────
    Peta kelas EKSPLISIT. Sebelumnya `text-${color}-400` (template literal):
@@ -1208,6 +1208,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           /* Migrasi 022: tes & kebiasaan fisik (KINKI 計算テスト/体力試験/スポーツ). */
           tes_hitung: cv.tes_hitung, tes_pushup: cv.tes_pushup, tes_squat: cv.tes_squat,
           tinggal_kursus_tahun: cv.tinggal_kursus, olahraga: cv.olahraga },
+        lamakerja_diharapkan: cv.lamakerja,
         medis: {
           mata_kiri: cv.matakiri, mata_kanan: cv.matakanan, kacamata: cv.kacamata,
           buta_warna: cv.butawarna, tato: cv.tato, rokok: cv.rokok, alkohol: cv.alkohol,
@@ -1864,8 +1865,10 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   ph="30" touched={touchedFields.has('tes_pushup')} onInput={(v) => handleManualEdit('tes_pushup', v)} />
                 <Field label="Squat (回)" id="tes_squat" value={cv.tes_squat} center type="number"
                   ph="40" touched={touchedFields.has('tes_squat')} onInput={(v) => handleManualEdit('tes_squat', v)} />
-                <Field label="Lama di asrama (thn)" id="tinggal_kursus" value={cv.tinggal_kursus} center unit="thn"
-                  ph="2" touched={touchedFields.has('tinggal_kursus')} onInput={(v) => handleManualEdit('tinggal_kursus', v)} />
+                <Field label="Lama di asrama (bln)" id="tinggal_kursus" value={cv.tinggal_kursus} center unit="bln"
+                  ph="6" touched={touchedFields.has('tinggal_kursus')} onInput={(v) => handleManualEdit('tinggal_kursus', v)} />
+                <Field label="Harapan lama kerja di Jepang (年)" id="lamakerja" value={cv.lamakerja} center unit="thn"
+                  ph="5" touched={touchedFields.has('lamakerja')} onInput={(v) => handleManualEdit('lamakerja', v)} />
               </div>
             </Section>
             <Section title={t("ai_cv.sec_medis")} icon="fa-notes-medical" color="red">

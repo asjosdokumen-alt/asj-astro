@@ -234,8 +234,45 @@ describe('form KINKI — peta sel template final 2026-11-12', () => {
     expect(v.E27).toBe('2024年8月');
     expect(v.F28).toBe('2025年1月');
     expect(v.R27).toBe('機械オペレーター');
-    expect(v.X27).toBe('200万円');
+    expect(v.X27).toBe('2万円');
     expect(v.B29).toBe('');
+  });
+
+
+  it('集団生活年数 dibaca sebagai BULAN, bukan tahun', () => {
+    // Owner 2026-11-12: "hitungan tinggal di asrama bersama itu bulan bukan tahun".
+    const enam = buildValues({ ...data, fisik: { ...data.fisik, tinggal_kursus_tahun: '6' } });
+    expect(enam.Y42).toBe('6か月');
+    const delapanBelas = buildValues({ ...data, fisik: { ...data.fisik, tinggal_kursus_tahun: '18' } });
+    expect(delapanBelas.Y42).toBe('1年6か月');
+    const kosong = buildValues({ ...data, fisik: { ...data.fisik, tinggal_kursus_tahun: '' } });
+    expect(kosong.Y42).toBe('');
+  });
+
+  it('istilah Indonesia diterjemahkan ke Jepang, kolom *_jp menang', () => {
+    const idn: CandidateData = {
+      ...data,
+      pendidikan: [
+        { ...data.pendidikan[0], jurusan: 'MULTIMEDIA', jurusan_jp: '' },
+        { ...data.pendidikan[1] },
+      ],
+      pekerjaan: [
+        { ...data.pekerjaan[0], jabatan: 'PETANI', bidang: 'PETERNAKAN', jabatan_jp: '', bidang_jp: '' },
+      ],
+      keluarga: [{ ...data.keluarga[0], pekerjaan: 'IBU RUMAH TANGGA', pekerjaan_jp: '' }],
+    };
+    const v = buildValues(idn);
+    // 専攻 / 業種 / 職業 tidak boleh lagi tercetak bahasa Indonesia
+    expect(v.X20).toBe('マルチメディア');
+    expect(v.N27).toBe('畜産業');
+    expect(v.R27).toBe('農家');
+    expect(v.F38).toBe('主婦');
+    // kolom Jepang dari database selalu menang atas tabel terjemahan
+    const jp: CandidateData = {
+      ...data,
+      pekerjaan: [{ ...data.pekerjaan[0], jabatan: 'PETANI', jabatan_jp: '酪農作業' }],
+    };
+    expect(buildValues(jp).R27).toBe('酪農作業');
   });
 
   it('keluarga pindah ke baris 38 dan MBTI hanya nama tipe + 5 axis', () => {

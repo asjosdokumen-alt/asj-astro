@@ -324,6 +324,108 @@ function harapanSetelahJp(rencana: string): string {
   return '';
 }
 
+/**
+ * Istilah Indonesia → Jepang untuk kolom yang dicetak apa adanya.
+ *
+ * Database menyimpan banyak kolom dalam bahasa Indonesia; form ini resmi
+ * berbahasa Jepang, jadi menulis "PETERNAKAN" di kolom 業種 membuat pemilik
+ * harus mengetik ulang kanji-nya sendiri (keluhan 2026-11-12). Kolom `*_jp`
+ * dari database SELALU menang; tabel ini hanya jaring kalau kolom itu kosong.
+ * Kunci dicocokkan pada teks UPPERCASE yang sudah dibersihkan tanda bacanya.
+ */
+const JP_TERMS: Record<string, string> = {
+  // keluarga — 職業
+  PETANI: '農家', 'BURUH TANI': '農業労働者', PETERNAK: '畜産家', PETENAK: '畜産家', NELAYAN: '漁師',
+  'IBU RUMAH TANGGA': '主婦', 'RUMAH TANGGA': '主婦', PELAJAR: '学生', MAHASISWA: '大学生',
+  KARYAWAN: '会社員', 'KARYAWAN SWASTA': '会社員', 'KARYAWAN PABRIK': '工場勤務',
+  WIRASWASTA: '自営業', PENGUSAHA: '実業家', PEDAGANG: '商人', PEMILIK: '経営者',
+  GURU: '教師', DOSEN: '大学教授', SOPIR: '運転手', SUPIR: '運転手', SATPAM: '警備員',
+  TUKANG: '職人', BURUH: '労働者', PNS: '公務員', TNI: '軍人', POLRI: '警察官',
+  PENSIUNAN: '退職者', 'TIDAK BEKERJA': '無職', SERABUTAN: '日雇い', PERAWAT: '看護師',
+  'KEPALA DESA': '村長', PEKEBUN: '農園主', 'PETERNAK AYAM': '養鶏業',
+  // 業種
+  PERTANIAN: '農業', PETERNAKAN: '畜産業', PERKEBUNAN: '農園', PERIKANAN: '漁業',
+  KEHUTANAN: '林業', KONSTRUKSI: '建設業', BANGUNAN: '建設業', MANUFAKTUR: '製造業',
+  PABRIK: '製造業', PERDAGANGAN: '商業', JASA: 'サービス業', KULINER: '飲食業',
+  RESTORAN: '飲食業', 'RUMAH MAKAN': '飲食業', HOTEL: 'ホテル業', PARIWISATA: '観光業',
+  TEKSTIL: '繊維業', GARMEN: '縫製業', OTOMOTIF: '自動車業', ELEKTRONIK: '電子業',
+  PERTAMBANGAN: '鉱業', KESEHATAN: '医療', PENDIDIKAN: '教育', TRANSPORTASI: '運輸業',
+  LOGISTIK: '物流業', KOPERASI: '協同組合', BANK: '銀行', ASURANSI: '保険',
+  TEKNOLOGI: 'IT業', INFORMASI: '情報通信業',
+  // 職種
+  OPERATOR: 'オペレーター',
+  STAFF: 'スタッフ', STAF: 'スタッフ', ADMIN: '事務', ADMINISTRASI: '事務',
+  TEKNISI: '技術者', MEKANIK: '整備士', LAS: '溶接工', WELDER: '溶接工', PENGELAS: '溶接工',
+  GUDANG: '倉庫作業', 'JURU MASAK': '調理師', KOKI: '調理師', PELAYAN: '接客', KASIR: 'レジ係',
+  MANDOR: '現場監督', KEPALA: '責任者', SALES: '営業', MARKETING: '営業',
+  PENJAHIT: '縫製作業', PEMANEN: '収穫作業', PENYADAP: '搾乳作業', PETUGAS: '係員',
+  // 専攻
+  MULTIMEDIA: 'マルチメディア', 'TEKNIK KOMPUTER': 'コンピューター技術',
+  'TEKNIK KOMPUTER DAN JARINGAN': 'コンピューターネットワーク', TKJ: 'コンピューターネットワーク',
+  RPL: 'ソフトウェア開発', 'REKAYASA PERANGKAT LUNAK': 'ソフトウェア開発',
+  'TEKNIK OTOMOTIF': '自動車', 'TATA BOGA': '調理', PERHOTELAN: 'ホテル',
+  'BAHASA JEPANG': '日本語', AKUNTANSI: '会計', IPA: '理科', IPS: '社会',
+  'TEKNIK MESIN': '機械', MESIN: '機械', 'TEKNIK ELEKTRO': '電気', ELEKTRO: '電気',
+  KEPERAWATAN: '看護', HUKUM: '法律', EKONOMI: '経済', MANAJEMEN: '経営',
+  DESAIN: 'デザイン', SENI: '芸術', SIPIL: '土木', 'TEKNIK SIPIL': '土木',
+  KIMIA: '化学', FISIKA: '物理', BIOLOGI: '生物', MATEMATIKA: '数学',
+  SEJARAH: '歴史', GEOGRAFI: '地理', SOSIOLOGI: '社会学', PSIKOLOGI: '心理学',
+  KOMUNIKASI: 'コミュニケーション', BISNIS: 'ビジネス',
+};
+
+/** Teks sudah berisi kana/kanji? Kalau ya, jangan diterjemahkan lagi. */
+function sudahJp(v: unknown): boolean {
+  return /[\u3040-\u30ff\u4e00-\u9faf]/.test(s(v));
+}
+
+/**
+ * Terjemahkan istilah Indonesia yang lazim; teks Jepang / nama diri dibiarkan.
+ * Cocok persis dulu, lalu frasa terpanjang yang terkandung (mis.
+ * "PETERNAKAN AYAM" → 畜産業), sisanya teks asli.
+ */
+function jpTerm(v: unknown): string {
+  const t = bersih(v);
+  if (!t || sudahJp(t)) return t;
+  const key = t.toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+  if (JP_TERMS[key]) return JP_TERMS[key];
+  let bestKey = '';
+  for (const k of Object.keys(JP_TERMS)) {
+    if (key.includes(k) && k.length > bestKey.length) bestKey = k;
+  }
+  return bestKey ? JP_TERMS[bestKey] : t;
+}
+
+/**
+ * 集団生活年数 — database menyimpan BULAN, bukan tahun (owner 2026-11-12:
+ * "hitungan tinggal di asrama bersama itu bulan bukan tahun"). 12 bulan ke atas
+ * ditulis "1年6か月" supaya tetap terbaca sebagai 年数.
+ */
+function masaTinggal(v: unknown): string {
+  const n = Number(angka(v));
+  if (!Number.isFinite(n) || n <= 0) return '';
+  if (n >= 12) {
+    const th = Math.floor(n / 12);
+    const sisa = n % 12;
+    return sisa ? `${th}年${sisa}か月` : `${th}年`;
+  }
+  return `${n}か月`;
+}
+
+/**
+ * Rupiah → 万円. Database menyimpan rupiah PENUH (2.000.000 = Rp 2 juta),
+ * sedangkan form mencetak 万円 dengan 1万円 ≈ Rp 1.000.000 — angka yang sama
+ * dengan contoh cetak pemilik (2 / 2,5 / 1 / 2,3). Baris lama yang terlanjur
+ * disimpan dalam ribuan (`2000`) dikalikan 1000 dulu.
+ */
+function manYenRp(v: unknown): string {
+  let n = Number(angka(v));
+  if (!Number.isFinite(n) || n <= 0) return '';
+  if (n < 100_000) n *= 1000;
+  const man = n / 1_000_000;
+  if (man < 0.1) return '';
+  return (Math.round(man * 10) / 10).toFixed(1).replace(/\.0$/, '');
+}
+
 export function buildValues(data: CandidateData): Record<string, string> {
   const id = data.identitas;
   const hobi = bersih(data.wawancara.hobi_jp) || bersih(data.wawancara.hobi);
@@ -404,8 +506,8 @@ export function buildValues(data: CandidateData): Record<string, string> {
   const nonLpk = edu.filter((p, i) => i !== idxLpk
     && isGood(bersih(s(p.sekolah ?? p.nama_sekolah ?? p.sekolah_id))));
   const sma = nonLpk[nonLpk.length - 1] ?? {};
-  const sekolah = bersih(sma.sekolah ?? sma.nama_sekolah ?? sma.sekolah_id);
-  const jurusan = bersih(sma.jurusan ?? sma.jurusan_id);
+  const sekolah = bersih(sma.sekolah_jp) || bersih(sma.sekolah ?? sma.nama_sekolah ?? sma.sekolah_id);
+  const jurusan = jpTerm(bersih(sma.jurusan_jp) || (sma.jurusan ?? sma.jurusan_id));
   if (isGood(sekolah)) {
     cells.E20 = ym(sma.masuk ?? sma.tahun_masuk);
     cells.F21 = ym(sma.lulus ?? sma.tahun_lulus);
@@ -424,7 +526,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
   let sekolahLpk = '';
   if (idxLpk >= 0) {
     const lpk = edu[idxLpk];
-    sekolahLpk = bersih(lpk.sekolah ?? lpk.nama_sekolah ?? lpk.sekolah_id);
+    sekolahLpk = bersih(lpk.sekolah_jp) || bersih(lpk.sekolah ?? lpk.nama_sekolah ?? lpk.sekolah_id);
     cells.E22 = ym(lpk.masuk ?? lpk.tahun_masuk);
     cells.F23 = isGood(s(lpk.lulus ?? lpk.tahun_lulus)) ? ym(lpk.lulus ?? lpk.tahun_lulus) : '今まで';
     cells.I22 = durasi(lpk.masuk ?? lpk.tahun_masuk, lpk.lulus ?? lpk.tahun_lulus);
@@ -455,18 +557,20 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const p = kerja[i] ?? {};
     const masuk = p.masuk ?? p.tahun_masuk;
     const keluar = p.keluar ?? p.tahun_keluar;
-    cells[`B${top}`] = jenisKerjaJp(p.jenis ?? p.status_kerja);
+    cells[`B${top}`] = sudahJp(p.jenis_jp)
+      ? bersih(p.jenis_jp)
+      : jenisKerjaJp(bersih(p.jenis_jp) || (p.jenis ?? p.status_kerja));
     cells[`E${top}`] = ym(masuk);
     cells[`F${bottom}`] = ym(keluar);
     cells[`I${top}`] = durasi(masuk, keluar);
     // 業種 — kolom `pekerjaan_N_bidang` (migrasi 022). Dulu selalu ''.
-    cells[`N${top}`] = bersih(p.bidang ?? p.industri);
-    cells[`R${top}`] = bersih(p.jabatan ?? p.jabatan_id);
+    cells[`N${top}`] = jpTerm(bersih(p.bidang_jp) || (p.bidang ?? p.industri));
+    cells[`R${top}`] = jpTerm(bersih(p.jabatan_jp) || (p.jabatan ?? p.jabatan_id));
     // 月収: sel X..Y sudah digabung di template, jadi angka + `万円` satu sel.
-    const gaji = manYen(p.gaji ?? p.penghasilan);
+    const gaji = manYenRp(p.gaji ?? p.penghasilan);
     cells[`X${top}`] = gaji ? `${gaji}万円` : '';
     // 備考 — kolom `pekerjaan_N_catatan` (migrasi 022).
-    cells[`AA${top}`] = bersih(p.catatan ?? p.keterangan);
+    cells[`AA${top}`] = bersih(p.catatan_jp) || bersih(p.catatan ?? p.keterangan);
   }
   if (!kerja.length) {
     // `～` bawaan template akan tercetak apa adanya tanpa dua tanggal.
@@ -479,7 +583,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     .map((p) => {
       const pt = bersih(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
       if (!isGood(pt)) return '';
-      const jb = bersih(p.jabatan ?? p.jabatan_id);
+      const jb = jpTerm(bersih(p.jabatan_jp) || (p.jabatan ?? p.jabatan_id));
       return jb ? `${pt}では${jb}として勤務しました。` : `${pt}で勤務しました。`;
     })
     .filter(Boolean)
@@ -500,10 +604,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
   for (let i = 0; i < FAM_ROWS; i++) {
     const row = FAM_START + i;
     const p = fam[i] ?? {};
-    cells[`B${row}`] = hubunganJp(p.hubungan);
+    cells[`B${row}`] = sudahJp(p.hubungan_jp)
+      ? bersih(p.hubungan_jp)
+      : hubunganJp(bersih(p.hubungan_jp) || p.hubungan);
     cells[`D${row}`] = angka(p.usia ?? p.umur);
-    cells[`F${row}`] = bersih(p.pekerjaan);
-    cells[`K${row}`] = manYen(p.gaji ?? p.penghasilan);
+    cells[`F${row}`] = jpTerm(bersih(p.pekerjaan_jp) || p.pekerjaan);
+    cells[`K${row}`] = manYenRp(p.gaji ?? p.penghasilan);
     // 同居/別居 — dulu dicetak `■`/`□` tetap (selalu "tinggal bersama").
     const tinggal = s(p.tinggal ?? p.status_tinggal).toUpperCase();
     const serumah = !/TIDAK|BEDA|LUAR|PISAH|MANDIRI|INDEPENDEN/.test(tinggal);
@@ -528,12 +634,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
   // 計算テスト / 目標貯金 / 学習期間 / 学習状況 / 英語レベル / その他外国語 /
   // 集団生活年数 / 就業希望年数 / 体力試験 — dulu seluruhnya dikosongkan.
   cells.R46 = bersih(data.fisik.tes_hitung);
-  cells.Y46 = angka(data.wawancara.tabungan);
+  cells.Y46 = manYenRp(data.wawancara.tabungan);
   cells.U38 = durasiJp(data.sertifikasi.lama_belajar_jp);
   cells.U40 = bersih(data.sertifikasi.status_belajar_jp);
   cells.R42 = bersih(data.sertifikasi.level_bahasa_inggris);
   cells.U42 = bersih(data.sertifikasi.bahasa_lain);
-  cells.Y42 = bersih(data.fisik.tinggal_kursus_tahun);
+  cells.Y42 = masaTinggal(data.fisik.tinggal_kursus_tahun);
   cells.Y48 = bersih(data.wawancara.lamakerja_diharapkan);
   cells.AC52 = angka(data.fisik.tes_pushup);
   cells.AC53 = angka(data.fisik.tes_squat);
