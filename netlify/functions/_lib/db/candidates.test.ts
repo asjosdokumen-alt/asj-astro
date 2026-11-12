@@ -276,24 +276,33 @@ describe('mapCandidate — kelas dari kolom, tag sebagai cadangan', () => {
   });
 });
 
-/* ── Regresi 2026-11-12: `jft`/`ssw` menyimpan DUA hal ───────────────────────
-   Kolom yang sama dipakai untuk URL berkas DAN untuk teks nilai sertifikasi.
-   Terukur di produksi: ASJ00188 `jft = "233"`, ASJ00133 `"A1"`,
-   ASJ00194 `"A2/205"`. Alias `jftUrl` dipakai dossier sebagai tautan pratinjau,
-   jadi tombol "SERTIF JFT" membuka alamat "233" — tautan mati yang terlihat
-   seperti berkas rusak. Alias `*Url` hanya boleh berisi URL; teks mentahnya
-   tetap tersedia di `jft`/`ssw`. */
-describe('mapCandidate — alias *Url hanya berisi URL', () => {
-  it('nilai ujian di kolom jft tidak menjadi tautan', () => {
+/* ── Regresi 2026-11-12: `jft`/`ssw` membawa DUA arti ────────────────────────
+   Pemilik: *"jft ada yg nilai nya itu untuk isi cv sedangkan jft url emang
+   untuk preview"*. Di master keduanya kolom BERBEDA (`jft` vs `jft_url`); di
+   `database_candidate` hanya ada satu kolom yang secara historis dipakai untuk
+   keduanya (89 URL · 6 nilai · 169 kosong, terukur atas 264 baris). Karena itu
+   pemisahannya menurut bentuk nilai, dan tiap field hanya membawa satu arti:
+   `jftText` = nilai ujian (isi CV), `jftUrl` = tautan (pratinjau). */
+describe('mapCandidate — nilai ujian vs tautan tidak tercampur', () => {
+  it('nilai ujian masuk jftText, bukan jftUrl', () => {
     const c = mapCandidate({ no_wa: '6281', jft: '233', ssw: 'A1', file_cv: 'https://x/y.pdf' });
+    expect(c.jftText).toBe('233');
+    expect(c.sswText).toBe('A1');
     expect(c.jftUrl).toBe('');
     expect(c.sswUrl).toBe('');
+    // mentahnya tetap utuh untuk pemakai yang butuh apa adanya
     expect(c.jft).toBe('233');
     expect(c.cvUrl).toBe('https://x/y.pdf');
   });
 
-  it('URL sah tetap diteruskan', () => {
+  it('URL tidak pernah masuk ke isi CV sebagai nilai ujian', () => {
     const c = mapCandidate({ no_wa: '6281', jft: 'https://cdn/x.pdf' });
     expect(c.jftUrl).toBe('https://cdn/x.pdf');
+    expect(c.jftText).toBe('');
+  });
+
+  it('kolom nilai khusus menang atas teks bebas', () => {
+    const c = mapCandidate({ no_wa: '6281', nilai_jft_text: 'N4', jft: '233' });
+    expect(c.jftText).toBe('N4');
   });
 });

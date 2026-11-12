@@ -12,19 +12,37 @@ import { log } from '../kernel/log';
 //   no_pasport, email, tempat_lahir, tgl_lahir, alamat_lengkap,
 //   catatan_internal, catatan_external, nilai_jft_text, bidang_ssw_text,
 //   created_at, updated_at, password_diubah
-/** Nilai yang benar-benar URL.
-
-    `jft`/`ssw`/`file_cv` di `database_candidate` menyimpan DUA hal sekaligus:
-    URL berkas (jalur unggahan) dan TEKS nilai sertifikasi ("233", "A1",
-    "A2/205"). Terukur 2026-11-12 pada produksi: 4 baris berisi nilai ujian di
-    kolom `jft`. Nilai itu dipakai sebagai `src` gambar dan tautan pratinjau di
-    dossier, jadi tombol "SERTIF JFT" membuka alamat "233" — tautan mati yang
-    terlihat seperti berkas rusak. Alias `*Url` hanya boleh berisi URL; teks
-    mentahnya tetap tersedia di `jft`/`ssw`/`fileCv`. */
+/** Nilai yang benar-benar URL. */
 function asUrl(v: unknown): string {
   const s = toText(v).trim();
   return /^(https?:)?\/\//i.test(s) ? s : '';
 }
+
+/** Nilai yang memang TEKS (nilai ujian), bukan tautan. */
+function asTeks(v: unknown): string {
+  const s = toText(v).trim();
+  return s !== '' && !/^(https?:)?\/\//i.test(s) ? s : '';
+}
+
+/* ── DUA ARTI `jft` / `ssw`, dan kenapa dipisah di sini ──────────────────────
+   Pemilik 2026-11-12: *"jft ada yg nilai nya itu untuk isi cv sedangkan jft url
+   emang untuk preview"*. Betul, dan itu DUA kolom berbeda di sumbernya:
+
+     master_database_candidate.jft        = NILAI ujian   → isi CV (sertifikasi)
+     master_database_candidate.jft_url    = URL berkas    → pratinjau/unduh
+
+   `database_candidate` hanya punya SATU kolom (`jft`), dan secara historis ia
+   dipakai untuk keduanya. Terukur 2026-11-12 atas 264 baris: 89 berisi URL,
+   6 berisi nilai ("233", "A1", "A2/205"), 169 kosong. Karena itu pemisahannya
+   dilakukan menurut BENTUK NILAI, bukan menurut nama kolom — nama kolom di
+   tabel itu memang tidak bisa dipercaya lagi.
+
+   Hasilnya, tiap field hanya membawa satu arti:
+     · `jft`     — apa adanya (teks ATAU URL), untuk pemakai yang butuh mentah
+     · `jftText` — HANYA nilai ujian; URL tidak pernah masuk ke isi CV
+     · `jftUrl`  — HANYA tautan; nilai ujian tidak pernah jadi tombol pratinjau
+   `attachBerkasBio` melengkapi `jftUrl` dari `master.jft_url` untuk baris yang
+   URL-nya hanya ada di master. */
 
 function mapCandidate(row: Record<string, unknown>) {
   const nama = toText(pick(row, ['nama_lengkap', 'nama', 'name', 'full_name']));
@@ -83,6 +101,8 @@ function mapCandidate(row: Record<string, unknown>) {
   // shows it, and the Edit modal feeds it to `<input type="date">`, which
   // silently renders an ISO stamp or a `dd-mm-yyyy` as EMPTY.
   const tglLahir = toDateOnly(pick(row, ['tgl_lahir', 'tglLahir', 'tanggal_lahir']));
+  const jftRaw = pick(row, ['jft', 'file_jft']) || '';
+  const sswRaw = pick(row, ['ssw', 'file_ssw']) || '';
   return {
     idKandidat,
     id: idKandidat,
@@ -104,8 +124,9 @@ function mapCandidate(row: Record<string, unknown>) {
     tempatLahir,
     tglLahir,
     alamat: toText(pick(row, ['alamat_lengkap', 'alamat', 'address'])),
-    jftText: toText(pick(row, ['nilai_jft_text', 'jft_text'])),
-    sswText: toText(pick(row, ['bidang_ssw_text', 'ssw_text'])),
+    // Nilai ujian: kolom khusus dulu, lalu `jft` HANYA kalau isinya bukan URL.
+    jftText: toText(pick(row, ['nilai_jft_text', 'jft_text'])) || asTeks(jftRaw),
+    sswText: toText(pick(row, ['bidang_ssw_text', 'ssw_text'])) || asTeks(sswRaw),
     catatanInt,
     catatanExt: toText(pick(row, ['catatan_external', 'catatan_ext'])),
     catatan: catatanAdmin,
@@ -116,15 +137,16 @@ function mapCandidate(row: Record<string, unknown>) {
     status: toText(pick(row, ['status_kandidat', 'status'])),
     idLoker: toText(pick(row, ['id_loker_pilihan', 'id_loker'])),
     folderUrl: pick(row, ['folder_url', 'folderUrl']) || '',
-    jft: pick(row, ['jft', 'file_jft']) || '',
-    ssw: pick(row, ['ssw', 'file_ssw']) || '',
+    // Mentah, apa adanya — teks nilai ATAU URL. Lihat catatan DUA ARTI di atas.
+    jft: jftRaw,
+    ssw: sswRaw,
     fileCv: pick(row, ['file_cv', 'fileCv', 'cv']) || '',
     // Alias jftUrl/sswUrl/cvUrl — dibaca modal CV admin (dossier) & dashboard.
     // Backend lama (Netlify GAS) mengembalikan nama ini; tanpa alias, tombol
     // FORMAT CV / SERTIF JFT / SERTIF SSW di dossier tidak pernah muncul.
-    // Hanya nilai ber-URL yang masuk alias — lihat `asUrl`.
-    jftUrl: asUrl(pick(row, ['jft', 'file_jft'])),
-    sswUrl: asUrl(pick(row, ['ssw', 'file_ssw'])),
+    // HANYA tautan: nilai ujian tidak boleh menjadi alamat pratinjau.
+    jftUrl: asUrl(jftRaw),
+    sswUrl: asUrl(sswRaw),
     cvUrl: asUrl(pick(row, ['file_cv', 'fileCv', 'cv'])),
     nik: toText(pick(row, ['nik'])),
     noPasport: toText(pick(row, ['no_pasport', 'no_paspor'])),

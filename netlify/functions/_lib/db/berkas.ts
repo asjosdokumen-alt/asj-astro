@@ -286,6 +286,35 @@ async function attachBerkasBio(candidates: any[]) {
     for (const r of Array.isArray(mRows) ? mRows : []) {
       mByWa.set(normalizeWa(String(pick(r, ['no_wa', 'wa', 'whatsapp']) || '')), r);
     }
+    /* URL pratinjau hidup di KOLOM BERBEDA dari nilai ujiannya:
+       `master.jft_url` / `ssw_url` / `file_cv`. `database_candidate.jft` hanya
+       KADANG berisi URL (89 dari 264 baris, terukur 2026-11-12); sisanya nilai
+       ujian atau kosong. Untuk baris yang URL-nya hanya ada di master, tombol
+       pratinjau tidak akan pernah muncul tanpa pengambilan ini.
+
+       Bertarget dan bersyarat: hanya tiga kolom URL, hanya WA di halaman ini,
+       dan hanya kalau ada kandidat yang belum punya URL. `master_light` SENGAJA
+       tidak diperluas — mengubah `RETURNS TABLE` memaksa DROP FUNCTION, dan
+       cache skema Neon harus disegarkan manual; kegagalan itu sudah pernah
+       membuat RPC ini menjawab 404 berhari-hari. */
+    const urlByWa = new Map<string, Record<string, unknown>>();
+    const perluUrl = candidates.some((c) => !c.jftUrl || !c.sswUrl);
+    if (perluUrl && useFilter && waList.length) {
+      try {
+        const rows = await supabaseJson('GET', 'master_database_candidate', {
+          query: {
+            select: 'no_wa,jft_url,ssw_url,file_cv',
+            no_wa: 'in.(' + waList.join(',') + ')',
+            limit: '200',
+          },
+        });
+        for (const r of Array.isArray(rows) ? rows : []) {
+          urlByWa.set(normalizeWa(String(pick(r, ['no_wa']) || '')), r as Record<string, unknown>);
+        }
+      } catch {
+        /* tanpa URL: tombol pratinjau tidak muncul, halaman tetap render */
+      }
+    }
     for (const c of candidates) {
       const want = normalizeWa(String(c.wa || ''));
       const pr = pByWa.get(want);
@@ -316,6 +345,19 @@ async function attachBerkasBio(candidates: any[]) {
         c.bio = buildBioFromMaster(mr);
       } else {
         c.bio = {};
+      }
+      /* Lengkapi tautan pratinjau dari master — HANYA kalau baris kandidat
+         belum punya. `jft`/`ssw` di salinan tidak bisa dipercaya sebagai URL
+         (lihat catatan DUA ARTI di `db/candidates.ts`). */
+      const u = urlByWa.get(want);
+      if (u) {
+        const url = (v: unknown) => {
+          const t = toText(v).trim();
+          return /^(https?:)?\/\//i.test(t) ? t : '';
+        };
+        if (!c.jftUrl) c.jftUrl = url(u.jft_url);
+        if (!c.sswUrl) c.sswUrl = url(u.ssw_url);
+        if (!c.cvUrl) c.cvUrl = url(u.file_cv);
       }
     }
   } catch (_e) {
