@@ -98,7 +98,16 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
       tindik: v('TINDIK', 'medis.tindik'),
       rokok: v('MEROKOK', 'medis.rokok'),
       alkohol: v('MINUMALKOHOL', 'medis.alkohol'),
-      alergi: v('ALERGI', 'medis.alergi'),
+      /* 🔴 `medis.alergi_id`, BUKAN `medis.alergi`. `buildMasterNested` memberi
+         akhiran `_id` pada tiga field medis (`alergi_id`, `riwayat_medis_id`,
+         `riwayat_kecelakaan_id`) karena di form aslinya ketiganya berpasangan
+         dengan kolom Jepang. Dua yang lain sudah memakai `_id`; `alergi`
+         tertinggal, sehingga `v()` selalu mengembalikan sentinel `'-'`,
+         `negatif('-')` bernilai true, dan JIPA mencetak `無い(TIDAK)` untuk
+         SEMUA kandidat — termasuk yang di DB-nya tertulis
+         "Alergi makanan laut" (terukur ASJ00101). `medis.alergi` tetap
+         dipertahankan sebagai jaring untuk pemanggil bentuk lama. */
+      alergi: v('ALERGI', 'medis.alergi_id', 'medis.alergi'),
       alergi_jp: v('ALERGIJP', 'medis.alergi_jp'),
       riwayat_medis: v('RIWAYATPENYAKIT', 'RIWAYATPENYAKITID', 'medis.riwayat_medis_id'),
       riwayat_medis_jp: v('RIWAYATPENYAKITJP', 'medis.riwayat_medis_jp'),

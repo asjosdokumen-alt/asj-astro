@@ -57,6 +57,11 @@ export default function TabConfig() {
   const [tplBusy, setTplBusy] = useState(false);
   const [tplInfo, setTplInfo] = useState('');
   const [tplFieldMap, setTplFieldMap] = useState<Record<string, string>>({});
+  /* Cara menulis per sel (bahasa & format) + sel contoh yang harus dikosongkan.
+     Dihitung `analyzeFromExample` dari berkas contoh; disimpan apa adanya ke
+     record supaya hasil generate tidak perlu direvisi manual. */
+  const [tplSpecs, setTplSpecs] = useState<CvTemplateRecord['specs']>({});
+  const [tplClear, setTplClear] = useState<string[]>([]);
   const [tplAmbiguous, setTplAmbiguous] = useState<Record<string, string[]>>({});
   const [tplPilihan, setTplPilihan] = useState<Record<string, string>>({});
   const [tplRiwayat, setTplRiwayat] = useState<CvTemplateRecord['riwayat']>({});
@@ -81,6 +86,8 @@ export default function TabConfig() {
   function pilihBerkasTemplate(f: File | null) {
     setTplFile(f);
     setTplFieldMap({});
+    setTplSpecs({});
+    setTplClear([]);
     setTplAmbiguous({});
     setTplPilihan({});
     setTplRiwayat({});
@@ -116,7 +123,7 @@ export default function TabConfig() {
       // yang benar di sini menjadi salah di sana.
       const wb = await readWorkbook(new Uint8Array(await tplFile.arrayBuffer()));
 
-      const { fieldMap, ambiguous, unmatched } = await analyzeFromExample(wb, data);
+      const { fieldMap, specs, clearCells, ambiguous, unmatched } = await analyzeFromExample(wb, data);
       const riwayat: CvTemplateRecord['riwayat'] = {};
       for (const tipe of RIWAYAT_TIPE) {
         const blk = await detectRiwayatBlock(
@@ -127,13 +134,16 @@ export default function TabConfig() {
         if (blk) riwayat[tipe] = blk;
       }
       setTplFieldMap(fieldMap);
+      setTplSpecs(specs);
+      setTplClear(clearCells);
       setTplAmbiguous(ambiguous);
       setTplPilihan({});
       setTplRiwayat(riwayat);
       setTplBelum(unmatched);
       setTplInfo(
         `${Object.keys(fieldMap).length} sel terpetakan · ${Object.keys(ambiguous).length} perlu Anda pilih · ` +
-          `${Object.keys(riwayat).length} tabel riwayat · ${unmatched.length} field belum tertampung`,
+          `${Object.keys(riwayat).length} tabel riwayat · ${unmatched.length} field belum tertampung · ` +
+          `${clearCells.length} sel contoh akan dikosongkan`,
       );
     } catch (e: unknown) {
       showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error');
@@ -175,6 +185,19 @@ export default function TabConfig() {
         aktif: true,
         updatedAt: new Date().toISOString(),
       };
+      /* `specs` hanya untuk sel yang BENAR-BENAR masuk peta final. Sel yang
+         dibatalkan karena ambiguous tidak lagi ditulis, jadi spesifikasinya
+         tidak ada gunanya — dan menyisakannya membuat record menggambarkan
+         template yang berbeda dari yang dipakai. */
+      const specs = Object.fromEntries(
+        Object.entries(tplSpecs || {}).filter(([cell]) => cell in fieldMap),
+      );
+      if (Object.keys(specs).length) record.specs = specs;
+      /* Sel contoh yang kini SUDAH terpetakan tidak boleh ikut dikosongkan —
+         urutan tulis di `applyFieldMap` menaruh nilai dulu, baru sapuan, jadi
+         sel yang terpetakan aman; ini hanya menjaga record tetap jujur. */
+      const clearCells = (tplClear || []).filter((cell) => !(cell in fieldMap));
+      if (clearCells.length) record.clearCells = clearCells;
       if (Object.keys(tplAmbiguous).length) record.ambiguous = tplAmbiguous;
       if (Object.keys(tplRiwayat || {}).length) record.riwayat = tplRiwayat;
       const d = (await api.secure('simpanTemplateCv', [{ record: encodeTemplateRecord(record) }])) as {
@@ -186,6 +209,8 @@ export default function TabConfig() {
       setTplFile(null);
       setTplInfo('');
       setTplFieldMap({});
+      setTplSpecs({});
+      setTplClear([]);
       setTplAmbiguous({});
       setTplRiwayat({});
       setTplBelum([]);

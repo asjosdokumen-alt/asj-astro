@@ -1,6 +1,6 @@
 ﻿import { cvFactory } from './factory';
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from './types';
-import type { TemplateFieldMap, RiwayatBlock } from './loaders/tEMPLATE-loader';
+import type { TemplateFieldMap, RiwayatBlock, CellSpec, CellFormat } from './loaders/tEMPLATE-loader';
 import excelTemplate from './renderers/excel';
 import docxTemplate from './renderers/docx';
 import pdfTemplate from './renderers/pdf';
@@ -82,6 +82,23 @@ export interface CvTemplateRecord {
   fileUrl: string;
   /** sel → path data, dari `analyzeFromExample`. */
   fieldMap: TemplateFieldMap;
+  /**
+   * sel → cara menulis (bahasa & format), dari contoh terisi.
+   *
+   * Opsional dengan sengaja: record yang dibuat sebelum 2026-11-12 tidak
+   * memilikinya, dan perilakunya harus tetap sama (teks apa adanya). Template
+   * baru memakainya untuk mencetak `2005年10月28日` di kolom Jepang dan
+   * `¥ 123.929` di kolom gaji — tanpa itu hasil generate harus direvisi manual.
+   */
+  specs?: Record<string, CellSpec>;
+  /**
+   * Sel yang di CONTOH berisi data kandidat contoh tetapi tidak terpetakan.
+   *
+   * Dikosongkan saat generate. Tanpa ini, CV kandidat baru mencetak nama, umur,
+   * alamat, dan foto orang yang dipakai sebagai contoh — hasilnya terlihat rapi
+   * padahal isinya orang lain.
+   */
+  clearCells?: string[];
   /** Sel yang belum diputuskan admin. TIDAK dipakai saat generate — kalau
    *  dipakai, satu nilai bisa ditulis ke sel yang salah. */
   ambiguous?: Record<string, string[]>;
@@ -99,6 +116,48 @@ export interface CvTemplateRecord {
 
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+const CELL_FORMATS: ReadonlySet<string> = new Set([
+  'text',
+  'upper',
+  'currency_yen',
+  'date_jp',
+  'period_jp',
+  'number',
+]);
+
+/**
+ * `specs` dari record mentah. Nilai yang tidak dikenal DIBUANG, bukan
+ * dipertahankan: format asing akan diteruskan ke `resolveCellValue` dan
+ * menghasilkan sel kosong tanpa penjelasan.
+ */
+function decodeSpecs(raw: unknown): Record<string, CellSpec> | null {
+  if (!isObj(raw)) return null;
+  const out: Record<string, CellSpec> = {};
+  for (const [cell, spec] of Object.entries(raw)) {
+    if (!isObj(spec)) continue;
+    const next: CellSpec = {};
+    if (spec.lang === 'id' || spec.lang === 'jp') next.lang = spec.lang;
+    if (typeof spec.format === 'string' && CELL_FORMATS.has(spec.format)) {
+      next.format = spec.format as CellFormat;
+    }
+    if (next.lang || next.format) out[cell] = next;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/** Daftar sel yang harus dikosongkan; alamat divalidasi bentuknya. */
+function decodeClearCells(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const addr of raw) {
+    if (typeof addr !== 'string') continue;
+    const a = addr.trim().toUpperCase();
+    // Alamat sel Excel: kolom 1-3 huruf + baris angka. Selain bentuk itu bukan sel.
+    if (/^[A-Z]{1,3}[1-9][0-9]*$/.test(a) && !out.includes(a)) out.push(a);
+  }
+  return out;
 }
 
 export function encodeTemplateRecord(rec: CvTemplateRecord): string {
@@ -170,6 +229,9 @@ export function decodeTemplateRecord(raw: unknown): CvTemplateRecord | null {
     }
   }
 
+  const specs = decodeSpecs(parsed.specs);
+  const clearCells = decodeClearCells(parsed.clearCells);
+
   const rec: CvTemplateRecord = {
     id,
     nama,
@@ -179,6 +241,8 @@ export function decodeTemplateRecord(raw: unknown): CvTemplateRecord | null {
     aktif: parsed.aktif !== false,
     updatedAt: String(parsed.updatedAt ?? ''),
   };
+  if (specs) rec.specs = specs;
+  if (clearCells.length) rec.clearCells = clearCells;
   if (isObj(parsed.ambiguous)) {
     const amb: Record<string, string[]> = {};
     for (const [cell, paths] of Object.entries(parsed.ambiguous)) {

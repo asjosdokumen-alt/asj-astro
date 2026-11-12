@@ -405,7 +405,13 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
 
       // Kedua applier MEMUTASI workbook yang sama; hanya serialisasi terakhir
       // yang dipakai, jadi tidak ada berkas antara yang dibaca ulang.
-      await applyFieldMap(wb, rec.fieldMap, cand);
+      // `specs` = cara menulis per sel (bahasa & format) yang dipelajari dari
+      // contoh; `clearCells` = sel yang di contoh berisi data orang lain dan
+      // harus dikosongkan. Keduanya opsional supaya template lama tetap jalan.
+      await applyFieldMap(wb, rec.fieldMap, cand, {
+        specs: rec.specs,
+        clearCells: rec.clearCells,
+      });
       for (const tipe of RIWAYAT_TIPE) {
         const blk = rec.riwayat?.[tipe];
         if (blk) {

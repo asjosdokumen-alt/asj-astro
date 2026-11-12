@@ -2,6 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { cvFactory } from './templates';
+import {
+  analyzeFromExample,
+  applyFieldMap,
+  detectCellSpec,
+  pickOption,
+  resolveCellValue,
+} from './loaders/tEMPLATE-loader';
 import { buildValues, buildNumbers } from './renderers/kinki';
 import type { CandidateData, RenderContext } from './types';
 
@@ -325,5 +332,96 @@ describe('pustaka berat hanya lewat import type / dynamic import', () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARA MENULIS SEL — dipelajari dari contoh terisi (2026-11-12)
+
+   Pemilik: template yang dipakai adalah CV yang SUDAH TERISI, dan contoh itu
+   yang memberi tahu "sel ini bahasa Jepang", "sel ini gaji yen". Tanpa itu
+   setiap CV memuat dua gaya sekaligus dan harus direvisi manual — jadi
+   otomatisasinya tidak ada gunanya.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('peta sel — bahasa & format dari contoh', () => {
+  const contoh = {
+    identitas: {
+      nama_lengkap: 'SITI RAHAYU',
+      katakana: 'シティ・ラハユ',
+      tempat_lahir: 'MAGETAN',
+      tempat_lahir_jp: 'マゲタン',
+      alamat: 'MAGETAN',
+      alamat_jp: 'マゲタン市',
+      tgl_lahir: '2005-10-28',
+      gender: 'PEREMPUAN',
+    },
+    fisik: { tb: '173', bb: '66' },
+    medis: { alergi: 'Alergi makanan laut', alergi_jp: '魚介食アレルギー' },
+    sertifikasi: {},
+    wawancara: { gaji_yen: 'Rp 2.500.000' },
+    pendidikan: [],
+    pekerjaan: [],
+    keluarga: [],
+    kenalan_jepang: {},
+    uploads: {},
+    raw: {},
+  } as unknown as CandidateData;
+
+  it('menandai sel berisi katakana sebagai bahasa Jepang', () => {
+    expect(detectCellSpec('マゲタン', 'identitas.tempat_lahir', contoh).lang).toBe('jp');
+  });
+
+  it('menandai sel berisi nilai Indonesia sebagai bahasa Indonesia', () => {
+    expect(detectCellSpec('MAGETAN', 'identitas.tempat_lahir', contoh).lang).toBe('id');
+  });
+
+  it('mengenali gaji yen dan tanggal Jepang dari bentuk teksnya', () => {
+    expect(detectCellSpec('¥ 22.727', 'wawancara.gaji_yen', contoh).format).toBe('currency_yen');
+    expect(detectCellSpec('2005年10月28日', 'identitas.tgl_lahir', contoh).format).toBe('date_jp');
+    expect(detectCellSpec('2021年8月', 'pendidikan.0.masuk', contoh).format).toBe('period_jp');
+  });
+
+  it('mengambil varian _jp dan mengonversi rupiah ke yen saat menulis', () => {
+    expect(resolveCellValue(contoh, 'identitas.tempat_lahir', { lang: 'jp' })).toBe('マゲタン');
+    expect(resolveCellValue(contoh, 'wawancara.gaji_yen', { format: 'currency_yen' })).toBe('¥ 22.727');
+    expect(resolveCellValue(contoh, 'identitas.tgl_lahir', { format: 'date_jp' })).toBe('2005年10月28日');
+  });
+
+  it('memilih opsi dropdown template, bukan menulis teks bebas', () => {
+    expect(pickOption(['LAKI LAKI (男)', 'PEREMPUAN (女)'], 'PEREMPUAN')).toBe('PEREMPUAN (女)');
+    expect(pickOption(['A', 'B', 'O', 'AB'], 'O')).toBe('O');
+    expect(pickOption(['A', 'B', 'O', 'AB'], 'TIDAK TAHU')).toBe('');
+  });
+
+  it('label menang atas tebakan nilai, dan sel contoh yang tak terpetakan dikosongkan', async () => {
+    const { Workbook } = await import('exceljs');
+    const wb = new Workbook();
+    const ws = wb.addWorksheet('CV');
+    ws.getCell('A1').value = 'NAMA';
+    ws.getCell('B1').value = 'SITI RAHAYU';
+    // Label 現住所 = alamat. Nilainya kebetulan SAMA dengan tempat lahir —
+    // inilah yang dulu membuat alamat dipetakan ke tempat_lahir.
+    ws.getCell('A2').value = '現住所';
+    ws.getCell('B2').value = 'MAGETAN';
+    // Tanpa label, nilai yang sama tidak bisa dipastikan: harus dikosongkan.
+    ws.getCell('B4').value = 'MAGETAN';
+
+    const hasil = await analyzeFromExample(wb, contoh);
+    expect(hasil.fieldMap.B1).toBe('identitas.nama_lengkap');
+    expect(hasil.fieldMap.B2).toBe('identitas.alamat');
+    expect(hasil.clearCells).toContain('B4');
+
+    const lain = {
+      ...contoh,
+      identitas: { ...contoh.identitas, nama_lengkap: 'BUDI', alamat: 'JL. BARU 7' },
+    } as unknown as CandidateData;
+    await applyFieldMap(wb, hasil.fieldMap, lain, {
+      specs: hasil.specs,
+      clearCells: hasil.clearCells,
+    });
+    expect(ws.getCell('B1').value).toBe('BUDI');
+    expect(ws.getCell('B2').value).toBe('JL. BARU 7');
+    // exceljs menyimpan string kosong sebagai `null` saat dibaca kembali;
+    // yang penting bukan tipe selnya, melainkan teks orang lain itu HILANG.
+    expect(String(ws.getCell('B4').value ?? '')).toBe('');
   });
 });

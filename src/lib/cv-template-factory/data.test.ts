@@ -240,3 +240,24 @@ describe('normalizeMasterData', () => {
     // Kontrol positif: `katakana` memang SUDAH punya fallback `identitas.*`.
     expect(data.identitas.katakana).toBe('アデッリア サルマ アギスナ プトリ');
   });
+
+/* ── Regresi 2026-11-12: alergi dari bentuk BERSARANG ────────────────────────
+   `getDrafCvMaster` mengembalikan `buildMasterNested(row)`, dan blok medis di
+   sana memakai akhiran `_id` untuk tiga field (alergi_id, riwayat_medis_id,
+   riwayat_kecelakaan_id). `data.ts` meminta `medis.alergi` — kunci yang tidak
+   pernah ada — sehingga `v()` mengembalikan `'-'`, `negatif('-')` bernilai
+   true, dan JIPA mencetak `無い(TIDAK)` untuk SEMUA kandidat. Terukur pada
+   ASJ00101: DB berisi "Alergi makanan laut", form tercetak "tidak ada". */
+describe('normalizeMasterData — alergi dari bentuk bersarang', () => {
+  it('membaca medis.alergi_id, bukan hanya medis.alergi', () => {
+    const row = { medis: { alergi_id: 'Alergi makanan laut', alergi_jp: '魚介食アレルギー' } };
+    const data = normalizeMasterData(row);
+    expect(data.medis.alergi).toBe('Alergi makanan laut');
+    expect(data.medis.alergi_jp).toBe('魚介食アレルギー');
+  });
+
+  it('tetap mendukung bentuk datar ALERGI', () => {
+    const data = normalizeMasterData({ ALERGI: 'Debu' });
+    expect(data.medis.alergi).toBe('Debu');
+  });
+});

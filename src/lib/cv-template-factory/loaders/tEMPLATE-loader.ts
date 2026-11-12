@@ -26,6 +26,7 @@
  */
 import type { Cell, Workbook, Worksheet } from 'exceljs';
 import type { CandidateData } from '../types';
+import { fmtGajiYen, fmtMonthYearJp, getPath, isGood } from '../../helpers_cv';
 
 export type ExcelTemplateOptions = {
   sheetName?: string;
@@ -131,6 +132,32 @@ export const FIELD_LABELS: FieldLabel[] = [
   // sama dengan pola `jft|bahasa jepang` di atas (data.ts menaruh JFT, JFTTEXT,
   // dan `bahasa_jepang` di satu field).
   { pattern: rxAny('JLPT', '日本語能力試験'), path: 'sertifikasi.jft' },
+
+  /* ── Label JEPANG (ditambahkan 2026-11-12) ────────────────────────────────
+     Template yang dipakai sehari-hari adalah form Jepang: labelnya 氏名, 現住所,
+     血液型 — bukan NAMA, ALAMAT, GOLONGAN DARAH. Tanpa pola di bawah, seluruh
+     baris identitas tidak punya label yang dikenali, sehingga peta sel hanya
+     bisa datang dari tebakan NILAI. Tebakan itu yang salah pada `tpl-tg708`:
+     `現住所` (alamat) dipetakan ke `identitas.tempat_lahir` karena contohnya
+     mengisi tempat lahir dan alamat dengan teks yang sama.
+
+     Hanya field SKALAR yang didaftarkan di sini. Label bagian (学歴, 職歴,
+     家族構成) sengaja TIDAK didaftarkan: nilai di kanannya adalah tabel
+     multi-baris, dan memetakannya ke satu sel akan menimpa judul tabel. */
+  { pattern: rxAny('現住所', '住所'), path: 'identitas.alamat' },
+  { pattern: rxAny('出身地', '出身'), path: 'identitas.tempat_lahir' },
+  { pattern: rxAny('氏名', '名前'), path: 'identitas.nama_lengkap' },
+  { pattern: rxAny('フリガナ', 'カタカナ', 'ふりがな'), path: 'identitas.katakana' },
+  { pattern: rxAny('生年月日'), path: 'identitas.tgl_lahir' },
+  { pattern: rxAny('年齢'), path: 'identitas.umur' },
+  { pattern: rxAny('性別'), path: 'identitas.gender' },
+  { pattern: rxAny('血液型'), path: 'identitas.golongan_darah' },
+  { pattern: rxAny('配偶者', '婚姻'), path: 'identitas.status_nikah' },
+  { pattern: rxAny('扶養家族', '子女'), path: 'identitas.anak' },
+  { pattern: rxAny('電話番号', '携帯番号', '連絡先'), path: 'identitas.hp' },
+  { pattern: rxAny('メールアドレス', 'メール'), path: 'identitas.email' },
+  { pattern: rxAny('身長'), path: 'fisik.tb' },
+  { pattern: rxAny('体重'), path: 'fisik.bb' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -252,26 +279,21 @@ function writeCellValue(cell: Cell, value: string): void {
 }
 
 function getValueFromPath(data: CandidateData, path: string): string {
-  const parts = path.split('.');
-  let current: unknown = data;
-  for (const part of parts) {
-    if (current === null || current === undefined || typeof current !== 'object') return '';
-    current = (current as Record<string, unknown>)[part];
-  }
-  if (current === null || current === undefined) return '';
-  if (Array.isArray(current)) {
-    return current
+  const v = getPath(data, path);
+  if (v === undefined || v === null) return '';
+  if (Array.isArray(v)) {
+    return v
       .map((item) => {
         if (typeof item === 'object' && item !== null) {
           return Object.values(item)
-            .map((v) => String(v ?? ''))
+            .map((x) => String(x ?? ''))
             .join(' / ');
         }
         return String(item);
       })
       .join('\n');
   }
-  return String(current);
+  return String(v);
 }
 
 export function flattenDataForPlaceholders(data: CandidateData): Record<string, string> {
@@ -325,6 +347,159 @@ function eachCell(ws: Worksheet, fn: (address: string, text: string) => void): v
 }
 
 // ---------------------------------------------------------------------------
+// CARA MENULIS SATU SEL — dipelajari dari contoh terisi (keputusan pemilik 2026-11-12)
+// ---------------------------------------------------------------------------
+// Pemilik: *"saya kerjakan cv manual dengan full semua data terisi terus template
+// cocokin dengan data db jadi langsung tahu ini isi ini ini isi ini … kek tulis
+// cell ini dengan bhasa ind bukan jp tulis ini tulis jp nya dan lain lain kek gaji
+// juga di db kan yen sedangkan db kita kan rp sama yen kalau gak di kasih cara
+// penulisannya yg bener setelah generated saya revisi manual terus donk"*.
+//
+// Jadi contoh terisi bukan hanya menjawab "sel ini FIELD apa", tetapi juga
+// "BAGAIMANA MENULISNYA": bahasa mana yang dipakai sel itu, dan format apa yang
+// berlaku (tanggal Jepang, periode 年月, gaji yen). Dua hal itu DIPELAJARI dari
+// teks contoh — bukan ditebak saat mencetak — lalu disimpan per sel di record
+// template. Record lama tetap sah: tanpa `specs`, perilakunya sama seperti dulu.
+//
+// Kenapa ini bukan sekadar kosmetik: tanpa spesifikasi, satu CV memuat dua gaya
+// sekaligus ("2021年1月" di satu sel, "05 MEI 2025" di sel lain; "¥ 2.000.000"
+// untuk gaji rupiah). Hasilnya selalu butuh revisi manual, dan otomatisasinya
+// tidak ada gunanya.
+export type CellFormat = 'text' | 'upper' | 'currency_yen' | 'date_jp' | 'period_jp' | 'number';
+
+export interface CellSpec {
+  /** `'jp'` = ambil varian `*_jp` dari field yang sama, bukan nilai Indonesianya. */
+  lang?: 'id' | 'jp';
+  /** Cara menulis nilainya di sel ini. */
+  format?: CellFormat;
+}
+
+/**
+ * Field yang varian Jepangnya TIDAK berakhiran `_jp`.
+ *
+ * Nama orang Jepang bukan terjemahan namanya, melainkan katakana — jadi
+ * `identitas.nama_lengkap` berpasangan dengan `identitas.katakana`, bukan
+ * `nama_lengkap_jp` (yang tidak ada).
+ */
+const JP_SIBLING_ALIAS: Record<string, string> = {
+  'identitas.nama_lengkap': 'identitas.katakana',
+  'identitas.panggilan': 'identitas.panggilan_katakana',
+};
+
+/** Path varian Jepang untuk `path`, atau `path` itu sendiri kalau sudah `_jp`. */
+export function jpSiblingOf(path: string): string {
+  const alias = JP_SIBLING_ALIAS[path];
+  if (alias) return alias;
+  if (path.endsWith('_jp')) return path;
+  if (path.endsWith('_id')) return path.slice(0, -3) + '_jp';
+  return path + '_jp';
+}
+
+/** Nilai teks satu path; array/objek bukan isi sel, jadi dianggap kosong. */
+function readPathValue(data: CandidateData, path: string): string {
+  const v = getPath(data, path);
+  if (v === undefined || v === null || Array.isArray(v) || typeof v === 'object') return '';
+  return String(v);
+}
+
+const JP_CHAR_RE = /[\u3040-\u30ff\u4e00-\u9fff]/;
+
+/** `2005-10-28` / `2005/10/28` / ISO → `2005年10月28日`. */
+function birthDateJp(raw: string): string {
+  const m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/.exec(raw);
+  if (m) return `${m[1]}年${parseInt(m[2], 10)}月${parseInt(m[3], 10)}日`;
+  const dt = new Date(raw);
+  if (Number.isNaN(dt.getTime())) return raw;
+  return `${dt.getFullYear()}年${dt.getMonth() + 1}月${dt.getDate()}日`;
+}
+
+/**
+ * Simpulkan cara penulisan satu sel dari teks CONTOH-nya.
+ *
+ * Urutannya penting: bahasa ditentukan dengan MEMBANDINGKAN teks sel terhadap
+ * nilai Indonesia dan nilai Jepang field itu. Baru kalau tidak ada yang cocok,
+ * keberadaan huruf Jepang dipakai sebagai bukti. Membalik urutan ini membuat sel
+ * berisi nama orang Indonesia yang kebetulan memuat kanji salah bahasa.
+ */
+export function detectCellSpec(text: string, path: string, data: CandidateData): CellSpec {
+  const spec: CellSpec = {};
+  const t = text.trim();
+  if (!t) return spec;
+  const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+  const idVal = readPathValue(data, path).trim();
+  const jpVal = readPathValue(data, jpSiblingOf(path)).trim();
+  if (jpVal && norm(t) === norm(jpVal) && norm(t) !== norm(idVal)) spec.lang = 'jp';
+  else if (idVal && norm(t) === norm(idVal)) spec.lang = 'id';
+  else if (JP_CHAR_RE.test(t)) spec.lang = 'jp';
+
+  if (/^[¥￥]\s*[\d.,]+$/.test(t) || /^[\d.,]+\s*円$/.test(t)) spec.format = 'currency_yen';
+  else if (/^\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日$/.test(t)) spec.format = 'date_jp';
+  else if (/^\d{4}\s*年\s*\d{1,2}\s*月$/.test(t)) spec.format = 'period_jp';
+  else if (/^[\d.,]+$/.test(t)) spec.format = 'number';
+  else if (t.length >= 3 && /[A-Z]/.test(t) && t === t.toUpperCase()) spec.format = 'upper';
+  else spec.format = 'text';
+  return spec;
+}
+
+/** Nilai final untuk satu sel: pilih varian bahasa, lalu terapkan format. */
+export function resolveCellValue(data: CandidateData, path: string, spec: CellSpec = {}): string {
+  let raw = spec.lang === 'jp' ? getValueFromPath(data, jpSiblingOf(path)) : getValueFromPath(data, path);
+  // Kolom Jepang yang belum diterjemahkan tidak boleh mengosongkan sel: lebih
+  // baik mencetak teks Indonesianya daripada sel kosong di form Jepang.
+  if (!isGood(raw)) raw = getValueFromPath(data, path);
+  if (!isGood(raw)) return '';
+  const v = raw.trim();
+  switch (spec.format) {
+    case 'currency_yen':
+      return fmtGajiYen(v);
+    case 'date_jp':
+      return birthDateJp(v);
+    case 'period_jp':
+      return fmtMonthYearJp(v);
+    case 'upper':
+      return v.toUpperCase();
+    default:
+      return v;
+  }
+}
+
+/**
+ * Pilih opsi dropdown template yang paling cocok untuk `value`.
+ *
+ * Template membawa `dataValidation` — dan itu kosakata yang SAH untuk sel itu
+ * (`LAKI LAKI (男)`, `O`, `ADA　（有）`). Menulis teks bebas ke sel ber-validasi
+ * membuat Excel menandainya tidak valid dan hasil cetak berbeda dari daftar yang
+ * dipakai form. Mencocokkan ke daftar itu lebih benar daripada menebak sendiri.
+ */
+export function pickOption(options: string[], value: string): string {
+  const squash = (s: string) => s.replace(/[\s\u3000\-_/]/g, '').toLowerCase();
+  const v = squash(value);
+  if (!v) return '';
+  const exact = options.find((o) => squash(o) === v);
+  if (exact) return exact;
+  const contains = options.find((o) => squash(o).includes(v));
+  if (contains) return contains;
+  // Arah sebaliknya hanya untuk opsi yang cukup panjang: opsi `O` (golongan
+  // darah) akan "cocok" dengan hampir semua nilai kalau dibalik begitu saja.
+  return options.find((o) => squash(o).length >= 3 && v.includes(squash(o))) ?? '';
+}
+
+/** Daftar opsi literal dari `dataValidation` sel, atau `[]`. */
+function listOptions(cell: Cell): string[] {
+  const dv = (cell as { dataValidation?: { type?: string; formulae?: unknown[] } }).dataValidation;
+  if (!dv || dv.type !== 'list' || !Array.isArray(dv.formulae) || dv.formulae.length === 0) return [];
+  const f = String(dv.formulae[0] ?? '').trim();
+  // Hanya daftar literal `"A,B,C"`. Rujukan rentang (`$A$1:$A$9`) bukan
+  // kosakata yang bisa dibaca tanpa membuka sheet lain.
+  if (!f.startsWith('"')) return [];
+  return f
+    .replace(/^"|"$/g, '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+// ---------------------------------------------------------------------------
 // BELAJAR DARI CONTOH TERISI (keputusan pemilik 2026-10-09: opsi C)
 // ---------------------------------------------------------------------------
 // Admin mengisi template dengan data SATU kandidat nyata lalu meng-upload-nya
@@ -340,6 +515,16 @@ function eachCell(ws: Worksheet, fn: (address: string, text: string) => void): v
 export interface ExampleAnalysis {
   /** sel -> path data (siap diserahkan ke `applyFieldMap`) */
   fieldMap: TemplateFieldMap;
+  /** sel -> cara menulis (bahasa & format), dipelajari dari contoh */
+  specs: Record<string, CellSpec>;
+  /**
+   * Sel yang di CONTOH berisi data kandidat contoh tetapi tidak terpetakan.
+   *
+   * Ini daftar sel yang harus DIKOSONGKAN saat generate. Tanpa itu, CV kandidat
+   * baru mencetak nama, umur, alamat, dan foto orang yang dipakai sebagai contoh
+   * — kesalahan yang terlihat wajar karena berkasnya tetap rapi.
+   */
+  clearCells: string[];
   /** sel -> daftar path yang nilainya sama; admin harus memilih satu */
   ambiguous: Record<string, string[]>;
   /** path yang TIDAK ketemu di template — admin tahu apa yang belum tertampung */
@@ -366,12 +551,29 @@ export async function analyzeFromExample(
   data: CandidateData,
 ): Promise<ExampleAnalysis> {
   const flat = flattenDataForPlaceholders(data);
+  /* Hanya sheet PERTAMA yang dipetakan — sama dengan yang ditulis
+     `applyFieldMap`. Versi lama memindai semua sheet lalu menulis ke sheet
+     pertama: alamat dari sheet kedua masuk ke peta, dan nilainya ditulis ke sel
+     bernomor sama di sheet pertama. Template multi-sheet kehilangan datanya
+     tanpa satu pun pesan; sekarang ia terlihat sebagai "peta kosong" yang
+     ditolak saat simpan. */
+  const ws = workbook.worksheets[0];
 
   // Nilai -> path. Hanya nilai yang cukup khas yang boleh jadi bukti.
   const byValue = new Map<string, string[]>();
+  /* Peta kedua TANPA saringan "terlalu umum". Dipakai bukan untuk memetakan,
+     melainkan untuk mengenali sel mana yang berisi DATA KANDIDAT CONTOH walau
+     nilainya terlalu pendek untuk dijadikan bukti — `O` (golongan darah), `1`
+     (jumlah anak), `-`. Sel seperti itu harus dikosongkan saat generate; kalau
+     tidak, golongan darah orang contoh ikut tercetak. */
+  const byValueLoose = new Map<string, string[]>();
   for (const [path, value] of Object.entries(flat)) {
     const key = matchKey(value);
-    if (!key || tooWeakToMatch(String(value))) continue;
+    if (!key) continue;
+    const loose = byValueLoose.get(key) ?? [];
+    if (!loose.includes(path)) loose.push(path);
+    byValueLoose.set(key, loose);
+    if (tooWeakToMatch(String(value))) continue;
     const list = byValue.get(key) ?? [];
     if (!list.includes(path)) list.push(path);
     byValue.set(key, list);
@@ -380,8 +582,10 @@ export async function analyzeFromExample(
   const fieldMap: TemplateFieldMap = {};
   const ambiguous: Record<string, string[]> = {};
   const used = new Set<string>();
+  /** Sel yang isinya berasal dari kandidat contoh, terpetakan atau tidak. */
+  const exemplarCells: Array<{ addr: string; text: string }> = [];
 
-  for (const ws of workbook.worksheets) {
+  if (ws) {
     eachCell(ws, (addr, text) => {
       // `{{path}}` selalu menang: itu perintah eksplisit, bukan tebakan.
       const token = PLACEHOLDER_RE.exec(text);
@@ -394,7 +598,11 @@ export async function analyzeFromExample(
       }
 
       const paths = byValue.get(matchKey(text));
-      if (!paths?.length) return;
+      if (!paths?.length) {
+        if (byValueLoose.has(matchKey(text))) exemplarCells.push({ addr, text });
+        return;
+      }
+      exemplarCells.push({ addr, text });
       if (paths.length === 1) {
         fieldMap[addr] = paths[0];
         used.add(paths[0]);
@@ -411,8 +619,14 @@ export async function analyzeFromExample(
   // PULANG tidak pernah masuk peta walau LABELNYA ADA di template — persis yang
   // membuat baris 37-40 template rirekisho selalu kosong untuk SEMUA kandidat.
   //
-  // Bukti nilai tetap MENANG: label hanya mengisi sel yang belum terpetakan.
-  for (const ws of workbook.worksheets) {
+  // ⚠️ LABEL MENANG atas tebakan nilai (dikoreksi 2026-11-12). Dulu bukti nilai
+  // yang menang, dan itu salah untuk template yang contohnya kebetulan mengisi
+  // dua kolom dengan teks sama: pada `tpl-tg708`, tempat lahir dan alamat
+  // contohnya sama-sama `PONOROGO`, sehingga sel 現住所 (alamat) dipetakan ke
+  // `identitas.tempat_lahir` dan alamat kandidat tidak pernah tercetak. Label
+  // ditulis manusia dan menunjuk sel yang benar; nilai yang kebetulan sama
+  // adalah kebetulan.
+  if (ws) {
     for (const [addr, path] of Object.entries(labelFieldMap(ws))) {
       const candidates = ambiguous[addr];
       if (candidates) {
@@ -421,16 +635,27 @@ export async function analyzeFromExample(
         // lain, dua sumber bukti ini bertentangan dan admin yang memilih.
         if (!candidates.includes(path)) continue;
         delete ambiguous[addr];
-      } else if (fieldMap[addr]) {
-        continue;
       }
       fieldMap[addr] = path;
       used.add(path);
     }
   }
 
+  const specs: Record<string, CellSpec> = {};
+  if (ws) {
+    for (const [addr, path] of Object.entries(fieldMap)) {
+      specs[addr] = detectCellSpec(cellText(ws.getCell(addr)), path, data);
+    }
+  }
+
+  /* Sel contoh yang TIDAK terpetakan = data orang lain yang akan tercetak apa
+     adanya. Label tidak ikut dikosongkan (itu bagian form, bukan data). */
+  const clearCells = exemplarCells
+    .filter(({ addr, text }) => !(addr in fieldMap) && !looksLikeLabel(text))
+    .map(({ addr }) => addr);
+
   const unmatched = Object.keys(flat).filter((p) => !used.has(p) && !tooWeakToMatch(String(flat[p])));
-  return { fieldMap, ambiguous, unmatched };
+  return { fieldMap, specs, clearCells, ambiguous, unmatched };
 }
 
 // ---------------------------------------------------------------------------
@@ -836,12 +1061,21 @@ export async function applyFieldMap(
   workbook: Workbook,
   fieldMap: TemplateFieldMap,
   data: CandidateData,
+  opts: { specs?: Record<string, CellSpec>; clearCells?: string[] } = {},
 ): Promise<void> {
   const ws = workbook.worksheets[0];
   if (!ws) throw new Error('Template tidak punya sheet.');
+  const specs = opts.specs ?? {};
   for (const [cellAddress, fieldPath] of Object.entries(fieldMap)) {
     const cell = ws.getCell(cellAddress);
-    const value = getValueFromPath(data, fieldPath);
+    let value = resolveCellValue(data, fieldPath, specs[cellAddress]);
+    /* Dropdown template adalah kosakata yang SAH untuk sel itu. Menulis teks
+       bebas ke sel ber-validasi membuat Excel menandainya tidak valid dan hasil
+       cetak berbeda dari daftar yang dipakai form — persis "beda gaya
+       penulisan" yang membuat CV harus direvisi manual. Kalau tidak ada opsi
+       yang cocok, sel DIKOSONGKAN: nilai asing lebih buruk daripada sel kosong. */
+    const options = listOptions(cell);
+    if (options.length) value = pickOption(options, value);
     if (value) {
       writeCellValue(cell, value);
       continue;
@@ -856,6 +1090,17 @@ export async function applyFieldMap(
     // Satu pengecualian: kalau sel tujuan ternyata berisi LABEL (peta bisa salah
     // di template yang tata letaknya belum kita kenal), sel itu TIDAK dihapus —
     // menghapus label template jauh lebih merusak daripada membiarkannya.
+    if (looksLikeLabel(cellText(cell))) continue;
+    writeCellValue(cell, '');
+  }
+
+  /* Sel yang di CONTOH berisi data kandidat contoh tetapi tidak terpetakan.
+     Tanpa sapuan ini, seluruh CV kandidat baru berisi nama, umur, alamat, dan
+     foto orang yang dipakai sebagai contoh — terlihat rapi, isinya orang lain.
+     Daftarnya dihitung saat analisa (`clearCells`), bukan ditebak saat cetak. */
+  for (const addr of opts.clearCells ?? []) {
+    if (addr in fieldMap) continue;
+    const cell = ws.getCell(addr);
     if (looksLikeLabel(cellText(cell))) continue;
     writeCellValue(cell, '');
   }
