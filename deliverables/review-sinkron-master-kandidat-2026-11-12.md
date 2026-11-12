@@ -24,7 +24,7 @@ tidak sesuai DB — adalah akibat langsung dari itu, bukan bug terpisah-pisah.
 | **Sel yang menyimpang** — sesudah migrasi `053` | **0** (dari 16 kolom) |
 | Baris master tanpa baris kandidat | **2** (ASJ00222 + satu baris `id_kandidat` kosong) |
 | Baris kandidat tanpa master | 0 |
-| Template CV tersimpan | **1**, dan template itu **tidak bisa** menghasilkan CV yang benar |
+| Template CV tersimpan | 1 baris `sys_config` — **inert**: fitur pembacanya sudah dihapus (`aca84be`) |
 
 > ### ⚠️ Koreksi 2026-11-12 20:30 — angka pertama di dokumen ini salah DB
 >
@@ -234,6 +234,19 @@ apa adanya, dan `"-"` / `"TIDAK ADA"` lolos ke sel CV sebagai isi.
 
 ## 4. Generator template: mengapa hasilnya bukan data kandidat
 
+> **STATUS 2026-11-12 20:50 — FITUR INI SUDAH DIHAPUS.**
+> Pemilik: *"fitur sudah mati kenapa masih ada gak di hapus saja … template sekarang
+> dilakukan manual di coding, jadi hasilnya lebih pasti dan benar"*. Seluruh jalur
+> unggah-contoh → analisa → simpan ke `sys_config` dibuang (`aca84be`): kartu di Tab
+> Config, tombol "Buat CV dari template", tiga aksi backend, API record template, dan
+> paruh analyze/apply di loader (1194 → 245 baris). Yang tersisa: **lima renderer
+> bawaan** (`rirekisho-xlsx`, `rirekisho-firma`, `kinki`, `jipa`, `rirekisho-detail`)
+> dengan peta sel di kode — bisa diuji, hasilnya deterministik.
+>
+> Bagian di bawah dipertahankan sebagai catatan mengapa jalur itu tidak bisa
+> dipercaya, dan sebagai peringatan kalau ada yang mencoba menghidupkannya lagi.
+> Satu baris `sys_config` (`tpl-tg708`) masih ada tetapi **tidak dibaca kode mana pun**.
+
 ### 4.1 Yang tersimpan di DB hanya satu template, dan peta selnya salah
 
 `sys_config` (`config_type = 'cv_template'`), terukur:
@@ -407,7 +420,7 @@ langsung terlihat begitu ada yang menyambungkannya.
 > | P0-3 rekonsiliasi data | **selesai** | migrasi `053` langkah 3–4; drift 16 kolom kini **0** |
 > | P0-4 ASJ00222 | **belum** | butuh keputusan pemilik: WA yang benar tidak bisa ditebak |
 > | P0-5 hapus baris uji | **tidak dilakukan** | baris uji hanya ada di proyek Supabase lama, bukan produksi |
-> | P1-6…9 template | **sebagian** | `e66817b` (specs, clearCells, label menang, sheet); record lama ditolak `256fbfc` |
+> | P1-6…9 template | **tidak berlaku** | fitur dihapus `aca84be`; template = 5 renderer di kode |
 > | P2-10 `SYNC_SELECT.master` | **selesai** | `685880a`; gerbang skema terbukti gagal pada daftar lama |
 > | P2-11 `localFirst` | **belum** | perlu keputusan: sambungkan atau hapus |
 > | P3-13…15 | **sebagian** | `95989b7` (jft nilai vs URL) |
