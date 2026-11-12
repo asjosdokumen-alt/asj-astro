@@ -524,6 +524,17 @@ export function buildMasterNested(row: any): any {
          pembacaan ringan yang tidak butuh riwayat). */
       const anak = row.candidate_pekerjaan;
       if (Array.isArray(anak) && anak.length) {
+        /* Kota tidak punya kolom di `candidate_pekerjaan`; nilainya hidup di slot
+           `pekerjaan_N_kota`. Memetakan dengan POSISI saja salah begitu satu slot
+           kosong: RPC `replace_candidate_pekerjaan` menomori ulang `urutan` 1..n,
+           jadi baris ke-2 bisa berasal dari slot 3. Cocokkan lewat NAMA
+           PERUSAHAAN dulu, dan hanya jatuh ke posisi kalau tidak ada yang cocok. */
+        const kotaSlot = (nama: string, posisi: number): string => {
+          for (let n = 1; n <= 3; n++) {
+            if (v(`pekerjaan_${n}_nama_perusahaan`) === nama) return v(`pekerjaan_${n}_kota`);
+          }
+          return v(`pekerjaan_${posisi}_kota`);
+        };
         return anak.map((r: Record<string, unknown>, i: number) => ({
           perusahaan: toText(r.perusahaan), nama_perusahaan: toText(r.perusahaan),
           perusahaan_jp: r.perusahaan_jp ?? '', jabatan: r.jabatan ?? '',
@@ -536,7 +547,7 @@ export function buildMasterNested(row: any): any {
           /* `candidate_pekerjaan` belum punya kolom `kota`; nilainya hidup di
              kolom slot `pekerjaan_N_kota`. Jangan sampai hilang hanya karena
              riwayat kerja dibaca dari tabel anak. */
-          kota: r.kota ?? v(`pekerjaan_${i + 1}_kota`),
+          kota: r.kota ?? kotaSlot(toText(r.perusahaan), i + 1),
         }));
       }
       const arr: any[] = [];

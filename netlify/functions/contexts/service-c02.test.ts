@@ -326,6 +326,24 @@ describe('hapus baris riwayat harus berlaku', () => {
     expect(n.pekerjaan[0].kota).toBe('Surabaya');
   });
 
+  /**
+   * Tabel anak TIDAK punya kolom `kota`, dan RPC `replace_candidate_pekerjaan`
+   * menomori ulang `urutan` 1..n. Jadi kalau slot 2 kosong dan slot 3 terisi,
+   * baris anak ke-2 berasal dari slot 3 — memetakan kota dengan POSISI memberi
+   * kota yang salah ke pekerjaan yang salah.
+   */
+  it('kota pekerjaan dari tabel anak dicocokkan lewat nama perusahaan, bukan posisi', () => {
+    const n = buildMasterNested({
+      pekerjaan_1_nama_perusahaan: 'PT A', pekerjaan_1_kota: 'Kota A',
+      pekerjaan_3_nama_perusahaan: 'PT C', pekerjaan_3_kota: 'Kota C',
+      candidate_pekerjaan: [
+        { perusahaan: 'PT A', urutan: 1 },
+        { perusahaan: 'PT C', urutan: 2 },
+      ],
+    });
+    expect(n.pekerjaan.map((p: Record<string, unknown>) => p.kota)).toEqual(['Kota A', 'Kota C']);
+  });
+
   it('buildMasterBody meneruskan penanda `riwayatLengkap`', () => {
     const body = buildMasterBody({ riwayatLengkap: true, pendidikan: [{ tingkat: 'SD' }] });
     expect(body.pendidikan_2_tingkat).toBe('');
