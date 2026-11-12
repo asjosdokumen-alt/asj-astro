@@ -22,7 +22,7 @@ tidak sesuai DB — adalah akibat langsung dari itu, bukan bug terpisah-pisah.
 | `database_candidate` | 264 baris · 34 kolom |
 | Kolom CV yang **diduplikasi** di kedua tabel | 16 |
 | **Sel yang menyimpang** — sesudah migrasi `053` | **0** (dari 16 kolom) |
-| Baris master tanpa baris kandidat | **1** (ASJ00222, WA rusak) |
+| Baris master tanpa baris kandidat | **2** (ASJ00222 + satu baris `id_kandidat` kosong) |
 | Baris kandidat tanpa master | 0 |
 | Template CV tersimpan | **1**, dan template itu **tidak bisa** menghasilkan CV yang benar |
 
@@ -145,8 +145,11 @@ yang diperbaiki, bukan `62` + digit hilang). Karena itu:
 - `getDrafCvMaster` tidak bisa menemukannya, jadi CV-nya tidak bisa dibuat;
 - trigger cermin tidak punya pasangan untuk digabung.
 
-Ini satu-satunya baris master tanpa pasangan di produksi. Tidak diperbaiki otomatis karena
-tanpa baris pembanding, WA yang benar tidak bisa dipastikan — perlu keputusan pemilik.
+Ini satu dari **dua** baris master tanpa pasangan di produksi. Yang kedua bahkan tidak punya
+`id_kandidat` sama sekali (kosong) dan WA-nya juga tidak cocok dengan baris kandidat mana pun;
+namanya berawalan `agu`. Keduanya tidak muncul di daftar admin dan tidak bisa dibuatkan CV.
+Tidak diperbaiki otomatis karena tanpa baris pembanding, WA/ID yang benar tidak bisa
+dipastikan — perlu keputusan pemilik.
 
 ---
 

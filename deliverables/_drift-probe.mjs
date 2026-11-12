@@ -50,6 +50,13 @@ const PAIRS = [
   ['folder_url', 'folder_url'],
 ];
 
+/* `jft`/`ssw` di salinan membawa DUA arti: tautan berkas DAN nilai ujian
+   ("233", "A1"). Pasangan di atas hanya bermakna kalau nilai salinannya memang
+   URL — membandingkan "233" dengan `master.jft_url` yang kosong akan melaporkan
+   drift yang tidak ada. Pasangan lain dibandingkan apa adanya. */
+const PASANGAN_URL = new Set(['jft_url', 'ssw_url', 'pas_photo', 'file_cv', 'folder_url']);
+const isUrl = (v) => /^(https?:)?\/\//i.test(norm(v));
+
 const mCols = PAIRS.map(([a]) => a).join(',');
 const cCols = PAIRS.map(([, b]) => b).join(',');
 const master = await get(`master_database_candidate?select=no_wa,id_kandidat,${mCols}&limit=2000`);
@@ -72,6 +79,7 @@ for (const r of master) {
   }
   const beda = [];
   for (const [a, b] of PAIRS) {
+    if (PASANGAN_URL.has(a) && norm(d[b]) !== '' && !isUrl(d[b])) continue;
     if (norm(r[a]) !== norm(d[b])) {
       drift[a] = (drift[a] || 0) + 1;
       total++;
