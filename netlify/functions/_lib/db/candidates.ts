@@ -12,6 +12,20 @@ import { log } from '../kernel/log';
 //   no_pasport, email, tempat_lahir, tgl_lahir, alamat_lengkap,
 //   catatan_internal, catatan_external, nilai_jft_text, bidang_ssw_text,
 //   created_at, updated_at, password_diubah
+/** Nilai yang benar-benar URL.
+
+    `jft`/`ssw`/`file_cv` di `database_candidate` menyimpan DUA hal sekaligus:
+    URL berkas (jalur unggahan) dan TEKS nilai sertifikasi ("233", "A1",
+    "A2/205"). Terukur 2026-11-12 pada produksi: 4 baris berisi nilai ujian di
+    kolom `jft`. Nilai itu dipakai sebagai `src` gambar dan tautan pratinjau di
+    dossier, jadi tombol "SERTIF JFT" membuka alamat "233" — tautan mati yang
+    terlihat seperti berkas rusak. Alias `*Url` hanya boleh berisi URL; teks
+    mentahnya tetap tersedia di `jft`/`ssw`/`fileCv`. */
+function asUrl(v: unknown): string {
+  const s = toText(v).trim();
+  return /^(https?:)?\/\//i.test(s) ? s : '';
+}
+
 function mapCandidate(row: Record<string, unknown>) {
   const nama = toText(pick(row, ['nama_lengkap', 'nama', 'name', 'full_name']));
   const wa = toText(
@@ -85,7 +99,7 @@ function mapCandidate(row: Record<string, unknown>) {
         : '-',
     ttl: [tempatLahir, tglLahir].filter((x) => x && x !== '-').join(', ') || '-',
     pendidikan: toText(pick(row, ['pendidikan'])),
-    pasPhoto: pick(row, ['pas_photo', 'pasPhoto', 'photo']) || '',
+    pasPhoto: asUrl(pick(row, ['pas_photo', 'pasPhoto', 'photo'])),
     email: toText(pick(row, ['email'])),
     tempatLahir,
     tglLahir,
@@ -108,9 +122,10 @@ function mapCandidate(row: Record<string, unknown>) {
     // Alias jftUrl/sswUrl/cvUrl — dibaca modal CV admin (dossier) & dashboard.
     // Backend lama (Netlify GAS) mengembalikan nama ini; tanpa alias, tombol
     // FORMAT CV / SERTIF JFT / SERTIF SSW di dossier tidak pernah muncul.
-    jftUrl: pick(row, ['jft', 'file_jft']) || '',
-    sswUrl: pick(row, ['ssw', 'file_ssw']) || '',
-    cvUrl: pick(row, ['file_cv', 'fileCv', 'cv']) || '',
+    // Hanya nilai ber-URL yang masuk alias — lihat `asUrl`.
+    jftUrl: asUrl(pick(row, ['jft', 'file_jft'])),
+    sswUrl: asUrl(pick(row, ['ssw', 'file_ssw'])),
+    cvUrl: asUrl(pick(row, ['file_cv', 'fileCv', 'cv'])),
     nik: toText(pick(row, ['nik'])),
     noPasport: toText(pick(row, ['no_pasport', 'no_paspor'])),
     tanggalDaftar: pick(row, ['tanggal_daftar', 'tanggalDaftar']) || '',

@@ -275,3 +275,25 @@ describe('mapCandidate — kelas dari kolom, tag sebagai cadangan', () => {
     expect(c.isSiswaASJ).toBe(true);
   });
 });
+
+/* ── Regresi 2026-11-12: `jft`/`ssw` menyimpan DUA hal ───────────────────────
+   Kolom yang sama dipakai untuk URL berkas DAN untuk teks nilai sertifikasi.
+   Terukur di produksi: ASJ00188 `jft = "233"`, ASJ00133 `"A1"`,
+   ASJ00194 `"A2/205"`. Alias `jftUrl` dipakai dossier sebagai tautan pratinjau,
+   jadi tombol "SERTIF JFT" membuka alamat "233" — tautan mati yang terlihat
+   seperti berkas rusak. Alias `*Url` hanya boleh berisi URL; teks mentahnya
+   tetap tersedia di `jft`/`ssw`. */
+describe('mapCandidate — alias *Url hanya berisi URL', () => {
+  it('nilai ujian di kolom jft tidak menjadi tautan', () => {
+    const c = mapCandidate({ no_wa: '6281', jft: '233', ssw: 'A1', file_cv: 'https://x/y.pdf' });
+    expect(c.jftUrl).toBe('');
+    expect(c.sswUrl).toBe('');
+    expect(c.jft).toBe('233');
+    expect(c.cvUrl).toBe('https://x/y.pdf');
+  });
+
+  it('URL sah tetap diteruskan', () => {
+    const c = mapCandidate({ no_wa: '6281', jft: 'https://cdn/x.pdf' });
+    expect(c.jftUrl).toBe('https://cdn/x.pdf');
+  });
+});
