@@ -1193,7 +1193,11 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
       MATA_KANAN: v('mata_kanan'), KACAMATA: v('kacamata'), BUTA_WARNA: v('buta_warna'),
       TATO: v('tato'), TINDIK: v('tindik'), MEROKOK: v('merokok'), MINUM_ALKOHOL: v('minum_alkohol'),
       RIWAYAT_PENYAKIT: v('riwayat_penyakit'), ALERGI: v('alergi'), RIWAYAT_KECELAKAAN: v('riwayat_kecelakaan'),
-      LAMA_DI_JEPANG: v('status_eks_jepang'), HARAPAN_GAJI_YEN: v('harapan_gaji_yen'),
+      /* `LAMA_DI_JEPANG` = 在日期間 (kolom `lama_di_jepang`). Dulu baris ini
+         membaca `status_eks_jepang` — jawaban "pernah ke Jepang", bukan
+         lamanya. Dua hal berbeda; `STATUS_EKS_JEPANG` sudah punya barisnya
+         sendiri di atas. */
+      LAMA_DI_JEPANG: v('lama_di_jepang'), HARAPAN_GAJI_YEN: v('harapan_gaji_yen'),
       HARAPAN_TABUNGAN: v('harapan_tabungan'), BAHASA: v('bahasa'), JFT: v('jft'), SSW: v('ssw'),
       BIDANGSSW: v('bidangssw'), PROMOSI_DIRI: v('promosi_diri'), KELEBIHAN: v('kelebihan'),
       KEKURANGAN: v('kekurangan'), KEAHLIAN_KHUSUS: v('keahlian_khusus'),
@@ -1393,8 +1397,24 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
       if (fileUrls.jft_url) candBody.jft = fileUrls.jft_url;
       if (fileUrls.ssw_url) candBody.ssw = fileUrls.ssw_url;
       if (fileUrls.file_cv) candBody.file_cv = fileUrls.file_cv;
-      if (c && c.id !== undefined) { await supabaseJson('PATCH', 'database_candidate', { query: { id: 'eq.' + c.id }, body: candBody, headers: { Prefer: 'return=minimal' } }); }
-    } catch { /* sync non-fatal */ }
+      if (c && c.id !== undefined) {
+        await supabaseJson('PATCH', 'database_candidate', {
+          query: { id: 'eq.' + c.id },
+          body: { ...candBody, updated_at: new Date().toISOString() },
+          headers: { Prefer: 'return=minimal' },
+        });
+      } else {
+        // Baris kandidat belum ada (mis. master diisi lewat jalur admin sebelum
+        // pendaftaran). Bukan kegagalan, tetapi harus TERLIHAT: tanpa baris itu
+        // panel admin tidak akan pernah menampilkan kandidat ini.
+        log.warn('master.candidate-missing', { wa });
+      }
+    } catch (e) {
+      // Trigger `053` menyalin master → salinan di transaksi yang sama, jadi
+      // kegagalan di sini tidak membuat data menyimpang; tetapi menelannya
+      // tanpa jejak membuat masalah berikutnya tidak bisa dilacak.
+      log.warn('master.candidate-sync-failed', { wa, err: String(e) });
+    }
 
     try { if (changedLabels.length) await syncBiodataKeMail(wa, nama, changedLabels); } catch { /* non-fatal */ }
     return { success: true };
@@ -1515,8 +1535,12 @@ export async function handleSimpanBiodataLengkap(payload: any[], sessionToken?: 
           body: Object.assign({}, candPatch, { updated_at: now }),
           headers: { Prefer: 'return=minimal' },
         });
+      } else if (!c) {
+        log.warn('biodata.candidate-missing', { wa });
       }
-    } catch { /* non-fatal */ }
+    } catch (e) {
+      log.warn('biodata.candidate-sync-failed', { wa, err: String(e) });
+    }
     // Notifikasi admin + jejak di Mail. Dulu handler ini TIDAK memanggil
     // `syncBiodataKeMail` sama sekali, jadi biodata yang diubah dari Pusat
     // Pemberkasan tidak pernah memicu push (laporan pemilik 2026-10-25).

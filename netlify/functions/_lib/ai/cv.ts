@@ -665,13 +665,20 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
           if (c && c.id !== undefined) {
             await supabaseJson('PATCH', 'database_candidate', {
               query: { id: 'eq.' + c.id },
-              body: candBody,
+              body: { ...candBody, updated_at: new Date().toISOString() },
               headers: { Prefer: 'return=minimal' },
             });
+          } else {
+            // Tanpa baris kandidat, panel admin tidak akan menampilkan orang ini
+            // walau master-nya lengkap. Dicatat, bukan ditelan.
+            log.warn('ai-cv.candidate-missing', { wa });
           }
         }
       } catch (_e) {
-        /* opsional — sync ke database_candidate */
+        // Trigger `053` sudah menyalin master → salinan; kegagalan di sini tidak
+        // membuat data menyimpang. Tetap dicatat supaya tidak jadi kegagalan
+        // senyap yang baru ketahuan saat modal menampilkan nilai lama.
+        log.warn('ai-cv.candidate-sync-failed', { wa, err: String(_e) });
       }
 
       // Sinkron KTP URL ke pemberkasan_checklist supaya admin bisa

@@ -7,6 +7,10 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 import { attachBerkasBio } from '../../_lib/db/berkas';
+import { masterIdentityPatch } from '../../_lib/db/identity-sync';
+import { fetchMasterByWa } from '../../_lib/db/master';
+import { supabaseUpsert } from '../../_lib/db/client';
+import { log } from '../../_lib/kernel/log';
 import { safeError } from '../../_lib/kernel/errors';
 import { guardPayload, indexLike, ignored, optionalTextOrEmpty } from '../../_lib/kernel/guard';
 import { requireAdmin } from '../identity';
@@ -76,18 +80,24 @@ async function syncCandidateDariForm(f: Record<string, unknown>, status: string)
   const row = await findCandidateByWa(wa);
   if (status === MAIL_APPROVED_STATUS) {
     const now = new Date().toISOString();
-    const base: Record<string, unknown> = {
-      nama_lengkap: String(f.nama_lengkap || ''),
-      gender: String(f.gender || ''),
-      usia: String(f.usia || ''),
-      tb: String(f.tb || ''),
-      bb: String(f.bb || ''),
-      pas_photo: f.pas_photo || '',
-      jft: f.jft || '',
-      ssw: f.ssw || '',
-      file_cv: f.file_cv || '',
-      updated_at: now,
+    /* HANYA nilai terisi. Versi lama menulis `String(f.gender || '')`, sehingga
+       menyetujui baris Mail yang tidak memuat sebuah kolom MENGHAPUS kolom itu
+       di baris kandidat. Aturan yang sama dengan `candidateIdentityPatch`:
+       kunci hanya lahir dari nilai yang ada. */
+    const base: Record<string, unknown> = { updated_at: now };
+    const isi = (kolom: string, nilai: unknown) => {
+      const s = String(nilai ?? '').trim();
+      if (s !== '' && s !== '-') base[kolom] = s;
     };
+    isi('nama_lengkap', f.nama_lengkap);
+    isi('gender', f.gender);
+    isi('usia', f.usia);
+    isi('tb', f.tb);
+    isi('bb', f.bb);
+    isi('pas_photo', f.pas_photo);
+    isi('jft', f.jft);
+    isi('ssw', f.ssw);
+    isi('file_cv', f.file_cv);
     // TIDAK ada `status_kandidat` di sini — sama sekali.
     //
     // Dua alasan, keduanya dari pemilik (2026-10-29):
@@ -128,6 +138,11 @@ async function syncCandidateDariForm(f: Record<string, unknown>, status: string)
         headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       });
     }
+    /* Sumber utama ikut ditulis. Sebelum ini persetujuan Mail hanya menyentuh
+       SALINAN, sehingga biodata yang disetujui tidak pernah terlihat oleh CV
+       (yang membaca `master_database_candidate`) — persis kelas "edit di satu
+       tempat, beda di tempat lain" yang sedang dihapus. */
+    await syncMasterDariForm(wa, base, codeJob);
   } else if (status === 'GAGAL' && row && row.id !== undefined) {
     const upd: Record<string, unknown> = { status_kandidat: 'GAGAL', updated_at: new Date().toISOString() };
     if (codeJob && String(row['id_loker_pilihan'] || row['id_loker'] || '') === codeJob) {
@@ -140,6 +155,47 @@ async function syncCandidateDariForm(f: Record<string, unknown>, status: string)
     });
   }
   return lastGenerated;
+}
+
+/**
+ * Tulis biodata yang baru disetujui ke SUMBER UTAMA (`master_database_candidate`).
+ *
+ * Memakai `masterIdentityPatch` — daftar field yang sama dengan edit admin dan
+ * CV AI, jadi tidak ada salinan daftar keempat. Hanya nilai terisi yang
+ * menghasilkan kunci; `sebelum` sengaja tidak diberikan karena fungsi ini tidak
+ * pernah menghapus.
+ *
+ * Baris master yang BELUM ADA dibuat di sini: kandidat yang masuk lewat
+ * lamaran Mail belum tentu pernah membuka Form Master, dan tanpa baris master
+ * CV-nya tidak bisa dibuat sama sekali.
+ */
+async function syncMasterDariForm(
+  wa: string,
+  base: Record<string, unknown>,
+  codeJob: string,
+): Promise<void> {
+  const patch = masterIdentityPatch(base);
+  if (!Object.keys(patch).length) return;
+  const body = { ...patch, updated_at: new Date().toISOString() };
+  try {
+    const rows = await fetchMasterByWa([wa]);
+    const m = Array.isArray(rows) ? rows.find((r) => normWa(String(r.no_wa || '')) === wa) : null;
+    if (m && m.id !== undefined) {
+      await supabaseJson('PATCH', 'master_database_candidate', {
+        query: { id: `eq.${m.id}` },
+        body,
+        headers: { Prefer: 'return=minimal' },
+      });
+      return;
+    }
+    await supabaseUpsert('master_database_candidate', { ...body, no_wa: wa }, ['no_wa'], {
+      headers: { Prefer: 'return=minimal' },
+    });
+  } catch (e) {
+    // Tidak menggagalkan persetujuan yang sudah tersimpan, tetapi TIDAK senyap:
+    // kegagalan sinkronisasi harus terlihat di log, bukan jadi "data beda".
+    log.warn('mail.master-sync-failed', { wa, codeJob, err: String(e) });
+  }
 }
 
 async function handleFormStatus(rowIndex: number, status: string, reason?: string, sessionToken?: string) {

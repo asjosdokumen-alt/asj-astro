@@ -302,10 +302,20 @@ async function findCandidateByWaFiltered(wa: string) {
   // dulu berurutan (sampai 3 roundtrip serial bila kolom pertama tidak cocok
   // skema). Prioritas hasil tetap no_wa → wa → whatsapp (urutan CAND_WA_COLS).
   const cols = [CANDIDATE_WA_COL];
+  /* `order` WAJIB. Tanpa itu PostgREST mengembalikan baris dalam urutan yang
+     tidak dijanjikan, dan `.find()` di bawah memilih salah satunya — sehingga
+     dua pembacaan untuk orang yang sama bisa memberi baris berbeda (mis. satu
+     dari `id` lama, satu dari `id` baru). Yang terbaru menang, konsisten dengan
+     urutan daftar admin. */
   const settled = await Promise.allSettled(
     cols.map((col) =>
       supabaseJson('GET', 'database_candidate', {
-        query: { select: CAND_MAP_COLS, limit: '5', [col]: 'eq.' + want },
+        query: {
+          select: CAND_MAP_COLS,
+          limit: '5',
+          order: 'updated_at.desc.nullslast',
+          [col]: 'eq.' + want,
+        },
       }),
     ),
   );
@@ -316,7 +326,12 @@ async function findCandidateByWaFiltered(wa: string) {
       // Proyeksi kolom mungkin tidak cocok — coba SELECT * untuk kolom ini
       try {
         const rows = await supabaseJson('GET', 'database_candidate', {
-          query: { select: allColumns('database_candidate'), limit: '5', [cols[i]]: 'eq.' + want },
+          query: {
+            select: allColumns('database_candidate'),
+            limit: '5',
+            order: 'updated_at.desc.nullslast',
+            [cols[i]]: 'eq.' + want,
+          },
         });
         if (Array.isArray(rows) && rows.length) {
           const hit = rows.find((x) => normalizeWa(x[CANDIDATE_WA_COL] || '') === want);

@@ -195,6 +195,31 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     };
     if (seed) {
       apply(seed);
+      /* Seed = snapshot dari daftar. Setelah edit di modal lain, snapshot itu
+         bisa lebih tua daripada DB — dan modal ini dulu TIDAK PERNAH membaca
+         ulang, sehingga dua modal bisa menampilkan nilai berbeda untuk orang
+         yang sama. Sekarang dibaca ulang di belakang: nilai server menang untuk
+         field skalar, dekorasi seed (`berkas`/`bio`/`applications`) dipertahankan
+         karena endpoint ini tidak mengirimkannya. */
+      apiClient<{ success?: boolean; data?: Record<string, unknown> }>(
+        'getExistingCandidateJsonByWa',
+        [wa],
+        { requireAuth: false, onSessionInvalid: 'throw', silent: true, signal: controller.signal },
+      )
+        .then((d) => {
+          if (controller.signal.aborted) return;
+          if (!d || d.success === false || !d.data) return;
+          apply({
+            ...seed,
+            ...d.data,
+            berkas: (seed as Record<string, unknown>).berkas,
+            bio: (seed as Record<string, unknown>).bio,
+            applications: (seed as Record<string, unknown>).applications,
+          });
+        })
+        .catch(() => {
+          /* gagal menyegarkan: seed tetap dipakai, jangan kosongkan layar */
+        });
       return () => controller.abort();
     }
     if (!wa) {

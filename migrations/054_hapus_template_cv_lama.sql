@@ -1,0 +1,23 @@
+-- 054_hapus_template_cv_lama.sql
+--
+-- Menghapus sisa fitur "Template CV" dari `sys_config`.
+--
+-- KENAPA
+--   Fitur unggah-contoh → analisa → simpan template DIHENTIKAN pemilik
+--   2026-11-12: hasil parse tidak bisa dipercaya dan biayanya mahal. Seluruh
+--   pembacanya sudah dihapus dari kode (`aca84be`): tiga aksi backend, API
+--   record di `cv-template-factory/templates.ts`, dan kartu di Tab Config.
+--
+--   Baris `config_type = 'cv_template'` kini tidak dibaca siapa pun. Satu baris
+--   yang tersisa (`tpl-tg708`) bahkan berbahaya kalau fiturnya dihidupkan lagi:
+--   berkasnya CV kandidat lain yang sudah terisi, dan petanya hanya 11 sel
+--   (semuanya `identitas.tempat_lahir`) tanpa blok riwayat.
+--
+--   Pemilik: "tpl-tg708 hapus saja."
+--
+-- AMAN
+--   `sys_config` dipakai bersama fitur lain (dropdown, pengumuman, dll). Filter
+--   `config_type` membatasi DELETE pada baris milik fitur yang sudah mati saja.
+--   Idempoten: dijalankan dua kali, perintah kedua menghapus 0 baris.
+DELETE FROM public.sys_config
+ WHERE config_type = 'cv_template';

@@ -4,6 +4,7 @@
  * Other contexts and surfaces import ONLY from index.ts.
  */
 import { cacheClear } from '../../_lib/cache';
+import { log } from '../../_lib/kernel/log';
 import { requireAdmin } from '../identity';
 import { emit } from '../../_lib/kernel/events';
 import { safeError } from '../../_lib/kernel/errors';
@@ -149,9 +150,17 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
         const m = await findMasterByWa(data.wa as string);
         if (m && m.id !== undefined) {
           await patchMaster(String(m.id), { ...masterBody, updated_at: new Date().toISOString() });
+        } else {
+          /* Baris master tidak ditemukan (WA master beda bentuk, atau kandidat
+             belum pernah mengisi Form Master). Edit tetap tersimpan di salinan,
+             tetapi CV tidak akan melihatnya — keadaan itu harus tercatat, bukan
+             hilang di `catch` kosong seperti sebelumnya. */
+          log.warn('registry.master-missing', { wa: data.wa });
         }
       }
-    } catch { /* sync ke master best-effort */ }
+    } catch (e) {
+      log.warn('registry.master-sync-failed', { wa: data.wa, err: String(e) });
+    }
 
     // Emit stage-changed event if status_kandidat was modified
     if (body.status_kandidat && String(body.status_kandidat) !== String(row.status_kandidat || '')) {
