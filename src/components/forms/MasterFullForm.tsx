@@ -35,7 +35,7 @@ interface EduRecord { jenjang: string; nama: string; thnAwal: string; thnAkhir: 
 /* `jenis` / `bidang` / `catatan` = 雇用形態 / 業種 / 備考 pada blok 職歴 form CV
    (KINKI, Firma, JIPA). Ditambahkan 2026-10-27 bersama migrasi 022 — sebelumnya
    ketiga kolom itu tidak pernah ditanyakan di form mana pun. */
-interface JobRecord { perusahaan: string; jabatan: string; jabatanManual: string; thnAwal: string; thnAkhir: string; gaji: string; alasan: string; jenis: string; bidang: string; catatan: string; }
+interface JobRecord { perusahaan: string; jabatan: string; jabatanManual: string; thnAwal: string; thnAkhir: string; gaji: string; alasan: string; jenis: string; bidang: string; catatan: string; /** 地域 — kota kerja (migrasi 056). */ kota: string; }
 /* `tinggal` / `hp` / `gaji` = 同居区分 / 電話 / 月収 pada blok 家族構成. */
 interface FamRecord { nama: string; hubungan: string; usia: string; pekerjaan: string; pekerjaanManual: string; tinggal: string; hp: string; gaji: string; }
 
@@ -148,7 +148,7 @@ export default function MasterFullForm() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<MasterData>({ ...EMPTY });
   const [eduList, setEduList] = useState<EduRecord[]>([{ jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'', status:'' }]);
-  const [jobList, setJobList] = useState<JobRecord[]>([{ perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'', jenis:'', bidang:'', catatan:'' }]);
+  const [jobList, setJobList] = useState<JobRecord[]>([{ perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'', jenis:'', bidang:'', catatan:'', kota:'' }]);
   const [famList, setFamList] = useState<FamRecord[]>([{ nama:'', hubungan:'', usia:'', pekerjaan:'', pekerjaanManual:'', tinggal:'', hp:'', gaji:'' }]);
   const [kotaPasporManual, setKotaPasporManual] = useState('');
   const [daruratNama, setDaruratNama] = useState('');
@@ -414,7 +414,12 @@ export default function MasterFullForm() {
         pendidikan: Array.from({ length: 5 }, (_, i) => {
           const e = eduList[i];
           return e && e.jenjang
-            ? { tingkat: e.jenjang, nama_sekolah: e.nama, tahun_masuk: e.thnAwal, tahun_lulus: e.thnAkhir, jurusan: resolveRow(e.jurusan, e.jurusanManual), status_sekolah: e.status }
+            ? { tingkat: e.jenjang, nama_sekolah: e.nama, tahun_masuk: e.thnAwal, tahun_lulus: e.thnAkhir, jurusan: resolveRow(e.jurusan, e.jurusanManual), status_sekolah: e.status,
+              /* 地域 (migrasi 056). Input `master.edu_alamat` SUDAH ADA di form
+                 ini sejak lama tetapi tidak pernah ikut terkirim — kolomnya juga
+                 belum ada, jadi nilainya hilang tanpa jejak. Sekarang kolomnya
+                 ada: `pendidikan_N_kota`. */
+              kota: e.alamat }
             : {};
         }),
         pekerjaan: jobList.filter(j => j.perusahaan).map(j => ({
@@ -422,6 +427,8 @@ export default function MasterFullForm() {
           tahun_masuk: j.thnAwal, tahun_keluar: j.thnAkhir, gaji: j.gaji,
           // 雇用形態 / 業種 / 備考 — kolom pekerjaan_N_* (migrasi 022).
           jenis: j.jenis, bidang: j.bidang, catatan: j.catatan,
+          // 地域 — kolom pekerjaan_N_kota (migrasi 056).
+          kota: j.kota,
         })),
         keluarga: famList.filter(f => f.nama).map(f => ({
           nama: f.nama, hubungan: f.hubungan, usia: f.usia, pekerjaan: resolveRow(f.pekerjaan, f.pekerjaanManual),
@@ -877,6 +884,9 @@ export default function MasterFullForm() {
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label" for={`mf-job-perusahaan-${i}`}>{t("master.kerja_perusahaan")}</label>
                       <input class="input" id={`mf-job-perusahaan-${i}`} value={job.perusahaan} onInput={(e) => { const v = [...jobList]; v[i].perusahaan = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
+                    {/* 地域 — kota tempat kerja (migrasi 056), dicetak ke K27/K29/K31. */}
+                    <div class="mb-3"><label class="label" for={`mf-job-kota-${i}`}>{t("master.kerja_kota")}</label>
+                      <input class="input" id={`mf-job-kota-${i}`} value={job.kota} onInput={(e) => { const v = [...jobList]; v[i].kota = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
                     <ManualSelect id={`mf-kerja-jabatan-${i}`} label={t("master.kerja_jabatan")} list={PEKERJAAN}
                       value={job.jabatan} manual={job.jabatanManual}
                       onChange={(p) => { const v = [...jobList]; v[i] = { ...v[i], jabatan: p.value, jabatanManual: p.manual }; setJobList(v); }} />
@@ -900,7 +910,7 @@ export default function MasterFullForm() {
                   </div>
                 </div>
               ))}
-              {jobList.length < 3 && <button type="button" onClick={() => setJobList(l => [...l, { perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'', jenis:'', bidang:'', catatan:'' }])} class="text-sky-400 text-xs font-bold"><Icon name="plus" class="mr-1" />{t("master.kerja_tambah")}</button>}
+              {jobList.length < 3 && <button type="button" onClick={() => setJobList(l => [...l, { perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'', jenis:'', bidang:'', catatan:'', kota:'' }])} class="text-sky-400 text-xs font-bold"><Icon name="plus" class="mr-1" />{t("master.kerja_tambah")}</button>}
 
               {/* ── Kemampuan bahasa & tipe kepribadian (migrasi 022) ──────────
                   KINKI mencetak keenamnya: T37 学習期間, T39 学習状況, I4 第…課中,

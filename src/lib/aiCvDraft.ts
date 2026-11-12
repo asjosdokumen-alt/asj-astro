@@ -317,6 +317,10 @@ const NESTED_ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, stri
     lulus: 'lulus',
     // 国公私 eksplisit (migrasi 027).
     status_sekolah: 'status_sekolah',
+    /* Migrasi 056: 地域 (kota sekolah). Tanpa entri ini draf & konteks chat
+       kehilangan kota yang sudah diisi kandidat, dan `buildRiwayatSlots`
+       menerima baris tanpa `kota`. */
+    kota: 'kota',
   },
   pekerjaan: {
     perusahaan_id: 'perusahaan',
@@ -333,6 +337,8 @@ const NESTED_ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, stri
     bidang_jp: 'bidang_jp',
     catatan: 'catatan',
     catatan_jp: 'catatan_jp',
+    /* Migrasi 056: 地域 (kota kerja). */
+    kota: 'kota',
   },
   keluarga: {
     hubungan_id: 'hubungan_id',
@@ -646,6 +652,10 @@ const ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, readonly st
     // dibaca balik ke form: dropdown "Status Sekolah" selalu tampil "—" setelah
     // simpan, walau kolomnya terisi. Dua peta itu harus sepakat.
     status_sekolah: ['status_sekolah', 'negeri_swasta'],
+    /* Migrasi 056: 地域. Wajib ada di SINI juga — tanpa entri ini kota ditulis
+       ke bersarang lalu tidak pernah dibaca balik ke form (bug yang sama dengan
+       `status_sekolah` di atas). */
+    kota: ['kota', 'kota_sekolah'],
   },
   pekerjaan: {
     perusahaan_id: ['perusahaan_id', 'perusahaan', 'nama_perusahaan', 'namaPerusahaan', 'namaPt'],
@@ -659,6 +669,14 @@ const ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, readonly st
     jenis: ['jenis', 'jenis_pekerjaan', 'status_kerja'],
     bidang: ['bidang', 'industri'],
     catatan: ['catatan', 'keterangan'],
+    /* Migrasi 047: pasangan Jepang. Selama ini hanya ada di NESTED_ROW_KEYS,
+       jadi hasil "Terjemahkan" tersimpan ke DB tetapi dropdown-nya kosong lagi
+       setiap draf dibuka — persis `status_sekolah` sebelum 2026-11-05. */
+    jenis_jp: ['jenis_jp'],
+    bidang_jp: ['bidang_jp'],
+    catatan_jp: ['catatan_jp'],
+    /* Migrasi 056: 地域 (kota kerja). */
+    kota: ['kota', 'kota_kerja'],
   },
   keluarga: {
     hubungan_id: ['hubungan_id', 'hubungan'],

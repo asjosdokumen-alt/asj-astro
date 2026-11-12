@@ -164,14 +164,14 @@ const EMPTY_CV: CvData = Object.fromEntries(CV_FIELDS.map(k => [k, ''])) as CvDa
    into that slot. Keying by `id` makes the node travel with the row instead. */
 interface EduRow {
   id: number;
-  tingkat: string; sekolah_id: string; sekolah_jp: string;
+  tingkat: string; sekolah_id: string; sekolah_jp: string; kota: string;
   jurusan_id: string; jurusan_jp: string; masuk: string; lulus: string;
   /** NEGERI | SWASTA — 国公私 di form Jepang (migrasi 027). */
   status_sekolah: string;
 }
 interface JobRow {
   id: number;
-  perusahaan_id: string; perusahaan_jp: string; jabatan_id: string; jabatan_jp: string;
+  perusahaan_id: string; perusahaan_jp: string; jabatan_id: string; jabatan_jp: string; kota: string;
   jenis_jp: string; bidang_jp: string; catatan_jp: string;
   masuk: string; keluar: string; gaji: string;
   /** 雇用形態 / 業種 / 備考 — migrasi 022. */
@@ -210,7 +210,7 @@ let rowSeq = 0;
 const nextRowId = (): number => ++rowSeq;
 
 /** A fresh, empty row carrying its own stable identity. */
-const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '', sekolah_jp: '', jurusan_id: '', jurusan_jp: '', masuk: '', lulus: '', status_sekolah: '' });
+const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '', sekolah_jp: '', jurusan_id: '', jurusan_jp: '', masuk: '', lulus: '', status_sekolah: '', kota: '' });
 
 /**
  * Baris pendidikan BAKU — jenjangnya sudah terisi sejak awal.
@@ -235,7 +235,7 @@ const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '',
 const EDU_SEED_LEVELS = ['SD', 'SMP', 'SMA', 'D3', 'S1', 'LPK'] as const;
 const seedEduRows = (): EduRow[] => EDU_SEED_LEVELS.map((lv) => ({ ...newEduRow(), tingkat: lv }));
 
-const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '', jenis: '', bidang: '', catatan: '', jenis_jp: '', bidang_jp: '', catatan_jp: '' });
+const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '', jenis: '', bidang: '', catatan: '', jenis_jp: '', bidang_jp: '', catatan_jp: '', kota: '' });
 const newFamRow = (): FamRow => ({ id: nextRowId(), hubungan_id: '', hubungan_jp: '', nama: '', katakana: '', umur: '', pekerjaan_id: '', pekerjaan_jp: '', gaji: '', tinggal: '', hp: '' });
 
 /**
@@ -1283,6 +1283,9 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                kalau nilainya dikirim, jadi pilihan kandidat hilang saat simpan
                dan renderer kembali menebak dari nama sekolah. */
             status_sekolah: e.status_sekolah,
+            /* Migrasi 056: kota sekolah → `pendidikan_N_kota` (dicetak 地域/K20).
+               Tanpa kunci ini inputnya hanya hidup di state. */
+            kota: e.kota,
           })),
         pekerjaan: jobList
           .filter(j => j.perusahaan_id || j.jabatan_id)
@@ -1294,6 +1297,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
             jenis: j.jenis, bidang: j.bidang, catatan: j.catatan,
             /* Migrasi 047: pasangan Jepang (diisi Terjemahkan/AI). */
             jenis_jp: j.jenis_jp, bidang_jp: j.bidang_jp, catatan_jp: j.catatan_jp,
+            /* Migrasi 056: kota kerja → `pekerjaan_N_kota` (地域/K27..K31). */
+            kota: j.kota,
           })),
         keluarga: famList
           .filter(f => f.nama || f.hubungan_id)
@@ -2104,6 +2109,12 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                       onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, sekolah_id: v, status_sekolah: r.status_sekolah || (v.trim() ? (kouritsuSekolah(v) === '公立' ? 'NEGERI' : 'SWASTA') : '') } : r))} />
                     <Field label={t('ai_cv.row_sekolah_jp')} id={`edu-sekolah-jp-${i}`} value={edu.sekolah_jp} jp
                       onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, sekolah_jp: v } : r))} />
+                    {/* 地域 — kota sekolah (migrasi 056). Dropdown `wilayah_sekolah`
+                        di atas hanya berisi PROVINSI (keluhan pemilik 2026-11-12:
+                        *"dropdownnya provinsi semua yg alamat kota sekolah"*), jadi
+                        kota ditanyakan PER BARIS di sini dan dicetak ke K20. */}
+                    <Field label={t('ai_cv.row_kota')} id={`edu-kota-${i}`} value={edu.kota}
+                      onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))} />
                     {/* 国公私 — dicetak 公立/私立 di form Jepang. Terisi otomatis
                         dari nama sekolah, dan tetap bisa dikoreksi (sekolah negeri
                         yang namanya tidak berawalan SDN/SMPN/SMAN). */}
@@ -2165,6 +2176,9 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, perusahaan_id: v } : r))} />
                     <Field label={t('ai_cv.row_perusahaan_jp')} id={`job-perusahaan-jp-${i}`} value={job.perusahaan_jp} jp
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, perusahaan_jp: v } : r))} />
+                    {/* 地域 — kota tempat kerja (migrasi 056), dicetak ke K27/K29/K31. */}
+                    <Field label={t('ai_cv.row_kota')} id={`job-kota-${i}`} value={job.kota}
+                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))} />
                     <ComboSelect label={t('ai_cv.row_jabatan')} id={`job-jabatan-id-${i}`} value={job.jabatan_id}
                       pairs={PEKERJAAN} placeholder={t('ai_cv.combo_hint')}
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jabatan_id: v } : r))}
