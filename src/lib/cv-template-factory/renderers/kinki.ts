@@ -262,14 +262,10 @@ function hubunganJp(v: unknown): string {
   return 'その他';
 }
 
-/** 月収 dalam 万円 (form mencetak `2.5` + label `万円` di sel sebelah). */
-function manYen(v: unknown): string {
-  const n = Number(angka(v));
-  if (!Number.isFinite(n) || n <= 0) return '';
-  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '');
-  if (n < 1000) return String(n);
-  return '';
-}
+/* `manYen` dihapus 2026-11-12: sejak `aec08e4` seluruh 月収 memakai
+   `manYenRp` (rupiah → 万円, dengan konversi), sehingga fungsi ini tidak punya
+   pemanggil lagi. Ia satu-satunya sebab `lint-ratchet` merah (+1 diagnostik
+   `noUnusedVariables`) pada pohon yang sebaliknya hijau. */
 
 /** スポーツ — hanya kalau hobi benar-benar menyebut cabang olahraga. */
 const SPORTS: [RegExp, string][] = [

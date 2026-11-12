@@ -391,8 +391,8 @@ export function jpSiblingOf(path: string): string {
   const alias = JP_SIBLING_ALIAS[path];
   if (alias) return alias;
   if (path.endsWith('_jp')) return path;
-  if (path.endsWith('_id')) return path.slice(0, -3) + '_jp';
-  return path + '_jp';
+  if (path.endsWith('_id')) return `${path.slice(0, -3)}_jp`;
+  return `${path}_jp`;
 }
 
 /** Nilai teks satu path; array/objek bukan isi sel, jadi dianggap kosong. */
@@ -487,7 +487,7 @@ export function pickOption(options: string[], value: string): string {
 /** Daftar opsi literal dari `dataValidation` sel, atau `[]`. */
 function listOptions(cell: Cell): string[] {
   const dv = (cell as { dataValidation?: { type?: string; formulae?: unknown[] } }).dataValidation;
-  if (!dv || dv.type !== 'list' || !Array.isArray(dv.formulae) || dv.formulae.length === 0) return [];
+  if (dv?.type !== 'list' || !Array.isArray(dv.formulae) || dv.formulae.length === 0) return [];
   const f = String(dv.formulae[0] ?? '').trim();
   // Hanya daftar literal `"A,B,C"`. Rujukan rentang (`$A$1:$A$9`) bukan
   // kosakata yang bisa dibaca tanpa membuka sheet lain.

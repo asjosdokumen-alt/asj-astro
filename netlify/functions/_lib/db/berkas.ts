@@ -304,7 +304,7 @@ async function attachBerkasBio(candidates: any[]) {
         const rows = await supabaseJson('GET', 'master_database_candidate', {
           query: {
             select: 'no_wa,jft_url,ssw_url,file_cv',
-            no_wa: 'in.(' + waList.join(',') + ')',
+            no_wa: `in.(${waList.join(',')})`,
             limit: '200',
           },
         });
