@@ -654,6 +654,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.tpl_err_nofile": "Berkas template belum dipilih.",
     "admin.tpl_err_empty": "Belum ada sel yang terpetakan — tekan Analisa dulu.",
     "admin.tpl_err_map": "Template ini tidak punya peta sel — perbaiki di tab Config.",
+    "admin.tpl_err_legacy": "Template ini dibuat sebelum peta sel menyimpan cara penulisan (bahasa & format), sehingga sel yang tidak terpetakan masih berisi data kandidat contoh. Buka tab Config → Analisa ulang berkasnya → Simpan.",
     "ui.load_failed": "Gagal memuat data.",
     "ui.load_failed_hint": "Ini bukan berarti datanya kosong — koneksi atau sesi yang bermasalah. Coba lagi.",
     "ui.retry": "Coba lagi",

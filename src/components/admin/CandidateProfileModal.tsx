@@ -392,6 +392,20 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
       if (!Object.keys(rec.fieldMap).length && !Object.keys(rec.riwayat ?? {}).length) {
         throw new Error(t('admin.tpl_err_map'));
       }
+      /* Record LAMA (sebelum 2026-11-12) tidak punya `specs` DAN tidak punya
+         `clearCells`. Tanpa keduanya, sel yang tidak terpetakan tetap berisi
+         data kandidat contoh — dan template yang dipakai di sini adalah CV
+         yang SUDAH TERISI. Terukur pada `tpl-tg708`: petanya hanya 11 sel
+         (semuanya tempat_lahir), sehingga hasil generate = CV "FIRMA ELGA
+         PRATAMA" dengan dua sel diganti.
+
+         Ditolak, bukan diberi peringatan: berkasnya akan diserahkan ke
+         kandidat. Pesannya menyebut langkah perbaikannya, dan itu memang satu
+         klik — Analisa ulang di Tab Config memakai penganalisa yang sekarang
+         sudah menghitung `specs` + `clearCells`. */
+      if (Object.keys(rec.fieldMap).length && !rec.specs) {
+        throw new Error(t('admin.tpl_err_legacy'));
+      }
 
       const m = (await api.secure('getDrafCvMaster', [data.wa], {
         onSessionInvalid: 'throw',

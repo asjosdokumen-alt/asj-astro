@@ -721,6 +721,7 @@ export const jpTranslations: Record<string, string> = {
     "admin.tpl_err_nofile": "テンプレートファイルが未選択です。",
     "admin.tpl_err_empty": "対応付けられたセルがありません。先に「解析」を押してください。",
     "admin.tpl_err_map": "このテンプレートにはセル対応表がありません。設定タブで作り直してください。",
+    "admin.tpl_err_legacy": "このテンプレートは、セルごとの書き方（言語・書式）を保存する前のものです。対応付けられていないセルにサンプル候補者のデータが残るため、設定タブで再解析してから保存してください。",
     "ui.load_failed": "データの読み込みに失敗しました。",
     "ui.load_failed_hint": "データが空という意味ではありません。接続またはセッションの問題です。もう一度お試しください。",
     "ui.retry": "再試行",
