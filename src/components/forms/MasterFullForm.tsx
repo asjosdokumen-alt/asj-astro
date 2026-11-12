@@ -429,6 +429,8 @@ export default function MasterFullForm() {
           jenis: j.jenis, bidang: j.bidang, catatan: j.catatan,
           // 地域 — kolom pekerjaan_N_kota (migrasi 056).
           kota: j.kota,
+          // Alasan berhenti — kolom pekerjaan_N_alasan (migrasi 057).
+          alasan: j.alasan,
         })),
         keluarga: famList.filter(f => f.nama).map(f => ({
           nama: f.nama, hubungan: f.hubungan, usia: f.usia, pekerjaan: resolveRow(f.pekerjaan, f.pekerjaanManual),

@@ -317,13 +317,23 @@ describe('hapus baris riwayat harus berlaku', () => {
     expect(body.pekerjaan_1_kota).toBe('Surabaya');
   });
 
+  /* Migrasi 057 — alasan berhenti. Form Master & CV AI sudah menanyakannya
+     sejak lama; tanpa kolom + slot, jawabannya hilang tanpa error. */
+  it('alasan berhenti masuk slot pekerjaan_N_alasan', () => {
+    const body = buildRiwayatSlots({
+      pekerjaan: [{ nama_perusahaan: 'PT ABC', alasan: 'Pindah domisili' }],
+    }, false);
+    expect(body.pekerjaan_1_alasan).toBe('Pindah domisili');
+  });
+
   it('buildMasterNested membaca kembali kota dari kolom slot', () => {
     const n = buildMasterNested({
       pendidikan_1_tingkat: 'SMA', pendidikan_1_nama_sekolah: 'SMAN 1 Ponorogo', pendidikan_1_kota: 'Ponorogo',
-      pekerjaan_1_nama_perusahaan: 'PT ABC', pekerjaan_1_kota: 'Surabaya',
+      pekerjaan_1_nama_perusahaan: 'PT ABC', pekerjaan_1_kota: 'Surabaya', pekerjaan_1_alasan: 'Kontrak habis',
     });
     expect(n.pendidikan[0].kota).toBe('Ponorogo');
     expect(n.pekerjaan[0].kota).toBe('Surabaya');
+    expect(n.pekerjaan[0].alasan).toBe('Kontrak habis');
   });
 
   /**
@@ -334,14 +344,15 @@ describe('hapus baris riwayat harus berlaku', () => {
    */
   it('kota pekerjaan dari tabel anak dicocokkan lewat nama perusahaan, bukan posisi', () => {
     const n = buildMasterNested({
-      pekerjaan_1_nama_perusahaan: 'PT A', pekerjaan_1_kota: 'Kota A',
-      pekerjaan_3_nama_perusahaan: 'PT C', pekerjaan_3_kota: 'Kota C',
+      pekerjaan_1_nama_perusahaan: 'PT A', pekerjaan_1_kota: 'Kota A', pekerjaan_1_alasan: 'Alasan A',
+      pekerjaan_3_nama_perusahaan: 'PT C', pekerjaan_3_kota: 'Kota C', pekerjaan_3_alasan: 'Alasan C',
       candidate_pekerjaan: [
         { perusahaan: 'PT A', urutan: 1 },
         { perusahaan: 'PT C', urutan: 2 },
       ],
     });
     expect(n.pekerjaan.map((p: Record<string, unknown>) => p.kota)).toEqual(['Kota A', 'Kota C']);
+    expect(n.pekerjaan.map((p: Record<string, unknown>) => p.alasan)).toEqual(['Alasan A', 'Alasan C']);
   });
 
   it('buildMasterBody meneruskan penanda `riwayatLengkap`', () => {

@@ -524,16 +524,17 @@ export function buildMasterNested(row: any): any {
          pembacaan ringan yang tidak butuh riwayat). */
       const anak = row.candidate_pekerjaan;
       if (Array.isArray(anak) && anak.length) {
-        /* Kota tidak punya kolom di `candidate_pekerjaan`; nilainya hidup di slot
-           `pekerjaan_N_kota`. Memetakan dengan POSISI saja salah begitu satu slot
-           kosong: RPC `replace_candidate_pekerjaan` menomori ulang `urutan` 1..n,
-           jadi baris ke-2 bisa berasal dari slot 3. Cocokkan lewat NAMA
-           PERUSAHAAN dulu, dan hanya jatuh ke posisi kalau tidak ada yang cocok. */
-        const kotaSlot = (nama: string, posisi: number): string => {
+        /* Kota & alasan tidak punya kolom di `candidate_pekerjaan`; nilainya
+           hidup di slot `pekerjaan_N_*`. Memetakan dengan POSISI saja salah
+           begitu satu slot kosong: RPC `replace_candidate_pekerjaan` menomori
+           ulang `urutan` 1..n, jadi baris ke-2 bisa berasal dari slot 3.
+           Cocokkan lewat NAMA PERUSAHAAN dulu, dan hanya jatuh ke posisi kalau
+           tidak ada yang cocok. */
+        const slotKerja = (kolom: string, nama: string, posisi: number): string => {
           for (let n = 1; n <= 3; n++) {
-            if (v(`pekerjaan_${n}_nama_perusahaan`) === nama) return v(`pekerjaan_${n}_kota`);
+            if (v(`pekerjaan_${n}_nama_perusahaan`) === nama) return v(`pekerjaan_${n}_${kolom}`);
           }
-          return v(`pekerjaan_${posisi}_kota`);
+          return v(`pekerjaan_${posisi}_${kolom}`);
         };
         return anak.map((r: Record<string, unknown>, i: number) => ({
           perusahaan: toText(r.perusahaan), nama_perusahaan: toText(r.perusahaan),
@@ -547,7 +548,9 @@ export function buildMasterNested(row: any): any {
           /* `candidate_pekerjaan` belum punya kolom `kota`; nilainya hidup di
              kolom slot `pekerjaan_N_kota`. Jangan sampai hilang hanya karena
              riwayat kerja dibaca dari tabel anak. */
-          kota: r.kota ?? kotaSlot(toText(r.perusahaan), i + 1),
+          kota: r.kota ?? slotKerja('kota', toText(r.perusahaan), i + 1),
+          /* Migrasi 057: alasan berhenti — kolomnya juga hanya ada di slot. */
+          alasan: r.alasan ?? slotKerja('alasan', toText(r.perusahaan), i + 1),
         }));
       }
       const arr: any[] = [];
@@ -564,7 +567,11 @@ export function buildMasterNested(row: any): any {
           catatan: v(`pekerjaan_${i}_catatan`),
           /* Migrasi 047: pasangan Jepang untuk 雇用形態 / 業種 / 備考. */
           jenis_jp: v(`pekerjaan_${i}_jenis_jp`), bidang_jp: v(`pekerjaan_${i}_bidang_jp`),
-          catatan_jp: v(`pekerjaan_${i}_catatan_jp`), kota: v(`pekerjaan_${i}_kota`) });
+          catatan_jp: v(`pekerjaan_${i}_catatan_jp`), kota: v(`pekerjaan_${i}_kota`),
+          /* Migrasi 057: alasan berhenti (退職理由). Tidak ada renderer yang
+             mencetaknya sekarang; disimpan supaya template yang membutuhkannya
+             punya sumber, bukan menebak dari `catatan`. */
+          alasan: v(`pekerjaan_${i}_alasan`) });
       }
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['perusahaan', 'nama_perusahaan', 'jabatan', 'masuk', 'keluar'])),
         aiArrOf('pekerjaan'), (e) => riwayatKey(e,
@@ -816,6 +823,9 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
        sudah MEMBACANYA — jadi kota yang dikirim form hilang saat simpan dan
        sel K27/K29/K31 kembali kosong. */
     ['_kota', 'kota', 'kota_kerja', 'lokasi'],
+    /* Migrasi 057: alasan berhenti. Form Master & CV AI sudah menanyakannya,
+       tapi belum ada kolom maupun pengiriman — jawabannya hilang. */
+    ['_alasan', 'alasan', 'alasan_berhenti', 'alasan_keluar'],
   ] as const);
   setSlots('keluarga_', d.keluarga, 5, [
     ['_hubungan', 'hubungan', 'hubungan_id'],

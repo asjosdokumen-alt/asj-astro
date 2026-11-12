@@ -339,6 +339,8 @@ const NESTED_ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, stri
     catatan_jp: 'catatan_jp',
     /* Migrasi 056: 地域 (kota kerja). */
     kota: 'kota',
+    /* Migrasi 057: alasan berhenti (退職理由). */
+    alasan: 'alasan',
   },
   keluarga: {
     hubungan_id: 'hubungan_id',
@@ -677,6 +679,8 @@ const ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, readonly st
     catatan_jp: ['catatan_jp'],
     /* Migrasi 056: 地域 (kota kerja). */
     kota: ['kota', 'kota_kerja'],
+    /* Migrasi 057: alasan berhenti. */
+    alasan: ['alasan', 'alasan_berhenti', 'alasan_keluar'],
   },
   keluarga: {
     hubungan_id: ['hubungan_id', 'hubungan'],

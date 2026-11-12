@@ -20,7 +20,7 @@ const NESTED: any = {
   wawancara: { promosi_id: 'P', kelebihan_id: 'K1', kekurangan_id: 'K2', keahlian_khusus: 'AH', hobi_id: 'SEPAK', alasan_memilih_bidang: 'AB', motivasi_ke_jepang: 'M', keinginan_pribadi: 'ING', rencana_setelah_pulang: 'RP', tujuan_ke_jepang: 'TJ', lama_di_jepang: '3', gaji_yen: '200000', tabungan: '50jt' },
   sertifikasi: { bahasa: 'N3', jft: 'A2', ssw: 'PERAWAT', bidang: 'KEPERAWATAN' },
   pendidikan: [{ tingkat: 'SMA', nama_sekolah: 'SMAN 1', tahun_masuk: '2005', tahun_lulus: '2008', jurusan: 'IPA', kota: 'Ponorogo' }],
-  pekerjaan: [{ perusahaan: 'PT X', jabatan: 'STAFF', tahun_masuk: '2010', tahun_keluar: '2015', gaji: '3jt', kota: 'Surabaya' }],
+  pekerjaan: [{ perusahaan: 'PT X', jabatan: 'STAFF', tahun_masuk: '2010', tahun_keluar: '2015', gaji: '3jt', kota: 'Surabaya', alasan: 'Kontrak habis' }],
   keluarga: [{ nama: 'SITI', hubungan: 'ISTRI', usia: '30', pekerjaan: 'IRT' }],
   kenalan_jepang: { nama_id: 'KENJI', hubungan_id: 'TEMAN', pekerjaan_id: 'KARYAWAN', usia: '32', alamat_id: 'TOKYO' },
 };
@@ -62,7 +62,7 @@ describe('mapMasterNestedToForm — prefill MasterFullForm dari getDrafCvMaster'
     // form mengirim SELURUH slot dengan `riwayatLengkap: true`, jadi prefill
     // yang mengosongkannya menghapus kota setiap kali form dibuka lalu disimpan.
     expect(p.eduList).toEqual([{ jenjang: 'SMA', nama: 'SMAN 1', thnAwal: '2005', thnAkhir: '2008', jurusan: 'IPA', jurusanManual: '', alamat: 'Ponorogo', status: '' }]);
-    expect(p.jobList[0]).toEqual({ perusahaan: 'PT X', jabatan: 'STAFF', jabatanManual: '', thnAwal: '2010', thnAkhir: '2015', gaji: '3jt', alasan: '', jenis: '', bidang: '', catatan: '', kota: 'Surabaya' });
+    expect(p.jobList[0]).toEqual({ perusahaan: 'PT X', jabatan: 'STAFF', jabatanManual: '', thnAwal: '2010', thnAkhir: '2015', gaji: '3jt', alasan: 'Kontrak habis', jenis: '', bidang: '', catatan: '', kota: 'Surabaya' });
     expect(p.famList[0]).toEqual({ nama: 'SITI', hubungan: 'ISTRI', usia: '30', pekerjaan: 'IRT', pekerjaanManual: '', tinggal: '', hp: '', gaji: '' });
   });
 

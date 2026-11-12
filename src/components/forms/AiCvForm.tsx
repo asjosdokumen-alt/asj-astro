@@ -172,6 +172,8 @@ interface EduRow {
 interface JobRow {
   id: number;
   perusahaan_id: string; perusahaan_jp: string; jabatan_id: string; jabatan_jp: string; kota: string;
+  /** 退職理由 — migrasi 057. Belum dicetak template mana pun. */
+  alasan: string;
   jenis_jp: string; bidang_jp: string; catatan_jp: string;
   masuk: string; keluar: string; gaji: string;
   /** 雇用形態 / 業種 / 備考 — migrasi 022. */
@@ -235,7 +237,7 @@ const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '',
 const EDU_SEED_LEVELS = ['SD', 'SMP', 'SMA', 'D3', 'S1', 'LPK'] as const;
 const seedEduRows = (): EduRow[] => EDU_SEED_LEVELS.map((lv) => ({ ...newEduRow(), tingkat: lv }));
 
-const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '', jenis: '', bidang: '', catatan: '', jenis_jp: '', bidang_jp: '', catatan_jp: '', kota: '' });
+const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '', jenis: '', bidang: '', catatan: '', jenis_jp: '', bidang_jp: '', catatan_jp: '', kota: '', alasan: '' });
 const newFamRow = (): FamRow => ({ id: nextRowId(), hubungan_id: '', hubungan_jp: '', nama: '', katakana: '', umur: '', pekerjaan_id: '', pekerjaan_jp: '', gaji: '', tinggal: '', hp: '' });
 
 /**
@@ -1299,6 +1301,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
             jenis_jp: j.jenis_jp, bidang_jp: j.bidang_jp, catatan_jp: j.catatan_jp,
             /* Migrasi 056: kota kerja → `pekerjaan_N_kota` (地域/K27..K31). */
             kota: j.kota,
+            /* Migrasi 057: alasan berhenti → `pekerjaan_N_alasan`. */
+            alasan: j.alasan,
           })),
         keluarga: famList
           .filter(f => f.nama || f.hubungan_id)
@@ -2214,6 +2218,11 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                           onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, bidang: v } : r))} />
                         <Field label="Catatan kerja (備考)" id={`job-catatan-${i}`} value={job.catatan}
                           onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, catatan: v } : r))} />
+                        {/* 退職理由 — migrasi 057. Disimpan walau belum ada
+                            template yang mencetaknya; pemilik 2026-11-12:
+                            "bakal kepake, dulu ada CV model gitu". */}
+                        <Field label={t('ai_cv.row_alasan')} id={`job-alasan-${i}`} value={job.alasan}
+                          onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, alasan: v } : r))} />
                       </div>
                     </details>
                   </div>

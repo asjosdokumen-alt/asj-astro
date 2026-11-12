@@ -100,7 +100,7 @@ export function mapMasterNestedToForm(n: any): MasterFormPrefill {
   const jobList: PrefillJob[] = (Array.isArray(n?.pekerjaan) ? n.pekerjaan : []).slice(0, 3).map((j: any) => ({
     perusahaan: s(j.perusahaan || j.nama_perusahaan), jabatan: s(j.jabatan), jabatanManual: '',
     thnAwal: s(j.tahun_masuk || j.masuk), thnAkhir: s(j.tahun_keluar || j.keluar),
-    gaji: s(j.gaji), alasan: '',
+    gaji: s(j.gaji), alasan: s(j.alasan),
     jenis: s(j.jenis), bidang: s(j.bidang), catatan: s(j.catatan), kota: s(j.kota),
   }));
   const famList: PrefillFam[] = (Array.isArray(n?.keluarga) ? n.keluarga : []).slice(0, 5).map((k: any) => ({
