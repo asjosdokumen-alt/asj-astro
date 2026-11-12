@@ -290,18 +290,6 @@ function sportJp(hobi: string): string {
  * Hanya kata yang MUNCUL yang dicentang; sisanya `□`. `自動車運転` butuh SIM,
  * bukan sekadar niat (lihat `simJp`).
  */
-const SKILLS: [RegExp, string][] = [
-  [/足場|scaffold/i, 'B36'],
-  [/左官|plester|plaster/i, 'K35'],
-  [/溶接|las\b|welding/i, 'N35'],
-  [/土木|konstruksi|bangunan/i, 'Q35'],
-  [/舗装|aspal/i, 'T35'],
-  [/型枠|bekisting/i, 'K36'],
-  [/鉄筋|besi beton/i, 'N36'],
-  [/大工|tukang|kayu|carpenter/i, 'Q36'],
-  [/重機|excavator|alat berat/i, 'T36'],
-  [/生コン|beton|cor\b/i, 'F36'],
-];
 
 /** 国籍・出身地: `〒63395 東ジャワ州 マゲタン県 …` → `インドネシア東ジャワ州マゲタン県`. */
 function asalJp(alamatJp: string, tempatJp: string): string {
@@ -559,14 +547,20 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`E${top}`] = ym(masuk);
     cells[`F${bottom}`] = ym(keluar);
     cells[`I${top}`] = durasi(masuk, keluar);
-    // 業種 — kolom `pekerjaan_N_bidang` (migrasi 022). Dulu selalu ''.
-    cells[`N${top}`] = jpTerm(bersih(p.bidang_jp) || (p.bidang ?? p.industri));
+    // 業種 (N) — DIPAKAI UNTUK NAMA PERUSAHAAN. Bukti: 9 CV manual pemilik
+    // (Drive, 2026-11-12) mengisi N27 dengan "PT VERONIQUE INDONESIA",
+    // "PT TSAMANIYA AMANAH MANDIR", "Hotel 101", dst., sedangkan INDUSTRI-nya
+    // ditulis di kolom 備考 (AA). Kode lama menaruh industri di N dan
+    // membiarkan AA kosong — kebalikan dari cara pemilik mengisi form.
+    const pt = bersih(p.perusahaan_jp) || bersih(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
+    cells[`N${top}`] = jpTerm(pt);
     cells[`R${top}`] = jpTerm(bersih(p.jabatan_jp) || (p.jabatan ?? p.jabatan_id));
-    // 月収: sel X..Y sudah digabung di template, jadi angka + `万円` satu sel.
+    // 月収: `Z` sudah berisi teks tetap `万円`. Menulis "2万円" di X membuat
+    // sel terbaca "2万円万円" — 9 dari 9 CV manual menulis ANGKA saja di X.
     const gaji = manYenRp(p.gaji ?? p.penghasilan);
-    cells[`X${top}`] = gaji ? `${gaji}万円` : '';
-    // 備考 — kolom `pekerjaan_N_catatan` (migrasi 022).
-    cells[`AA${top}`] = bersih(p.catatan_jp) || bersih(p.catatan ?? p.keterangan);
+    cells[`X${top}`] = gaji;
+    // 備考 — industri lalu catatan.
+    cells[`AA${top}`] = bersih(p.catatan_jp) || bersih(p.bidang ?? p.industri) || bersih(p.catatan ?? p.keterangan);
   }
   if (!kerja.length) {
     // `～` bawaan template akan tercetak apa adanya tanpa dua tanggal.
@@ -586,10 +580,16 @@ export function buildValues(data: CandidateData): Record<string, string> {
     .join(' ');
 
   /* ── できる作業 ────────────────────────────────────────────────────────── */
+  /* Bukti dari 9 CV manual pemilik (2026-11-12): kotak yang PERNAH dicentang
+     hanya その他 (X35) — selalu — dan 自動車運転 (F35) bila kandidat punya SIM.
+     Tidak satu pun mencentang kotak keahlian spesifik (土木/大工/溶接/…),
+     walaupun teks keahliannya menyebut pekerjaan itu ("建設作業" pada BUDI).
+     Karena itu pemetaan kata-kunci → kotak DIBUANG: ia mengarang centang yang
+     tidak pernah dipakai pemilik, dan centang itu terbaca sebagai klaim
+     keahlian resmi di form klien. */
   const boxes = ['F35', 'K35', 'N35', 'Q35', 'T35', 'X35', 'B36', 'F36', 'K36', 'N36', 'Q36', 'T36'];
   for (const c of boxes) cells[c] = '□';
   if (isGood(keahlian)) {
-    for (const [re, cell] of SKILLS) if (re.test(keahlian)) cells[cell] = '■';
     cells.X35 = '■';
     cells.Y36 = keahlian.slice(0, 18);
   }

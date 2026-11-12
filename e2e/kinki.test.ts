@@ -214,9 +214,11 @@ describe('kinki · peta sel', () => {
     const c = buildValues(kandidat());
     // Baris 35–36 memuat kotak centang keahlian. Fixture menyebut 大工 dan
     // 整備士 (dua keahlian) → tepat DUA kotak tercentang, sisanya kosong.
+    // 9 CV manual pemilik: HANYA その他 yang dicentang, plus 自動車運転 bila
+    // ada SIM. Kotak keahlian spesifik tidak pernah dipakai.
     const kotak = Object.entries(c).filter(([addr, v]) => /^[B-Y]3[56]$/.test(addr) && v === '■');
-    expect(kotak).toHaveLength(2);
-    // Teks bebasnya memuat keduanya.
+    expect(kotak).toHaveLength(1);
+    expect(c.X35).toBe('■'); // その他
     expect(c.Y36).toBe('整備士、大工');
   });
 
@@ -226,9 +228,10 @@ describe('kinki · peta sel', () => {
     expect(c.E27).toBe('2024年6月');
     expect(c.F28).toBe('2025年6月');
     expect(c.I27).toBe('1年');
+    expect(c.N27).toBe('PT SAKURA'); // 業種 kolom diisi NAMA PERUSAHAAN
     expect(c.R27).toBe('整備士');
-    // 月収: fixture `18000` dibaca sebagai rupiah (ribuan) → 万円.
-    expect(c.X27).toBe('18万円');
+    // 月収: ANGKA saja — satuan `万円` sudah teks tetap di kolom Z.
+    expect(c.X27).toBe('18');
     expect(c.B38).toBe('父');
     expect(c.K38).toBe('15');
     expect(c.Y38).toBe('父');
@@ -433,8 +436,9 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
   it('pekerjaan: 雇用形態 / 業種 / 備考', () => {
     const c = buildValues(denganKolom());
     expect(c.B27).toBe('正社員');
-    expect(c.M26).toBe('Manufaktur');
-    expect(c.Z26).toBe('Lembur penuh');
+    // N = perusahaan, AA = 備考 (industri/catatan).
+    expect(c.N27).toBe('PT SAKURA');
+    expect(c.AA27).toBe('Manufaktur');
   });
 
   it('keluarga: 同居区分 mengikuti kolom, bukan `■` tetap', () => {
