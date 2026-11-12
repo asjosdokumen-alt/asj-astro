@@ -5,7 +5,7 @@
  */
 import { findCandidateByWaFiltered, findCandidates } from '../../_lib/db/candidates';
 import { candidateIdentityPatch } from '../../_lib/db/identity-sync';
-import { MASTER_LIGHT_COLS, SYS_CONFIG_COLS } from '../../_lib/db/projections';
+import { MASTER_LIGHT_COLS } from '../../_lib/db/projections';
 import { masterFolder } from '../../_lib/db/berkas';
 import * as session from '../../_lib/session';
 import { isOwnerOrAdmin } from '../identity';
@@ -13,7 +13,6 @@ import { syncBiodataKeMail } from '../applications';
 import { nextCandidateId } from '../../_lib/candidate-helpers';
 import { cacheClear } from '../../_lib/cache';
 import { safeError } from '../../_lib/kernel/errors';
-import { fieldsOf, guardPayload, ignored, text } from '../../_lib/kernel/guard';
 import { resolveFileUrl } from '../../_lib/storage';
 import { fetchCandidatePekerjaan } from '../../_lib/db/pekerjaan';
 import { rapikanBarisJpArray } from '../../_lib/jp-text';
@@ -1544,142 +1543,3 @@ export async function handleSimpanBiodataLengkap(payload: any[], sessionToken?: 
 
 export { buildAiOverflow, mergeAiOverflow, findMasterByWa };
 
-// ---------------------------------------------------------------------------
-// TEMPLATE CV — CRUD `sys_config` (config_type = 'cv_template'), ADMIN SAJA
-// ---------------------------------------------------------------------------
-// Keputusan pemilik 2026-10-10: template disimpan di `sys_config` (tanpa DDL) +
-// berkasnya di Storage. Tiga aksi di bawah sengaja TIDAK menyentuh Storage dan
-// TIDAK men-decode record:
-//
-//   · berkas template di-upload dari browser lewat jalur berkas yang sudah ada
-//     (`src/lib/uploadBerkas.ts`), jadi yang tersimpan di sini hanya URL-nya;
-//   · pengisian berkas juga terjadi di BROWSER (`applyFieldMap` /
-//     `applyRiwayatBlock` memakai `xlsx` — pustaka klien), jadi server tidak
-//     perlu tahu isi `fieldMap`/`riwayat`;
-//   · satu definisi bentuk record lebih baik daripada dua yang bisa berbeda —
-//     bentuknya dimiliki `src/lib/cv-template-factory/templates.ts`, dan server
-//     memperlakukannya sebagai JSON tak tembus pandang.
-//
-// Validasi di sini sengaja tipis tapi BUKAN kosong: record tanpa `id`/`nama`/
-// `fileUrl` ditolak, karena baris seperti itu akan muncul di daftar admin lalu
-// menghasilkan CV kosong saat dipakai — kegagalan yang menyamar sebagai hasil
-// normal.
-const CV_TEMPLATE_CONFIG_TYPE = 'cv_template';
-
-/** `null` = boleh lanjut; objek = tolak. */
-function requireAdminSession(sessionToken?: string): Record<string, unknown> | null {
-  const t = session.verifyToken(sessionToken || '');
-  if (!t || t.role !== 'admin') {
-    return { success: false, sessionInvalid: true, message: 'Sesi admin tidak valid' };
-  }
-  return null;
-}
-
-export async function handleGetTemplateCvList(_payload: unknown[], sessionToken?: string) {
-  const denied = requireAdminSession(sessionToken);
-  if (denied) return denied;
-  try {
-    const rows = await supabaseJson('GET', 'sys_config', {
-      query: {
-        select: SYS_CONFIG_COLS,
-        config_type: `eq.${CV_TEMPLATE_CONFIG_TYPE}`,
-        order: 'id.asc',
-      },
-    });
-    const templates = (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => ({
-      rowId: r.id,
-      // Record mentah — klien yang men-decode (`decodeTemplateRecord`).
-      record: toText(r.config_value),
-      nama: toText(r.deskripsi),
-      aktif: r.is_active !== false,
-    }));
-    return { success: true, templates };
-  } catch (e: unknown) {
-    return { success: false, error: safeError('Gagal memuat template CV.', e) };
-  }
-}
-
-export async function handleSimpanTemplateCv(payload: unknown[], sessionToken?: string) {
-  const denied = requireAdminSession(sessionToken);
-  if (denied) return denied;
-  // Validasi TIPE di tepi, SETELAH guard sesi — bentuk `{record}` diperiksa
-  // `fieldsOf`, bukan `String(...)` inline. `record` dibatasi 64 KB: satu
-  // `fieldMap` template berukuran beberapa KB, jadi batas ini hanya menolak
-  // kiriman yang tidak masuk akal, bukan template besar yang sah. Slot kedua
-  // `ignored` demi klien yang sudah ter-deploy dan masih mengirim argumen ekstra
-  // (lihat trap 1 di kernel/guard.ts).
-  const [d] = guardPayload(payload, [
-    fieldsOf('Template CV', { record: text('Record template', 65536) }),
-    ignored,
-  ]) as [Record<string, unknown>];
-  const record = String(d.record ?? '').trim();
-  if (!record) return { success: false, error: 'Record template kosong.' };
-
-  let parsed: Record<string, unknown> | null = null;
-  try {
-    const j: unknown = JSON.parse(record);
-    parsed = j && typeof j === 'object' && !Array.isArray(j) ? (j as Record<string, unknown>) : null;
-  } catch {
-    parsed = null;
-  }
-  if (!parsed) return { success: false, error: 'Record template bukan JSON yang sah.' };
-  const id = String(parsed.id ?? '').trim();
-  const nama = String(parsed.nama ?? '').trim();
-  const fileUrl = String(parsed.fileUrl ?? '').trim();
-  if (!id || !nama || !fileUrl) {
-    return { success: false, error: 'Record template tidak lengkap (id, nama, fileUrl wajib).' };
-  }
-
-  try {
-    cacheClear();
-    const body = {
-      config_type: CV_TEMPLATE_CONFIG_TYPE,
-      config_value: record,
-      deskripsi: nama.slice(0, 200),
-      is_active: parsed.aktif !== false,
-    };
-    const rowId = d.rowId === undefined || d.rowId === null ? '' : String(d.rowId).trim();
-    if (rowId) {
-      // `config_type` ikut jadi filter: id baris dari klien tidak boleh dipakai
-      // untuk menimpa baris `sys_config` milik fitur lain.
-      await supabaseJson('PATCH', 'sys_config', {
-        query: { id: `eq.${rowId}`, config_type: `eq.${CV_TEMPLATE_CONFIG_TYPE}` },
-        body,
-        headers: { Prefer: 'return=minimal' },
-      });
-      return { success: true, rowId };
-    }
-    await supabaseJson('POST', 'sys_config', {
-      body: Object.assign({ created_at: new Date().toISOString() }, body),
-      headers: { Prefer: 'return=minimal' },
-    });
-    return { success: true };
-  } catch (e: unknown) {
-    return { success: false, error: safeError('Gagal menyimpan template CV.', e) };
-  }
-}
-
-export async function handleHapusTemplateCv(payload: unknown[], sessionToken?: string) {
-  const denied = requireAdminSession(sessionToken);
-  if (denied) return denied;
-  // Alasan yang sama dengan `handleSimpanTemplateCv` di atas: `rowId` diperiksa
-  // sebagai TIPE di tepi, sedangkan "baris ini ada dan milik config_type ini"
-  // tetap urusan query di bawah.
-  const [d] = guardPayload(payload, [
-    fieldsOf('Hapus template CV', { rowId: text('rowId', 64) }),
-    ignored,
-  ]) as [Record<string, unknown>];
-  const rowId = String(d.rowId ?? '').trim();
-  if (!rowId) return { success: false, error: 'rowId wajib diisi.' };
-  try {
-    cacheClear();
-    // Filter `config_type` juga di sini — alasan yang sama dengan PATCH di atas.
-    await supabaseJson('DELETE', 'sys_config', {
-      query: { id: `eq.${rowId}`, config_type: `eq.${CV_TEMPLATE_CONFIG_TYPE}` },
-      headers: { Prefer: 'return=minimal' },
-    });
-    return { success: true };
-  } catch (e: unknown) {
-    return { success: false, error: safeError('Gagal menghapus template CV.', e) };
-  }
-}

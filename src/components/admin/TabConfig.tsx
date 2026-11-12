@@ -11,22 +11,7 @@ import { t, langStore } from '../../store/i18n';
 import type { ConfigGroup } from '../../types/api';
 import Icon from '../ui/Icon';
 import { Bar, Status } from '../ui/Skeleton';
-import { normalizeMasterData } from '../../lib/cv-template-factory/data';
-import { analyzeFromExample, detectRiwayatBlock, readWorkbook } from '../../lib/cv-template-factory/loaders/tEMPLATE-loader';
-import { encodeTemplateRecord, decodeTemplateRecord, templateIdFromName, type CvTemplateRecord } from '../../lib/cv-template-factory/templates';
-import { uploadBerkasToStorage } from '../../lib/uploadBerkas';
 import KartuNotifikasiAdmin from './KartuNotifikasiAdmin';
-
-/** Baris dari `getTemplateCvList` — `record` masih JSON mentah. */
-type TemplateRow = { rowId: string; record: string; nama: string; aktif: boolean };
-
-const RIWAYAT_TIPE = ['pendidikan', 'pekerjaan', 'keluarga'] as const;
-/** Field kunci tiap tabel riwayat — dipakai `detectRiwayatBlock`. */
-const RIWAYAT_KEY: Record<(typeof RIWAYAT_TIPE)[number], string> = {
-  pendidikan: 'tingkat',
-  pekerjaan: 'perusahaan',
-  keluarga: 'nama',
-};
 
 export default function TabConfig() {
   const _lang = useStore(langStore);
@@ -46,203 +31,11 @@ export default function TabConfig() {
   const [editingConfig, setEditingConfig] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  // ── Template CV (2026-10-10) ──────────────────────────────────────────────
-  // Admin mengisi template xlsx dengan data SATU kandidat nyata lalu meng-upload
-  // sekali; peta sel→field disimpulkan dari contoh itu (`analyzeFromExample`).
-  // Semua dihitung di BROWSER — server hanya menyimpan record di `sys_config`.
-  const [templates, setTemplates] = useState<TemplateRow[]>([]);
-  const [tplNama, setTplNama] = useState('');
-  const [tplContohWa, setTplContohWa] = useState('');
-  const [tplFile, setTplFile] = useState<File | null>(null);
-  const [tplBusy, setTplBusy] = useState(false);
-  const [tplInfo, setTplInfo] = useState('');
-  const [tplFieldMap, setTplFieldMap] = useState<Record<string, string>>({});
-  /* Cara menulis per sel (bahasa & format) + sel contoh yang harus dikosongkan.
-     Dihitung `analyzeFromExample` dari berkas contoh; disimpan apa adanya ke
-     record supaya hasil generate tidak perlu direvisi manual. */
-  const [tplSpecs, setTplSpecs] = useState<CvTemplateRecord['specs']>({});
-  const [tplClear, setTplClear] = useState<string[]>([]);
-  const [tplAmbiguous, setTplAmbiguous] = useState<Record<string, string[]>>({});
-  const [tplPilihan, setTplPilihan] = useState<Record<string, string>>({});
-  const [tplRiwayat, setTplRiwayat] = useState<CvTemplateRecord['riwayat']>({});
-  const [tplBelum, setTplBelum] = useState<string[]>([]);
-
-  async function loadTemplates() {
-    try {
-      const d = (await api.secure('getTemplateCvList', [])) as { success?: boolean; templates?: TemplateRow[] };
-      if (d?.success) setTemplates(d.templates || []);
-    } catch {
-      // Daftar template bukan hal yang memblokir tab ini — jangan gagalkan load().
-    }
-  }
-
-  /**
-   * Ganti berkas template = batalkan hasil Analisa.
-   *
-   * Peta sel yang tersisa berasal dari berkas LAIN. Kalau ikut disimpan bersama
-   * berkas baru, tiap kandidat terisi di sel yang salah — dan hasilnya terlihat
-   * wajar, jadi tidak ada yang menyadarinya.
-   */
-  function pilihBerkasTemplate(f: File | null) {
-    setTplFile(f);
-    setTplFieldMap({});
-    setTplSpecs({});
-    setTplClear([]);
-    setTplAmbiguous({});
-    setTplPilihan({});
-    setTplRiwayat({});
-    setTplBelum([]);
-    setTplInfo('');
-  }
-
-  async function handleAnalisaTemplate() {
-    const wa = tplContohWa.replace(/\D/g, '');
-    if (!tplFile) { showToast(t('admin.tpl_err_file'), 'error'); return; }
-    // `accept=".xlsx"` di input hanya SARAN — browser tetap mengizinkan berkas
-    // lain dipilih (pemilik memilih .docx, lalu gagal dengan pesan exceljs yang
-    // tidak menjelaskan apa pun). Diperiksa di sini, dengan pesan yang jelas.
-    if (!/\.xlsx$/i.test(tplFile.name)) { showToast(t('admin.tpl_err_not_xlsx'), 'error'); return; }
-    if (!wa) { showToast(t('admin.tpl_err_wa'), 'error'); return; }
-    setTplBusy(true);
-    setTplInfo('');
-    try {
-      // Data kandidat contoh: tanpa ini tidak ada nilai yang bisa dicocokkan.
-      const m = (await api.secure('getDrafCvMaster', [wa], {
-        onSessionInvalid: 'throw',
-        silent: true,
-      })) as Record<string, unknown> | null;
-      // GAGAL kalau tidak ada data ATAU balasannya membawa error. Sebelumnya
-      // syaratnya terbalik (`if (!m?.error) throw`), sehingga tombol Analisa
-      // SELALU melempar justru ketika datanya berhasil diambil — dan pesannya
-      // menyesatkan: "Data master kandidat contoh tidak ditemukan."
-      if (!m || m.error) throw new Error(String(m?.error || 'Data master kandidat contoh tidak ditemukan.'));
-      const data = normalizeMasterData(m);
-      // `readWorkbook` (exceljs) — bukan `xlsx` langsung. Membaca lewat helper
-      // yang sama dengan jalur unduh berarti apa yang di-ANALISA persis apa yang
-      // nanti DIISI; dua pembaca berbeda adalah cara termudah membuat peta sel
-      // yang benar di sini menjadi salah di sana.
-      const wb = await readWorkbook(new Uint8Array(await tplFile.arrayBuffer()));
-
-      const { fieldMap, specs, clearCells, ambiguous, unmatched } = await analyzeFromExample(wb, data);
-      const riwayat: CvTemplateRecord['riwayat'] = {};
-      for (const tipe of RIWAYAT_TIPE) {
-        const blk = await detectRiwayatBlock(
-          wb,
-          (data[tipe] || []) as Array<Record<string, unknown>>,
-          RIWAYAT_KEY[tipe],
-        );
-        if (blk) riwayat[tipe] = blk;
-      }
-      setTplFieldMap(fieldMap);
-      setTplSpecs(specs);
-      setTplClear(clearCells);
-      setTplAmbiguous(ambiguous);
-      setTplPilihan({});
-      setTplRiwayat(riwayat);
-      setTplBelum(unmatched);
-      setTplInfo(
-        `${Object.keys(fieldMap).length} sel terpetakan · ${Object.keys(ambiguous).length} perlu Anda pilih · ` +
-          `${Object.keys(riwayat).length} tabel riwayat · ${unmatched.length} field belum tertampung · ` +
-          `${clearCells.length} sel contoh akan dikosongkan`,
-      );
-    } catch (e: unknown) {
-      showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error');
-    } finally {
-      setTplBusy(false);
-    }
-  }
-
-  async function handleSimpanTemplate() {
-    const nama = tplNama.trim();
-    if (!nama) { showToast(t('admin.tpl_err_name'), 'error'); return; }
-    if (!tplFile) { showToast(t('admin.tpl_err_nofile'), 'error'); return; }
-    // Sel ambiguous yang BELUM dipilih tidak diikutkan: kalau ikut, satu nilai
-    // bisa ditulis ke sel yang salah. Sisanya tetap dipakai.
-    const fieldMap = { ...tplFieldMap };
-    for (const cell of Object.keys(tplAmbiguous)) {
-      if (tplPilihan[cell]) fieldMap[cell] = tplPilihan[cell];
-      else delete fieldMap[cell];
-    }
-    // Tanpa peta DAN tanpa tabel riwayat, template yang tersimpan akan
-    // menghasilkan berkas KOSONG untuk setiap kandidat — kegagalan yang menyamar
-    // sebagai hasil normal ("kok gak muncul apa apa"). Terjadi kalau admin
-    // menekan Simpan tanpa pernah menekan Analisa. Ditolak di depan.
-    if (!Object.keys(fieldMap).length && !Object.keys(tplRiwayat || {}).length) {
-      showToast(t('admin.tpl_err_empty'), 'error');
-      return;
-    }
-    setTplBusy(true);
-    try {
-      const id = templateIdFromName(nama);
-      const fileUrl = await uploadBerkasToStorage(tplFile, { key: id, folder: 'cv-templates' });
-      const record: CvTemplateRecord = {
-        id,
-        nama,
-        tipe: 'xlsx',
-        fileUrl,
-        fieldMap,
-        contohWa: tplContohWa.replace(/\D/g, ''),
-        aktif: true,
-        updatedAt: new Date().toISOString(),
-      };
-      /* `specs` hanya untuk sel yang BENAR-BENAR masuk peta final. Sel yang
-         dibatalkan karena ambiguous tidak lagi ditulis, jadi spesifikasinya
-         tidak ada gunanya — dan menyisakannya membuat record menggambarkan
-         template yang berbeda dari yang dipakai. */
-      const specs = Object.fromEntries(
-        Object.entries(tplSpecs || {}).filter(([cell]) => cell in fieldMap),
-      );
-      if (Object.keys(specs).length) record.specs = specs;
-      /* Sel contoh yang kini SUDAH terpetakan tidak boleh ikut dikosongkan —
-         urutan tulis di `applyFieldMap` menaruh nilai dulu, baru sapuan, jadi
-         sel yang terpetakan aman; ini hanya menjaga record tetap jujur. */
-      const clearCells = (tplClear || []).filter((cell) => !(cell in fieldMap));
-      if (clearCells.length) record.clearCells = clearCells;
-      if (Object.keys(tplAmbiguous).length) record.ambiguous = tplAmbiguous;
-      if (Object.keys(tplRiwayat || {}).length) record.riwayat = tplRiwayat;
-      const d = (await api.secure('simpanTemplateCv', [{ record: encodeTemplateRecord(record) }])) as {
-        success?: boolean;
-        error?: string;
-      };
-      if (!d?.success) throw new Error(String(d?.error || 'Gagal menyimpan template.'));
-      showToast(t('admin.tpl_toast_saved'), 'success');
-      setTplFile(null);
-      setTplInfo('');
-      setTplFieldMap({});
-      setTplSpecs({});
-      setTplClear([]);
-      setTplAmbiguous({});
-      setTplRiwayat({});
-      setTplBelum([]);
-      await loadTemplates();
-    } catch (e: unknown) {
-      showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error');
-    } finally {
-      setTplBusy(false);
-    }
-  }
-
-  async function handleHapusTemplate(rowId: string) {
-    if (!window.confirm(t('admin.tpl_del_confirm'))) return;
-    try {
-      const d = (await api.secure('hapusTemplateCv', [{ rowId }])) as { success?: boolean; error?: string };
-      if (!d?.success) throw new Error(String(d?.error || 'Gagal menghapus template.'));
-      showToast(t('admin.tpl_toast_deleted'), 'success');
-      await loadTemplates();
-    } catch (e: unknown) {
-      showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error');
-    }
-  }
-
   async function load() {
     try {
       const d: any = await api.secure('getAppData', ['admin']);
       if (d && d.success) { setConfigs(d.sysConfig?.length ? d.sysConfig : configs); if (d.pengumuman) setPengumuman(d.pengumuman); }
     } catch (e) { console.warn('[TabConfig] API unavailable, using defaults', e); } finally { setLoading(false); }
-    // Daftar template CV dimuat lewat `load()` supaya efek mount tetap punya
-    // SATU dependensi (`load`) — dua panggilan di dalam efek menambah satu
-    // diagnostik `useExhaustiveDependencies` di berkas yang sudah punya.
-    await loadTemplates();
   }
 
   useEffect(() => { load(); }, []);
@@ -288,16 +81,6 @@ export default function TabConfig() {
         dilakukan manusia, dan tanpanya semua push ke admin tidak sampai. */}
     <KartuNotifikasiAdmin />
 
-    <div class="bg-black/40 border border-slate-600/40 p-5 rounded-xl mb-6">
-      <h3 class="text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider"><Icon name="database" class="mr-1" /> {t('admin.db_migration_auto')}</h3>
-      <p class="text-xs text-slate-300 mb-3">{t("admin.db_migrate_cli_only")}</p>
-      <div class="bg-black/60 border border-slate-600/40 rounded-lg p-3">
-        <p class="text-xs font-bold text-slate-400 mb-1">{t("admin.run_from_terminal")}</p>
-        <pre class="text-xs text-emerald-300 whitespace-pre-wrap font-mono">npm run migrate:status
-npm run migrate:up</pre>
-      </div>
-    </div>
-
     <div class="u-grid-auto u-grid-auto--panels gap-6 mb-6">
       {configs.map(c => (
         <div key={c.id} class="bg-black/40 border border-slate-700 p-4 rounded-xl">
@@ -330,66 +113,5 @@ npm run migrate:up</pre>
       </div>
     </div>
 
-    <div class="bg-black/40 border border-sky-700/40 p-5 rounded-xl">
-      <h3 class="text-sm font-bold text-sky-300 mb-2 uppercase tracking-wider"><Icon name="file-alt" class="mr-1" /> {t('admin.tpl_title')}</h3>
-      <p class="text-xs text-slate-300 mb-3">{t('admin.tpl_hint')}</p>
-      <div class="flex flex-wrap gap-2 mb-3">
-        {/* ⚠ `min-w-[260px]` (bukan 200px). MEASURED 2026-10-11 di 1280px:
-            placeholder "Nama template (mis. Rirekisho Baku)" butuh 241px; pada
-            `min-w-[200px]` kotak hanya dapat 193px ⇒ contoh "(mis. Rirekisho
-            Baku)" terpotong 48px. Medan ini satu-satunya yang membawa contoh
-            nama, jadi ia yang diberi ruang. */}
-        <input type="text" value={tplNama} onInput={(e) => setTplNama((e.target as HTMLInputElement).value)} placeholder={t('admin.tpl_name_ph')} class="min-h-11 flex-1 min-w-[260px] bg-slate-800 border border-slate-600 rounded-lg text-sm px-3 text-white outline-none focus:border-sky-500" />
-        <input type="text" value={tplContohWa} onInput={(e) => setTplContohWa((e.target as HTMLInputElement).value)} placeholder={t('admin.tpl_wa_ph')} class="min-h-11 flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg text-sm px-3 text-white outline-none focus:border-sky-500" />
-        <input type="file" accept=".xlsx" onChange={(e) => pilihBerkasTemplate((e.target as HTMLInputElement).files?.[0] || null)} aria-label={t('admin.tpl_file_aria')} class="min-h-11 flex-1 min-w-[220px] text-xs text-slate-300 file:mr-2 file:min-h-11 file:px-3 file:bg-slate-700 file:text-white file:border-0 file:rounded-lg" />
-        <button type="button" onClick={handleAnalisaTemplate} disabled={tplBusy} class="min-h-11 px-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition"><Icon name="eye" class="mr-1" /> {t('admin.tpl_analyze')}</button>
-        <button type="button" onClick={handleSimpanTemplate} disabled={tplBusy} class="min-h-11 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition"><Icon name="save" class="mr-1" /> {t('admin.tpl_save')}</button>
-      </div>
-
-      {tplInfo && <p class="text-xs text-slate-400 mb-2">{tplInfo}</p>}
-
-      {Object.keys(tplAmbiguous).length > 0 && (
-        <div class="bg-black/60 border border-amber-600/40 rounded-lg p-3 mb-3">
-          <p class="text-xs font-bold text-amber-400 mb-2">{t('admin.tpl_ambiguous_hint')}</p>
-          <div class="space-y-2">
-            {Object.entries(tplAmbiguous).map(([cell, paths]) => (
-              <div key={cell} class="flex items-center gap-2">
-                <span class="text-xs font-mono text-slate-400 w-16">{cell}</span>
-                <select value={tplPilihan[cell] || ''} onChange={(e) => setTplPilihan((p) => ({ ...p, [cell]: (e.target as HTMLSelectElement).value }))} class="min-h-11 flex-1 bg-slate-800 border border-slate-600 rounded-lg text-xs px-2 text-white outline-none focus:border-amber-500">
-                  <option value="">{t('admin.tpl_empty_cell')}</option>
-                  {paths.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tplBelum.length > 0 && (
-        <p class="text-xs text-slate-500 mb-3">{t('admin.tpl_unmatched')} {tplBelum.slice(0, 12).join(', ')}{tplBelum.length > 12 ? ' …' : ''}</p>
-      )}
-
-      <h4 class="text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">{t('admin.tpl_saved_list')} ({templates.length})</h4>
-      {templates.length === 0 ? (
-        <p class="text-xs text-slate-500">{t('admin.tpl_none')}</p>
-      ) : (
-        <ul class="space-y-2">
-          {templates.map((tpl) => {
-            const rec = decodeTemplateRecord(tpl.record);
-            return (
-              <li key={tpl.rowId} class="flex items-center gap-2 bg-black/60 border border-slate-700 rounded-lg px-3 py-2">
-                <Icon name="file-alt" class="text-sky-400" />
-                <span class="text-xs text-white font-bold flex-1">{tpl.nama || tpl.rowId}</span>
-                <span class="text-[11px] text-slate-500">
-                  {rec ? `${Object.keys(rec.fieldMap).length} ${t('admin.tpl_cells')}` : t('admin.tpl_broken')}
-                  {rec?.riwayat ? ` · ${Object.keys(rec.riwayat).length} ${t('admin.tpl_riwayat')}` : ''}
-                </span>
-                <button type="button" onClick={() => handleHapusTemplate(tpl.rowId)} class="min-w-11 min-h-11 inline-flex items-center justify-center text-rose-400 hover:text-rose-300" aria-label={`${t('admin.tpl_del_aria')} ${tpl.nama || tpl.rowId}`}><Icon name="trash" /></button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
   </div>);
 }

@@ -51,28 +51,8 @@ vi.mock('../../store/authReactive', () => {
   };
 });
 
-class FakeFileReader {
-  result = 'data:application/pdf;base64,aGVsbG8=';
-  onload: (() => void) | null = null;
-  readAsDataURL() {
-    setTimeout(() => this.onload && this.onload(), 0);
-  }
-}
-
-function openParseTab() {
-  fireEvent.click(screen.getByRole('button', { name: 'Alat' }));
-}
-
 function openIsiTab() {
   fireEvent.click(screen.getByRole('button', { name: 'Isi Biodata' }));
-}
-
-function openChatTab() {
-  fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
-}
-
-function fillWa(wa: string) {
-  fireEvent.input(screen.getByPlaceholderText('WA kandidat'), { target: { value: wa } });
 }
 
 function sendMessage(text: string) {
@@ -109,9 +89,10 @@ describe('AdminAiCopilot (A11)', () => {
     render(<AdminAiCopilot onClose={() => {}} />);
     expect(screen.getByText('AI HR Copilot')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Chat' })).toBeTruthy();
-    // Tab 'Parse' -> 'Alat' (2026-10-30): parse AI dihapus, isinya tinggal
-    // Buat Model / Hasil Wawancara.
-    expect(screen.getByRole('button', { name: 'Alat' })).toBeTruthy();
+    // Tab 'Alat' DIHAPUS 2026-11-12: isinya (Buat Model / Hasil Wawancara)
+    // sudah tidak dipakai. Ditegaskan di sini supaya tidak muncul lagi tanpa
+    // ada yang menyadarinya.
+    expect(screen.queryByRole('button', { name: 'Alat' })).toBeNull();
     // Tab 'Hasil' DIHAPUS 2026-11-08: kartunya membaca payload simulator
     // wawancara lama yang sudah tidak ditulis; hasil sekarang masuk ke
     // percakapan (lihat tes "hasil wawancara membaca BANK SOAL").
@@ -183,68 +164,6 @@ describe('AdminAiCopilot (A11)', () => {
     expect(payload.history.some((h) => h.content === 'pesan pertama')).toBe(false);
   });
 
-  // 2026-10-02: dua klik cepat pada aksi AI = dua permintaan provider.
-  it('klik ganda pada "Buat Model" hanya menembak SATU permintaan AI', async () => {
-    let resolveFirst: (v: unknown) => void = () => {};
-    mockSecure.mockImplementationOnce(
-      () => new Promise((res) => { resolveFirst = res; }),
-    );
-    render(<AdminAiCopilot candidateWa="6281234567890" onClose={() => {}} />);
-    openParseTab();
-    const btn = screen.getByRole('button', { name: 'Model Doc' });
-    fireEvent.click(btn);
-    fireEvent.click(btn);
-    resolveFirst({ success: true, wa: '6281234567890', model: 'M' });
-    await waitFor(() => expect(showToast).toHaveBeenCalled());
-    expect(mockSecure).toHaveBeenCalledTimes(1);
-  });
-
-  it('klik ganda pada "Hasil Wawancara" hanya menembak SATU permintaan', async () => {
-    let resolveFirst: (v: unknown) => void = () => {};
-    mockSecure.mockImplementationOnce(
-      () => new Promise((res) => { resolveFirst = res; }),
-    );
-    render(<AdminAiCopilot candidateWa="6281234567890" onClose={() => {}} />);
-    openParseTab();
-    const btn = screen.getByRole('button', { name: 'Hasil Wawancara' });
-    fireEvent.click(btn);
-    fireEvent.click(btn);
-    resolveFirst({ success: true, hasil: null, wa: '6281234567890' });
-    await waitFor(() => expect(mockSecure).toHaveBeenCalledTimes(1));
-    expect(mockSecure).toHaveBeenCalledTimes(1);
-  });
-
-  it('generate model: no WA/id → toast ai.fill_wa_first; with WA → generateWawancaraModel', async () => {
-    mockSecure.mockResolvedValueOnce({
-      success: true,
-      wa: '6281234567890',
-      nama: 'TES',
-      bidang: 'Kaigo (介護)',
-      model: '1. Hobi kamu apa?',
-    });
-    render(<AdminAiCopilot onClose={() => {}} />);
-    openParseTab();
-    fireEvent.click(screen.getByRole('button', { name: 'Model Doc' }));
-    await waitFor(() =>
-      expect(vi.mocked(showToast)).toHaveBeenCalledWith(
-        'Isi nomor WA kandidat terlebih dahulu.',
-        'error',
-      ),
-    );
-    expect(mockSecure).not.toHaveBeenCalled();
-    fillWa('6281234567890');
-    fireEvent.click(screen.getByRole('button', { name: 'Model Doc' }));
-    await waitFor(() =>
-      expect(mockSecure).toHaveBeenCalledWith('generateWawancaraModel', [
-        { candidateId: undefined, wa: '6281234567890', bidang: undefined },
-      ]),
-    );
-    openChatTab();
-    await waitFor(() =>
-      expect(bubbleWith('Model Wawancara -').length).toBeGreaterThan(0),
-    );
-  });
-
   it('AI_UNAVAILABLE → banner shown; a later success clears it (§6.5 row 3)', async () => {
     mockSecure.mockResolvedValueOnce({
       success: false,
@@ -271,37 +190,6 @@ describe('AdminAiCopilot (A11)', () => {
     sendMessage('Coba lagi');
     await waitFor(() => expect(bubbleWith('Oke, sudah jalan lagi.').length).toBeGreaterThan(0));
     expect(screen.queryByText('Asisten AI sedang tidak tersedia')).toBeNull();
-  });
-
-  it('hasil wawancara membaca BANK SOAL (bukan simulator AI lama)', async () => {
-    // 2026-11-08: aksi lama `getHasilWawancara` membaca `ai_form_submissions`
-    // yang berhenti diisi saat wawancara berganti jadi bank soal. Terukur di
-    // produksi: nol baris wawancara di tabel itu. Sekarang panel memanggil
-    // `getJawabanWawancaraAdmin` dan mencetak pertanyaan + jawaban ke percakapan.
-    mockSecure.mockResolvedValueOnce({
-      success: true,
-      wa: '6281234567890',
-      jumlah: 3,
-      terisi: 2,
-      soal: [
-        { kode: 'A1', tanya: 'Sebutkan kelebihan Anda', jawaban: 'Disiplin', terisi: true },
-        { kode: 'A2', tanya: 'Kenapa ke Jepang?', jawaban: 'Belajar', terisi: true },
-        { kode: 'A3', tanya: 'Hobi?', jawaban: '', terisi: false },
-      ],
-    });
-    render(<AdminAiCopilot onClose={() => {}} />);
-    openParseTab();
-    fillWa('6281234567890');
-    fireEvent.click(screen.getByRole('button', { name: 'Hasil Wawancara' }));
-    await waitFor(() =>
-      expect(mockSecure).toHaveBeenCalledWith('getJawabanWawancaraAdmin', [
-        { wa: '6281234567890', candidateId: undefined },
-      ]),
-    );
-    // Ringkasan "2/3" dan isi jawabannya benar-benar TERLIHAT.
-    await waitFor(() => expect(screen.getByText(/2\/3/)).toBeTruthy());
-    expect(screen.getByText(/Sebutkan kelebihan Anda/)).toBeTruthy();
-    expect(screen.getByText(/Disiplin/)).toBeTruthy();
   });
 
   /**
@@ -351,22 +239,4 @@ describe('AdminAiCopilot (A11)', () => {
     expect(identitas.alamat).toBe('Jl. Baru');
   });
 
-  it('hasil wawancara kosong → "0 dari N", bukan "tidak ada hasil"', async () => {
-    mockSecure.mockResolvedValueOnce({
-      success: true,
-      wa: '6281234567890',
-      jumlah: 2,
-      terisi: 0,
-      soal: [
-        { kode: 'A1', tanya: 'Pertanyaan satu', jawaban: '', terisi: false },
-        { kode: 'A2', tanya: 'Pertanyaan dua', jawaban: '', terisi: false },
-      ],
-    });
-    render(<AdminAiCopilot onClose={() => {}} />);
-    openParseTab();
-    fillWa('6281234567890');
-    fireEvent.click(screen.getByRole('button', { name: 'Hasil Wawancara' }));
-    // Dua keadaan yang BERBEDA: bank tidak punya soal, vs siswa belum mengisi.
-    await waitFor(() => expect(screen.getByText(/0\/2/)).toBeTruthy());
-  });
 });

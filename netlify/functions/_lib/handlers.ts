@@ -162,7 +162,6 @@ export const ADMIN_READ_ACTIONS: ReadonlySet<string> = new Set([
   'getDrafCvMaster',
   'cekDataPelamar',
   'getRincianPresets',
-  'getTemplateCvList',
   'getAdminAiContext',
   'getAppConfig',
 ]);
@@ -382,8 +381,6 @@ function isMutatingAction(action: string): boolean {
     'reviewForm', 'approveForm', 'rejectForm', 'deleteForm', 'hapusFormTerpilih',
     // Candidates
     'updateCatatanKandidat', 'updateKandidatSuper',
-    // CV template (2026-10-10) — `sys_config`, admin-only
-    'simpanTemplateCv', 'hapusTemplateCv',
     // Notify
     'simpanWaTemplate', 'hapusWaTemplate',
     'kirimSatuPesanFonnte', 'kirimTawaranMassal',

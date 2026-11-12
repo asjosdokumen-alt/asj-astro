@@ -84,10 +84,9 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [mode, setMode] = useState<"chat" | "parse" | "isi">("chat");
+  const [mode, setMode] = useState<"chat" | "isi">("chat");
   const [parseStatus, setParseStatus] = useState("");
   const [parseWa, setParseWa] = useState(candidateWa || "");
-  const [parseBidang, setParseBidang] = useState("");
   // ── Mode "Isi": tempel data → AI membagi ke kolom → admin memutuskan ──────
   // Permintaan pemilik 2026-11-09: satu tempat untuk mengedit/memperbarui
   // biodata kandidat tanpa mencari-cari di tab lain.
@@ -195,125 +194,6 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     }
   };
 
-  const handleGenModel = async () => {
-    if (busy) return;
-    if (!parseWa && !candidateId) {
-      showToast(t("ai.fill_wa_first"), "error");
-      return;
-    }
-    setBusy(true);
-    setParseStatus(t("ai.status_generating"));
-    try {
-      const data = await apiCall("generateWawancaraModel", [
-        {
-          candidateId: candidateId || undefined,
-          wa: parseWa || undefined,
-          bidang: parseBidang || undefined,
-        },
-      ]);
-      addMsg(
-        "📋 **" +
-          t("admin.model_wawancara") +
-          "** " +
-          String(
-            (data as Record<string, unknown>).nama ||
-              (data as Record<string, unknown>).bidang ||
-              "SSW",
-          ) +
-          " (" +
-          String((data as Record<string, unknown>).bidang || "SSW") +
-          ")\n" +
-          t("ai.bidang_label") +
-          String((data as Record<string, unknown>).bidang || "SSW") +
-          "\n\n" +
-          String((data as Record<string, unknown>).model || ""),
-        "assistant",
-      );
-      const resWa = String((data as Record<string, unknown>).wa || "");
-      if (resWa) setParseWa(resWa);
-      showToast(t("ai.model_ready"), "success");
-      setParseStatus("");
-    } catch (e) {
-      reportError(e);
-      setParseStatus("");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  /**
-   * "Hasil Wawancara" — membaca BANK SOAL (sistem 2026-10-25), bukan simulator
-   * AI lama.
-   *
-   * KENAPA BERUBAH (2026-11-08; laporan pemilik: *"hrd ai kan ada wawancara parse
-   * padahal kan system nya sudah berubah"*). Aksi lama `getHasilWawancara`
-   * membaca `ai_form_submissions`, tabel yang berhenti diisi ketika wawancara
-   * berganti menjadi bank soal. Terukur di produksi: baris terbaru tabel itu
-   * semuanya `mode=AI_MASTER`, NOL baris wawancara — jadi tombol ini selalu
-   * menjawab "belum ada hasil" dan `Update Biodata` (yang butuh `biodata` dari
-   * payload lama) tidak akan pernah bisa jalan.
-   *
-   * Yang ditampilkan sekarang: pertanyaan + jawaban siswa dari
-   * `wawancara_jawaban`, lewat aksi admin `getJawabanWawancaraAdmin`. Kalau
-   * belum ada isian, itu dikatakan sebagai "0 dari N" — bukan "tidak ada hasil",
-   * karena dua keadaan itu berbeda.
-   */
-  const handleResults = async () => {
-    if (busy) return;
-    if (!parseWa && !candidateId) {
-      showToast(t("ai.fill_wa_first"), "error");
-      return;
-    }
-    setBusy(true);
-    setParseStatus(t("ai.status_fetching"));
-    try {
-      const data = await apiCall("getJawabanWawancaraAdmin", [
-        { wa: parseWa || undefined, candidateId: candidateId || undefined },
-      ]);
-      const soal = Array.isArray(data?.soal) ? (data.soal as Record<string, unknown>[]) : [];
-      if (!soal.length) {
-        addMsg(t("ai.no_results"), "assistant");
-        setParseStatus("");
-        return;
-      }
-      const terisi = soal.filter((s) => s.terisi === true);
-      const baris = (terisi.length ? terisi : soal).slice(0, 12).map((s, i) => {
-        const tanya = String(s.tanya || s.kode || "");
-        const jawab = String(s.jawaban || "").trim();
-        return `${i + 1}. ${tanya}\n   → ${jawab || "—"}`;
-      });
-      addMsg(
-        "📋 **" +
-          t("admin.ai_results_title") +
-          " — " +
-          String(data?.wa || parseWa) +
-          "**" +
-          "\n✅ " +
-          String(data?.terisi ?? terisi.length) +
-          "/" +
-          String(data?.jumlah ?? soal.length) +
-          "\n\n" +
-          baris.join("\n") +
-          (terisi.length > 12
-            ? "\n\n… +" + String(terisi.length - 12) + " " + t("admin.ai_field_biodata")
-            : ""),
-        "assistant",
-      );
-      setParseStatus("");
-    } catch (e) {
-      reportError(e);
-      setParseStatus("");
-    } finally {
-      setBusy(false);
-      // Hasilnya DICETAK KE PERCAKAPAN, jadi tab Chat harus dibuka — kalau
-      // tidak, admin menekan "Hasil Wawancara" di tab Alat dan melihat layar
-      // yang tidak berubah sama sekali (balasannya ada di tab lain). Ini juga
-      // yang membuat dua keadaan "bank kosong" vs "siswa belum mengisi" bisa
-      // dibaca, bukan ditebak.
-      setMode("chat");
-    }
-  };
-
   /** Label manusia untuk kunci flat AI (`nama_lengkap` → "Nama Lengkap"). */
   const labelKolom = (key: string) => {
     const k = `cv.field_${key}`;
@@ -322,8 +202,8 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  const modes: { key: "chat" | "parse" | "isi"; label: string }[] = [    { key: "chat", label: t("admin.ai_tab_chat") },
-    { key: "parse", label: t("admin.ai_tab_parse") },
+  const modes: { key: "chat" | "isi"; label: string }[] = [
+    { key: "chat", label: t("admin.ai_tab_chat") },
     { key: "isi", label: t("admin.ai_tab_isi") },
   ];
 
@@ -547,56 +427,6 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
           </>
         )}
 
-        {mode === "parse" && (
-          <div class="flex-1 u-scroll-area p-4 space-y-3">
-            <div class="grid grid-cols-2 gap-2">
-              <input
-                type="tel"
-                value={parseWa}
-                onInput={(e) => setParseWa((e.target as HTMLInputElement).value)}
-                placeholder={t("ai.placeholder_wa")}
-                class="bg-slate-800 text-xs text-white px-3 py-2 rounded-lg border border-slate-700"
-              />
-              <input
-                type="text"
-                value={parseBidang}
-                onInput={(e) => setParseBidang((e.target as HTMLInputElement).value)}
-                placeholder={t("ai.placeholder_bidang")}
-                class="bg-slate-800 text-xs text-white px-3 py-2 rounded-lg border border-slate-700"
-              />
-            </div>
-            <div class="flex gap-2">
-              <button type="button"
-                onClick={handleGenModel}
-                disabled={busy}
-                class="flex-1 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
-              >
-                <Icon name="clipboard-list" class="mr-1" />
-                {t("admin.ai_btn_model")}
-              </button>
-            </div>
-            {/* `Update Biodata` DIHAPUS 2026-11-08: satu-satunya sumber datanya
-                adalah `biodata` dari payload simulator wawancara AI yang sudah
-                tidak ditulis lagi (lihat catatan di `handleResults`). Tombol
-                yang selalu berbunyi "belum ada data" lebih buruk daripada tidak
-                ada tombol. */}
-            <div class="flex gap-2">
-              <button type="button"
-                onClick={handleResults}
-                disabled={busy}
-                class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold rounded-lg disabled:opacity-50"
-              >
-                <Icon name="file-alt" class="mr-1 text-sky-400" />
-                {t("admin.ai_results_title")}
-              </button>
-            </div>
-            {parseStatus && (
-              <div class="text-[11px] text-sky-300 bg-sky-900/30 border border-sky-700/50 rounded-lg px-3 py-2">
-                {parseStatus}
-              </div>
-            )}
-          </div>
-        )}
         {mode === "isi" && (
           <div class="flex-1 u-scroll-area p-4 space-y-3">
             <p class="text-[11px] text-slate-400 leading-snug">{t("admin.ai_isi_bantuan")}</p>

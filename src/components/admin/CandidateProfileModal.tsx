@@ -7,13 +7,6 @@ import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
 import DocumentPreviewModal from '../DocumentPreviewModal';
 import { downloadBiodataDocx, downloadBiodataText } from '../../lib/biodataExport';
-import { normalizeMasterData } from '../../lib/cv-template-factory/data';
-import { applyFieldMap, applyRiwayatBlock, openWorkbookFromUrl, workbookToXlsxBlob } from '../../lib/cv-template-factory/loaders/tEMPLATE-loader';
-import { decodeTemplateRecord } from '../../lib/cv-template-factory/templates';
-
-/** Baris dari `getTemplateCvList` — `record` masih JSON mentah. */
-type TemplateRow = { rowId: string; record: string; nama: string; aktif: boolean };
-const RIWAYAT_TIPE = ['pendidikan', 'pekerjaan', 'keluarga'] as const;
 
 interface Props {
   wa: string;
@@ -358,95 +351,6 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     return undefined;
   }
 
-  // ── Buat CV dari template (2026-10-10) ────────────────────────────────────
-  // Pengisian terjadi di BROWSER: berkas template diambil dari Storage, lalu
-  // `applyFieldMap` + `applyRiwayatBlock` menulis data kandidat INI ke sel/baris
-  // yang petanya sudah dipelajari dari contoh waktu admin meng-upload.
-  const [tplList, setTplList] = useState<TemplateRow[] | null>(null);
-  const [tplPick, setTplPick] = useState('');
-  const [tplBusy, setTplBusy] = useState(false);
-
-  const handleBuatCvDariTemplate = async () => {
-    if (!data) return;
-    setTplBusy(true);
-    try {
-      let list = tplList;
-      if (!list) {
-        const d = (await api.secure('getTemplateCvList', [])) as {
-          success?: boolean;
-          templates?: TemplateRow[];
-        };
-        list = (d?.success && d.templates) || [];
-        setTplList(list);
-      }
-      if (!list.length) { showToast(t('admin.tpl_none'), 'error'); return; }
-      // Satu template → langsung dipakai; lebih dari satu → admin memilih dulu.
-      const rowId = tplPick || (list.length === 1 ? list[0].rowId : '');
-      if (!rowId) { showToast(t('admin.tpl_pick'), 'error'); return; }
-      const rec = decodeTemplateRecord(list.find((x) => x.rowId === rowId)?.record);
-      if (!rec) throw new Error(t('admin.tpl_broken'));
-      // Template tanpa peta sel tidak menghasilkan apa pun: berkasnya keluar
-      // sama persis dengan contoh yang dipakai admin waktu meng-upload — yaitu
-      // CV kandidat LAIN. Lebih baik ditolak daripada mengunduh berkas yang
-      // isinya milik orang lain.
-      if (!Object.keys(rec.fieldMap).length && !Object.keys(rec.riwayat ?? {}).length) {
-        throw new Error(t('admin.tpl_err_map'));
-      }
-      /* Record LAMA (sebelum 2026-11-12) tidak punya `specs` DAN tidak punya
-         `clearCells`. Tanpa keduanya, sel yang tidak terpetakan tetap berisi
-         data kandidat contoh — dan template yang dipakai di sini adalah CV
-         yang SUDAH TERISI. Terukur pada `tpl-tg708`: petanya hanya 11 sel
-         (semuanya tempat_lahir), sehingga hasil generate = CV "FIRMA ELGA
-         PRATAMA" dengan dua sel diganti.
-
-         Ditolak, bukan diberi peringatan: berkasnya akan diserahkan ke
-         kandidat. Pesannya menyebut langkah perbaikannya, dan itu memang satu
-         klik — Analisa ulang di Tab Config memakai penganalisa yang sekarang
-         sudah menghitung `specs` + `clearCells`. */
-      if (Object.keys(rec.fieldMap).length && !rec.specs) {
-        throw new Error(t('admin.tpl_err_legacy'));
-      }
-
-      const m = (await api.secure('getDrafCvMaster', [data.wa], {
-        onSessionInvalid: 'throw',
-        silent: true,
-      })) as Record<string, unknown> | null;
-      if (m?.error) throw new Error(String(m.error));
-      if (!m) throw new Error('Data master tidak ditemukan.');
-      const cand = normalizeMasterData(m);
-
-      const wb = await openWorkbookFromUrl(rec.fileUrl);
-
-      // Kedua applier MEMUTASI workbook yang sama; hanya serialisasi terakhir
-      // yang dipakai, jadi tidak ada berkas antara yang dibaca ulang.
-      // `specs` = cara menulis per sel (bahasa & format) yang dipelajari dari
-      // contoh; `clearCells` = sel yang di contoh berisi data orang lain dan
-      // harus dikosongkan. Keduanya opsional supaya template lama tetap jalan.
-      await applyFieldMap(wb, rec.fieldMap, cand, {
-        specs: rec.specs,
-        clearCells: rec.clearCells,
-      });
-      for (const tipe of RIWAYAT_TIPE) {
-        const blk = rec.riwayat?.[tipe];
-        if (blk) {
-          await applyRiwayatBlock(wb, blk, (cand[tipe] || []) as Array<Record<string, unknown>>);
-        }
-      }
-      const blob = await workbookToXlsxBlob(wb);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${rec.id}-${data.idKandidat || data.wa}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast(rec.nama, 'success');
-    } catch (e: unknown) {
-      showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error');
-    } finally {
-      setTplBusy(false);
-    }
-  };
-
   return (
     <div ref={containerRef} role="none" class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
       {/* `containerRef` di SHELL, bukan di panel ini. MEASURED 2026-10-08 di
@@ -645,19 +549,6 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
               <Icon name="file-alt" /> {t('ui.cv_download_biodata_word')}
             </button>
 
-            {/* 5b. Buat CV dari template (2026-10-10) */}
-            <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
-              <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">{t('admin.tpl_title')}</h3>
-              {tplList && tplList.length > 1 && (
-                <select value={tplPick} onChange={(e) => setTplPick((e.target as HTMLSelectElement).value)} aria-label={t('admin.tpl_choose')} class="min-h-11 w-full mb-2 bg-slate-800 border border-slate-600 rounded-lg text-sm px-3 text-white outline-none focus:border-sky-500">
-                  <option value="">{t('admin.tpl_choose')}</option>
-                  {tplList.map((x) => <option key={x.rowId} value={x.rowId}>{x.nama || x.rowId}</option>)}
-                </select>
-              )}
-              <button type="button" onClick={handleBuatCvDariTemplate} disabled={tplBusy} class="min-h-11 w-full px-4 py-2 bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
-                <Icon name="file-alt" /> {t('admin.tpl_btn')}
-              </button>
-            </div>
 
             {/* 6. Evaluasi Kandidat (VIP Toggle) */}
             <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
