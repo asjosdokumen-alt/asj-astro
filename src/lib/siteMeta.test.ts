@@ -119,11 +119,15 @@ describe('hreflangAlternates', () => {
     expect(hreflangAlternates({ id: '/', jp: '/?lang=jp' }, null)).toEqual([]);
   });
 
-  it('emits id, jp and x-default with absolute urls', () => {
+  it('emits id, ja and x-default with absolute urls', () => {
+    // `ja`, bukan `jp`: kode bahasa ISO 639-1 untuk Jepang adalah `ja`, dan
+    // `hreflang="jp"` (kode negara) diabaikan Google — lihat komentar di
+    // `hreflangAlternates`. Tes ini sempat tertinggal dan merah sejak
+    // commit SEO 2026-11-11.
     const out = hreflangAlternates({ id: '/', jp: '/?lang=jp' }, 'https://e.com');
     expect(out).toEqual([
       { hreflang: 'id', href: 'https://e.com/' },
-      { hreflang: 'jp', href: 'https://e.com/?lang=jp' },
+      { hreflang: 'ja', href: 'https://e.com/?lang=jp' },
       { hreflang: 'x-default', href: 'https://e.com/' },
     ]);
   });

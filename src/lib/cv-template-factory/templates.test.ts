@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { cvFactory } from './templates';
+import { buildValues, buildNumbers } from './renderers/kinki';
 import type { CandidateData, RenderContext } from './types';
 
 const mockData: CandidateData = {
@@ -141,6 +142,114 @@ describe('CV Template Factory', () => {
     const result = await cvFactory.render('rirekisho-a4', mockData, mockContext);
     expect(result.success).toBe(true);
     expect(result.mimeType).toBe('text/html');
+  });
+});
+
+
+/**
+ * Form KINKI — template final pemilik (2026-11-12).
+ *
+ * Peta selnya BERGESER dari versi lama (identitas 6-17 → 7-18, 学歴 19-23 →
+ * 19-25, 職歴 26-31 → 27-34, keluarga 37-41 → 37-44, MBTI 47-52 → 51-53).
+ * Tes ini mengunci sel-sel yang paling mudah tertukar: kalau ada yang
+ * mengembalikan peta lama, `F7`/`E20`/`B27`/`B38` langsung kosong.
+ */
+describe('form KINKI — peta sel template final 2026-11-12', () => {
+  const data: CandidateData = {
+    ...mockData,
+    identitas: {
+      ...mockData.identitas,
+      nama_lengkap: 'ARBI ALVIANSYAH',
+      katakana: 'アラビ アラビアンシャ',
+      panggilan: 'Arbi',
+      tgl_lahir: '2006-03-04',
+      hp: '6285850351428',
+      alamat_jp: '東ジャワ州ポノロゴ県',
+      sim: 'A1234567890',
+      golongan_darah: 'B',
+      status_nikah: 'BELUM MENIKAH',
+      kontak_darurat_hubungan: 'Ayah',
+      hp_darurat: '628123456789',
+    },
+    fisik: { ...mockData.fisik, tb: '167', bb: '55', tangan_dominan: 'KANAN', olahraga: 'バレーボール' },
+    medis: { ...mockData.medis, mata_kanan: '1.0', mata_kiri: '1.0' },
+    pendidikan: [
+      { tingkat: 'SMK', sekolah: 'ジェナンガン第1国立職業高校', jurusan: '機械加工', tahun_masuk: '2021-07', tahun_lulus: '2024-06' },
+      { tingkat: 'LPK', sekolah: 'ASJ日本語学校', tahun_masuk: '2026-04' },
+    ],
+    pekerjaan: [
+      { perusahaan: 'CV SUMBER', jabatan: '機械オペレーター', jenis: 'KONTRAK', bidang: '製造', tahun_masuk: '2024-08', tahun_keluar: '2025-01', gaji: '2000000' },
+    ],
+    keluarga: [{ hubungan: 'Ayah', usia: '50', pekerjaan: '農家', gaji: '2000000', tinggal: 'SERUMAH' }],
+    sertifikasi: {
+      ...mockData.sertifikasi,
+      jft: 'JFT N4',
+      level_bahasa_jepang: 'N4レベル',
+      bab_belajar_jp: '25',
+      lama_belajar_jp: '6',
+      status_belajar_jp: 'N4勉強中',
+    },
+  };
+
+  it('identitas pindah ke blok 7-18 (sel lama E6/E7 kosong)', () => {
+    const v = buildValues(data);
+    expect(v.F7).toBe('ARBI ALVIANSYAH');
+    expect(v.F8).toBe('アラビ・アラビアンシャ');
+    expect(v.T7).toBe('Arbi');
+    expect(v.T8).toBe('男');
+    expect(v.F12).toBe('未婚');
+    expect(v.M12).toBe('167');
+    expect(v.M14).toBe('B');
+    expect(v.J4).toBe('N4レベル');
+    expect(v.N4).toBe('あり');
+    expect(v.J5).toBe('第25課中');
+    expect(v.E6).toBeUndefined();
+    expect(v.E7).toBeUndefined();
+  });
+
+  it('tanggal lahir dikirim sebagai ANGKA di F9, bukan E8', () => {
+    const n = buildNumbers(data);
+    expect(Object.keys(n)).toEqual(['F9']);
+    // 2006-03-04 = serial 38780 (rentang longgar supaya tidak peka zona waktu)
+    expect(n.F9).toBeGreaterThanOrEqual(38779);
+    expect(n.F9).toBeLessThanOrEqual(38781);
+  });
+
+  it('pendidikan memakai baris 20/22 dan 専攻 di X20', () => {
+    const v = buildValues(data);
+    expect(v.E20).toBe('2021年7月');
+    expect(v.F21).toBe('2024年6月');
+    expect(v.I20).toBe('3年');
+    expect(v.P20).toContain('職業高校');
+    expect(v.X20).toBe('機械加工');
+    expect(v.E22).toBe('2026年4月');
+    expect(v.F23).toBe('今まで');
+    expect(v.X22).toBe('日本語');
+    expect(v.F24).toContain('機械加工');
+  });
+
+  it('pekerjaan memakai blok 27/29/31 dan 月収 satu sel', () => {
+    const v = buildValues(data);
+    expect(v.B27).toBe('契約社員');
+    expect(v.E27).toBe('2024年8月');
+    expect(v.F28).toBe('2025年1月');
+    expect(v.R27).toBe('機械オペレーター');
+    expect(v.X27).toBe('200万円');
+    expect(v.B29).toBe('');
+  });
+
+  it('keluarga pindah ke baris 38 dan MBTI hanya nama tipe + 5 axis', () => {
+    const v = buildValues(data);
+    expect(v.B38).toBe('父');
+    expect(v.D38).toBe('50');
+    expect(v.N38).toBe('■');
+    expect(v.P38).toBe('□');
+    expect(v.Y38).toBe('父');
+    expect(v.R48).toMatch(/型（[A-Z]{4}）/);
+    expect(v.V49).toMatch(/【[A-Z]】/);
+    expect(v.V53).toMatch(/【[A-Z]】/);
+    // 補足説明 dihitung rumus INDEX di template, bukan ditulis renderer.
+    expect(v.F51).toBeUndefined();
   });
 });
 
