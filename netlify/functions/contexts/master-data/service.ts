@@ -507,7 +507,8 @@ export function buildMasterNested(row: any): any {
           jurusan_jp: v('pendidikan_' + i + '_jurusan_jp'), masuk: v('pendidikan_' + i + '_tahun_masuk'),
           tahun_masuk: v('pendidikan_' + i + '_tahun_masuk'), lulus: v('pendidikan_' + i + '_tahun_lulus'),
           tahun_lulus: v('pendidikan_' + i + '_tahun_lulus'),
-          status_sekolah: v(`pendidikan_${i}_status_sekolah`) });
+          status_sekolah: v(`pendidikan_${i}_status_sekolah`),
+          kota: v(`pendidikan_${i}_kota`) });
       }
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['tingkat', 'sekolah', 'nama_sekolah', 'jurusan_id', 'jurusan', 'masuk', 'lulus'])),
         aiArrOf('pendidikan'), (e) => riwayatKey(e,
@@ -523,7 +524,7 @@ export function buildMasterNested(row: any): any {
          pembacaan ringan yang tidak butuh riwayat). */
       const anak = row.candidate_pekerjaan;
       if (Array.isArray(anak) && anak.length) {
-        return anak.map((r: Record<string, unknown>) => ({
+        return anak.map((r: Record<string, unknown>, i: number) => ({
           perusahaan: toText(r.perusahaan), nama_perusahaan: toText(r.perusahaan),
           perusahaan_jp: r.perusahaan_jp ?? '', jabatan: r.jabatan ?? '',
           jabatan_jp: r.jabatan_jp ?? '', masuk: r.tahun_masuk ?? '',
@@ -532,6 +533,10 @@ export function buildMasterNested(row: any): any {
           tahun_masuk: r.tahun_masuk ?? '', keluar: r.tahun_keluar ?? '',
           tahun_keluar: r.tahun_keluar ?? '', gaji: r.gaji ?? '',
           jenis: r.jenis ?? '', bidang: r.bidang ?? '', catatan: r.catatan ?? '',
+          /* `candidate_pekerjaan` belum punya kolom `kota`; nilainya hidup di
+             kolom slot `pekerjaan_N_kota`. Jangan sampai hilang hanya karena
+             riwayat kerja dibaca dari tabel anak. */
+          kota: r.kota ?? v(`pekerjaan_${i + 1}_kota`),
         }));
       }
       const arr: any[] = [];
@@ -548,7 +553,7 @@ export function buildMasterNested(row: any): any {
           catatan: v(`pekerjaan_${i}_catatan`),
           /* Migrasi 047: pasangan Jepang untuk 雇用形態 / 業種 / 備考. */
           jenis_jp: v(`pekerjaan_${i}_jenis_jp`), bidang_jp: v(`pekerjaan_${i}_bidang_jp`),
-          catatan_jp: v(`pekerjaan_${i}_catatan_jp`) });
+          catatan_jp: v(`pekerjaan_${i}_catatan_jp`), kota: v(`pekerjaan_${i}_kota`) });
       }
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['perusahaan', 'nama_perusahaan', 'jabatan', 'masuk', 'keluar'])),
         aiArrOf('pekerjaan'), (e) => riwayatKey(e,
@@ -776,6 +781,7 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
     ['_sekolah_jp', 'nama_sekolah_jp', 'sekolah_jp'],
     ['_jurusan_id', 'jurusan', 'jurusan_id'],
     ['_jurusan_jp', 'jurusan_jp'],
+    ['_kota', 'kota', 'kota_sekolah', 'lokasi'],
     ['_tahun_masuk', 'tahun_masuk', 'tahunMasuk', 'masuk'],
     ['_tahun_lulus', 'tahun_lulus', 'tahunLulus', 'lulus'],
   ] as const);
@@ -794,6 +800,11 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
     ['_bidang_jp', 'bidang_jp'],
     ['_catatan', 'catatan', 'keterangan'],
     ['_catatan_jp', 'catatan_jp'],
+    /* Migrasi 056: 地域 (kota) di blok 職歴. Tanpa entri ini kolom
+       `pekerjaan_N_kota` tidak pernah ditulis, padahal `buildMasterNested`
+       sudah MEMBACANYA — jadi kota yang dikirim form hilang saat simpan dan
+       sel K27/K29/K31 kembali kosong. */
+    ['_kota', 'kota', 'kota_kerja', 'lokasi'],
   ] as const);
   setSlots('keluarga_', d.keluarga, 5, [
     ['_hubungan', 'hubungan', 'hubungan_id'],

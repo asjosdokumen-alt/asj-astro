@@ -19,8 +19,8 @@ const NESTED: any = {
   medis: { mata_kiri: '5/5', mata_kanan: '5/5', kacamata: 'TIDAK', buta_warna: 'TIDAK', tato: 'TIDAK', tindik: 'TIDAK', rokok: 'TIDAK', alkohol: 'TIDAK' },
   wawancara: { promosi_id: 'P', kelebihan_id: 'K1', kekurangan_id: 'K2', keahlian_khusus: 'AH', hobi_id: 'SEPAK', alasan_memilih_bidang: 'AB', motivasi_ke_jepang: 'M', keinginan_pribadi: 'ING', rencana_setelah_pulang: 'RP', tujuan_ke_jepang: 'TJ', lama_di_jepang: '3', gaji_yen: '200000', tabungan: '50jt' },
   sertifikasi: { bahasa: 'N3', jft: 'A2', ssw: 'PERAWAT', bidang: 'KEPERAWATAN' },
-  pendidikan: [{ tingkat: 'SMA', nama_sekolah: 'SMAN 1', tahun_masuk: '2005', tahun_lulus: '2008', jurusan: 'IPA' }],
-  pekerjaan: [{ perusahaan: 'PT X', jabatan: 'STAFF', tahun_masuk: '2010', tahun_keluar: '2015', gaji: '3jt' }],
+  pendidikan: [{ tingkat: 'SMA', nama_sekolah: 'SMAN 1', tahun_masuk: '2005', tahun_lulus: '2008', jurusan: 'IPA', kota: 'Ponorogo' }],
+  pekerjaan: [{ perusahaan: 'PT X', jabatan: 'STAFF', tahun_masuk: '2010', tahun_keluar: '2015', gaji: '3jt', kota: 'Surabaya' }],
   keluarga: [{ nama: 'SITI', hubungan: 'ISTRI', usia: '30', pekerjaan: 'IRT' }],
   kenalan_jepang: { nama_id: 'KENJI', hubungan_id: 'TEMAN', pekerjaan_id: 'KARYAWAN', usia: '32', alamat_id: 'TOKYO' },
 };
@@ -57,8 +57,12 @@ describe('mapMasterNestedToForm — prefill MasterFullForm dari getDrafCvMaster'
     const p = mapMasterNestedToForm(NESTED);
     // Kolom status = 国公私 (migrasi 027). Kosong di sini karena fixture tidak
     // mengisinya; renderer lalu menebak dari nama sekolah.
-    expect(p.eduList).toEqual([{ jenjang: 'SMA', nama: 'SMAN 1', thnAwal: '2005', thnAkhir: '2008', jurusan: 'IPA', jurusanManual: '', alamat: '', status: '' }]);
-    expect(p.jobList[0]).toEqual({ perusahaan: 'PT X', jabatan: 'STAFF', jabatanManual: '', thnAwal: '2010', thnAkhir: '2015', gaji: '3jt', alasan: '', jenis: '', bidang: '', catatan: '' });
+    //
+    // `alamat`/`kota` = 地域 (migrasi 056). Prefill WAJIB membacanya balik:
+    // form mengirim SELURUH slot dengan `riwayatLengkap: true`, jadi prefill
+    // yang mengosongkannya menghapus kota setiap kali form dibuka lalu disimpan.
+    expect(p.eduList).toEqual([{ jenjang: 'SMA', nama: 'SMAN 1', thnAwal: '2005', thnAkhir: '2008', jurusan: 'IPA', jurusanManual: '', alamat: 'Ponorogo', status: '' }]);
+    expect(p.jobList[0]).toEqual({ perusahaan: 'PT X', jabatan: 'STAFF', jabatanManual: '', thnAwal: '2010', thnAkhir: '2015', gaji: '3jt', alasan: '', jenis: '', bidang: '', catatan: '', kota: 'Surabaya' });
     expect(p.famList[0]).toEqual({ nama: 'SITI', hubungan: 'ISTRI', usia: '30', pekerjaan: 'IRT', pekerjaanManual: '', tinggal: '', hp: '', gaji: '' });
   });
 

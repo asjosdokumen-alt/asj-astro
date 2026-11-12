@@ -300,6 +300,32 @@ describe('hapus baris riwayat harus berlaku', () => {
     expect(body.pendidikan_1_tahun_lulus).toBe('');
   });
 
+  /**
+   * Migrasi 056 — 地域 (kota) untuk pendidikan & pekerjaan.
+   *
+   * Sisi BACA sudah ada lebih dulu (`buildMasterNested` mengeluarkan `kota`),
+   * jadi tanpa entri `_kota` di daftar slot, kota yang dikirim form hilang saat
+   * simpan dan sel K20/K27 kembali kosong — persis kelas bug "kolomnya ada,
+   * nilainya tidak pernah sampai".
+   */
+  it('kota riwayat masuk slot pendidikan_N_kota & pekerjaan_N_kota', () => {
+    const body = buildRiwayatSlots({
+      pendidikan: [{ tingkat: 'SMA', nama_sekolah: 'SMAN 1 Ponorogo', kota: 'Ponorogo' }],
+      pekerjaan: [{ nama_perusahaan: 'PT ABC', kota: 'Surabaya' }],
+    }, false);
+    expect(body.pendidikan_1_kota).toBe('Ponorogo');
+    expect(body.pekerjaan_1_kota).toBe('Surabaya');
+  });
+
+  it('buildMasterNested membaca kembali kota dari kolom slot', () => {
+    const n = buildMasterNested({
+      pendidikan_1_tingkat: 'SMA', pendidikan_1_nama_sekolah: 'SMAN 1 Ponorogo', pendidikan_1_kota: 'Ponorogo',
+      pekerjaan_1_nama_perusahaan: 'PT ABC', pekerjaan_1_kota: 'Surabaya',
+    });
+    expect(n.pendidikan[0].kota).toBe('Ponorogo');
+    expect(n.pekerjaan[0].kota).toBe('Surabaya');
+  });
+
   it('buildMasterBody meneruskan penanda `riwayatLengkap`', () => {
     const body = buildMasterBody({ riwayatLengkap: true, pendidikan: [{ tingkat: 'SD' }] });
     expect(body.pendidikan_2_tingkat).toBe('');
