@@ -586,8 +586,15 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells.E20 = ymd(sma.masuk ?? sma.tahun_masuk);
     cells.F21 = ymd(sma.lulus ?? sma.tahun_lulus);
     cells.I20 = durasi(sma.masuk ?? sma.tahun_masuk, sma.lulus ?? sma.tahun_lulus);
-    // 地域 — kolom `wilayah_sekolah` (migrasi 022). Dulu selalu dikosongkan.
-    cells.K20 = bersih(id.wilayah_sekolah);
+    // 地域 — kota sekolah (`pendidikan_N_kota`, migrasi 056) bila ada; kalau
+    // belum diisi, pakai `wilayah_sekolah` (migrasi 022) seperti sebelumnya.
+    //
+    // 🔴 K20 ditulis SATU kali. Draf sebelumnya menulisnya dua kali — kota
+    // dulu, lalu `wilayah_sekolah` — dan karena yang terakhir menang, kandidat
+    // yang hanya punya provinsi kehilangan 地域-nya (terukur: `e2e/kinki.test.ts`
+    // "identitas, pendidikan..." merah, `expected '' to be 'Jawa Timur'`).
+    // Kota menang karena pemilik mengeluh dropdown 022 hanya berisi PROVINSI.
+    cells.K20 = jpTerm(bersih(sma.kota)) || bersih(id.wilayah_sekolah);
     cells.N20 = kouritsuSekolah(sekolah, sma.status_sekolah);
     cells.P20 = sekolah;
     // Strip atas mencetak `専攻` dengan `=X20`. Sel kosong membuatnya `0`, jadi
@@ -644,6 +651,8 @@ export function buildValues(data: CandidateData): Record<string, string> {
     // membiarkan AA kosong — kebalikan dari cara pemilik mengisi form.
     const pt = bersih(p.perusahaan_jp) || bersih(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
     cells[`N${top}`] = jpTerm(pt);
+    // 地域 (kota kerja) — kolom `pekerjaan_N_kota`.
+    cells[`K${top}`] = jpTerm(bersih(p.kota));
     cells[`R${top}`] = jpTerm(bersih(p.jabatan_jp) || (p.jabatan ?? p.jabatan_id));
     // 月収: `Z` sudah berisi teks tetap `万円`. Menulis "2万円" di X membuat
     // sel terbaca "2万円万円" — 9 dari 9 CV manual menulis ANGKA saja di X.

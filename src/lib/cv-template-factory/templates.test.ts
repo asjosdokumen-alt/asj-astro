@@ -217,34 +217,61 @@ describe('form KINKI — peta sel template final 2026-11-12', () => {
 
   it('pendidikan memakai baris 20/22 dan 専攻 di X20', () => {
     const v = buildValues(data);
-    expect(v.E20).toBe('2021年7月');
-    expect(v.F21).toBe('2024年6月');
+    // 学歴 KINKI berhari, hari selalu 1 (commit 693133b) — kandidat hanya hafal
+    // tahun+bulan, dan pemilik mengisi manualnya dengan tanggal 1 semua.
+    expect(v.E20).toBe('2021年7月1日');
+    expect(v.F21).toBe('2024年6月1日');
     expect(v.I20).toBe('3年');
     expect(v.P20).toContain('職業高校');
     expect(v.X20).toBe('機械加工');
-    expect(v.E22).toBe('2026年4月');
+    expect(v.E22).toBe('2026年4月1日');
     expect(v.F23).toBe('今まで');
-    expect(v.X22).toBe('日本語');
+    expect(v.X22).toBe('日本語専攻');
     expect(v.F24).toContain('機械加工');
   });
 
   it('pekerjaan memakai blok 27/29/31 dan 月収 satu sel', () => {
     const v = buildValues(data);
-    expect(v.B27).toBe('契約社員');
+    // 雇用形態 memakai kosakata dropdown template (commit aef01f2): KONTRAK
+    // masuk sebagai 非正社員 — `契約社員` tidak ada di daftar template.
+    expect(v.B27).toBe('非正社員');
     expect(v.E27).toBe('2024年8月');
     expect(v.F28).toBe('2025年1月');
     expect(v.R27).toBe('機械オペレーター');
-    expect(v.X27).toBe('2万円');
+    // 月収: X = ANGKA saja, `万円` teks tetap di Z (9/9 CV manual pemilik).
+    // Rp 2.000.000 → 2 (÷1.000.000, `manYenRp`), bukan 2000 dan bukan "2万円".
+    expect(v.X27).toBe('2');
     expect(v.B29).toBe('');
+  });
+
+  it('地域 K20/K27 diisi kota (migrasi 056); tanpa kota jatuh ke wilayah_sekolah', () => {
+    const kota: CandidateData = {
+      ...data,
+      identitas: { ...data.identitas, wilayah_sekolah: 'Jawa Timur' },
+      pendidikan: [{ ...data.pendidikan[0], kota: 'ポノロゴ' }, ...data.pendidikan.slice(1)],
+      pekerjaan: [{ ...data.pekerjaan[0], kota: 'スラバヤ' }],
+    };
+    const v = buildValues(kota);
+    expect(v.K20).toBe('ポノロゴ');
+    expect(v.K27).toBe('スラバヤ');
+    /* 🔴 K20 ditulis SATU kali. Draf pertama menulis kota LALU wilayah_sekolah,
+       jadi yang terakhir menang dan kandidat yang hanya punya provinsi
+       kehilangan 地域-nya (`e2e/kinki.test.ts` menangkapnya: `''` vs
+       `'Jawa Timur'`). Kota menang hanya kalau benar-benar terisi. */
+    const tanpaKota: CandidateData = {
+      ...kota,
+      pendidikan: [{ ...data.pendidikan[0], kota: '' }, ...data.pendidikan.slice(1)],
+    };
+    expect(buildValues(tanpaKota).K20).toBe('Jawa Timur');
   });
 
 
   it('集団生活年数 dibaca sebagai BULAN, bukan tahun', () => {
     // Owner 2026-11-12: "hitungan tinggal di asrama bersama itu bulan bukan tahun".
     const enam = buildValues({ ...data, fisik: { ...data.fisik, tinggal_kursus_tahun: '6' } });
-    expect(enam.Y42).toBe('6か月');
+    expect(enam.Y42).toBe('6ヶ月');
     const delapanBelas = buildValues({ ...data, fisik: { ...data.fisik, tinggal_kursus_tahun: '18' } });
-    expect(delapanBelas.Y42).toBe('1年6か月');
+    expect(delapanBelas.Y42).toBe('1年6ヶ月');
     const kosong = buildValues({ ...data, fisik: { ...data.fisik, tinggal_kursus_tahun: '' } });
     expect(kosong.Y42).toBe('');
   });
@@ -262,11 +289,15 @@ describe('form KINKI — peta sel template final 2026-11-12', () => {
       keluarga: [{ ...data.keluarga[0], pekerjaan: 'IBU RUMAH TANGGA', pekerjaan_jp: '' }],
     };
     const v = buildValues(idn);
-    // 専攻 / 業種 / 職業 tidak boleh lagi tercetak bahasa Indonesia
+    // 専攻 / 職業 tidak boleh lagi tercetak bahasa Indonesia.
     expect(v.X20).toBe('マルチメディア');
-    expect(v.N27).toBe('畜産業');
     expect(v.R27).toBe('農家');
     expect(v.F38).toBe('主婦');
+    // N (業種) = NAMA PERUSAHAAN, bukan industri — bukti 9 CV manual pemilik
+    // (commit cb3ac6e). Industrinya turun ke AA (備考) apa adanya; AA TIDAK
+    // diterjemahkan, dan `e2e/kinki.test.ts` mengunci perilaku itu.
+    expect(v.N27).toBe('CV SUMBER');
+    expect(v.AA27).toBe('PETERNAKAN');
     // kolom Jepang dari database selalu menang atas tabel terjemahan
     const jp: CandidateData = {
       ...data,
