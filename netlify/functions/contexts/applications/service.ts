@@ -8,8 +8,6 @@ import crypto from 'crypto';
 
 import { attachBerkasBio } from '../../_lib/db/berkas';
 import { masterIdentityPatch } from '../../_lib/db/identity-sync';
-import { fetchMasterByWa } from '../../_lib/db/master';
-import { supabaseUpsert } from '../../_lib/db/client';
 import { log } from '../../_lib/kernel/log';
 import { safeError } from '../../_lib/kernel/errors';
 import { guardPayload, indexLike, ignored, optionalTextOrEmpty } from '../../_lib/kernel/guard';
@@ -177,9 +175,17 @@ async function syncMasterDariForm(
   const patch = masterIdentityPatch(base);
   if (!Object.keys(patch).length) return;
   const body = { ...patch, updated_at: new Date().toISOString() };
+  /* HANYA lewat `supabaseJson` milik context ini (di-reekspor `./repository`).
+     Versi pertama memakai `supabaseUpsert`/`fetchMasterByWa` langsung dari
+     `_lib/db/*`; berkas tes menstub `./repository`, jadi panggilan itu LOLOS
+     dari stub dan benar-benar menulis ke database produksi saat suite berjalan
+     (terukur: satu baris `628111222333` masuk 2026-11-12 14:10 UTC). Satu pintu
+     keluar = satu pintu untuk di-stub. */
   try {
-    const rows = await fetchMasterByWa([wa]);
-    const m = Array.isArray(rows) ? rows.find((r) => normWa(String(r.no_wa || '')) === wa) : null;
+    const rows = await supabaseJson('GET', 'master_database_candidate', {
+      query: { select: 'id', no_wa: `eq.${wa}`, limit: '1' },
+    });
+    const m = Array.isArray(rows) ? rows[0] : null;
     if (m && m.id !== undefined) {
       await supabaseJson('PATCH', 'master_database_candidate', {
         query: { id: `eq.${m.id}` },
@@ -188,8 +194,10 @@ async function syncMasterDariForm(
       });
       return;
     }
-    await supabaseUpsert('master_database_candidate', { ...body, no_wa: wa }, ['no_wa'], {
-      headers: { Prefer: 'return=minimal' },
+    await supabaseJson('POST', 'master_database_candidate', {
+      query: { on_conflict: 'no_wa' },
+      body: { ...body, no_wa: wa },
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
     });
   } catch (e) {
     // Tidak menggagalkan persetujuan yang sudah tersimpan, tetapi TIDAK senyap:
