@@ -52,18 +52,6 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   submitMasterForm: '/.netlify/functions/master-data',
   getDrafCvMaster: '/.netlify/functions/master-data',
   simpanUpdateMaster: '/.netlify/functions/master-data',
-  // Template CV (2026-10-10) — admin-only CRUD `sys_config`.
-  getTemplateCvList: '/.netlify/functions/master-data',
-  simpanTemplateCv: '/.netlify/functions/master-data',
-  hapusTemplateCv: '/.netlify/functions/master-data',
-
-  // Sync (2026-10-20) — store lokal-first panel admin. `syncProbe` sengaja
-  // punya entry sendiri: ia dipanggil SETIAP kali app dibuka dan jawabannya
-  // hanya beberapa ratus byte, jadi menaruhnya di entry terberat repo
-  // (bridge-links) berarti membayar cold start penuh untuk 210 byte.
-  syncProbe: '/.netlify/functions/sync',
-  syncDelta: '/.netlify/functions/sync',
-  syncManifest: '/.netlify/functions/sync',
 
   // Config
   updateSysConfig: '/.netlify/functions/config',

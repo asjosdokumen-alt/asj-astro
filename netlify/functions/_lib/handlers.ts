@@ -145,7 +145,7 @@ interface RateLimitCheck {
  *
  *   Membatasi berdasarkan awalan nama (`get*`/`fetch*`) akan salah dalam dua
  *   arah: `getUploadUrls` MENANDATANGANI URL (bukan sekadar membaca) dan
- *   `syncDelta` membaca tapi mengubah state sinkronisasi. Jadi daftarnya
+ *   `approveForm` membaca baris lalu MENULIS status. Jadi daftarnya
  *   eksplisit, dan `handlers.test.ts` menjaga setiap nama di sini benar-benar
  *   ada di `surfaces/registry.ts` — salah ketik tidak boleh membuat sebuah aksi
  *   diam-diam kehilangan perlindungan.
