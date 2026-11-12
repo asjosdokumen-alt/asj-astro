@@ -14,20 +14,36 @@ Sistem ini punya **dua tabel untuk orang yang sama** (`master_database_candidate
 tangan di sepuluh tempat**. Semua gejala yang dilaporkan — modal A ≠ modal B, template
 tidak sesuai DB — adalah akibat langsung dari itu, bukan bug terpisah-pisah.
 
-**Terukur hari ini di produksi:**
+**Terukur di produksi (Neon, `env-kunci/PRODUCTION.env`):**
 
 | Ukuran | Nilai |
 |---|---|
-| `master_database_candidate` | 234 baris · **282 kolom** |
-| `database_candidate` | 226 baris · 34 kolom |
+| `master_database_candidate` | 265 baris · **282 kolom** |
+| `database_candidate` | 264 baris · 34 kolom |
 | Kolom CV yang **diduplikasi** di kedua tabel | 16 |
-| **Sel yang menyimpang** di 16 kolom itu | **311** |
-| Baris master tanpa baris kandidat | **8** (5 di antaranya data uji) |
+| **Sel yang menyimpang** — sesudah migrasi `053` | **0** (dari 16 kolom) |
+| Baris master tanpa baris kandidat | **1** (ASJ00222, WA rusak) |
 | Baris kandidat tanpa master | 0 |
 | Template CV tersimpan | **1**, dan template itu **tidak bisa** menghasilkan CV yang benar |
 
-Penyimpangan **311 sel** itu bukan sisa lama: migrasi `040` dan `045` sudah menyelaraskan
-data, lalu penyimpangan **terbentuk lagi**. Artinya penyebabnya masih hidup.
+> ### ⚠️ Koreksi 2026-11-12 20:30 — angka pertama di dokumen ini salah DB
+>
+> Draf pertama dokumen ini melaporkan **311 sel menyimpang** dan beberapa contoh
+> per kandidat. Semua angka itu diukur lewat `.env` di root repo, yang menunjuk
+> proyek **Supabase lama** (`gdwvffmevwtwnzrapjwy.supabase.co`) — bukan database
+> yang dipakai aplikasi. Ledger di sana berhenti di migrasi `016`; produksi ada
+> di **Neon** (`ep-bold-sunset-…`, lihat `env-kunci/PRODUCTION.env` dan
+> `.env.local`), dengan 53 migrasi terpasang.
+>
+> Konsekuensinya: angka 311 **tidak berlaku** untuk produksi, dan contoh
+> per-kandidat yang semula dipakai sudah diganti dengan yang diukur ulang di
+> Neon. Temuan tingkat kode (trigger, pemetaan field, generator template,
+> proyeksi sync) tidak berubah — semuanya diverifikasi ulang di Neon.
+>
+> Jebakan ini nyata dan berulang: `scripts/lib/load-env.mjs` membaca
+> `.env.local` **lebih dulu** daripada `.env`, jadi perkakas repo aman, tetapi
+> probe/audit yang membaca `.env` langsung akan mengukur database yang salah
+> tanpa satu pun peringatan. Lihat §10.
 
 ---
 
@@ -71,54 +87,15 @@ beda dengan modal B" yang terlihat: salah satu dari yang dibuka sebenarnya permu
 
 ## 2. Bukti: contoh nyata yang tidak sinkron
 
-### 2.1 ASJ00104 — master terisi, salinan kosong
-
-| Kolom | `master` | `database_candidate` | Yang terlihat |
-|---|---|---|---|
-| `tb` | `173` | `""` | modal: **kosong**, CV: **173** |
-| `bb` | `66` | `""` | modal: **kosong**, CV: **66** |
-| `usia` | `20` | `""` | modal: **kosong**, CV: **20** |
-| `gender` | `""` | `LAKI-LAKI` | modal: **LAKI-LAKI**, CV: **kosong** |
-| `tempat_lahir` | `MAGETAN` | `magetan` | sama nilainya, beda bentuk |
-
-Arah penyimpangannya **dua arah sekaligus** pada satu orang: master punya TB/BB/usia yang
-tidak pernah sampai ke salinan, dan salinan punya gender yang tidak pernah sampai ke master.
-Tidak ada satu pun jalur yang bisa menghasilkan keadaan ini kalau sinkronisasinya benar.
-
-### 2.2 ASJ00222 — baris master yang tidak bisa dijangkau aplikasi
-
-| | `no_wa` |
-|---|---|
-| `master_database_candidate` | `622342782945` |
-| `database_candidate` | `62822342945` |
-
-`id_kandidat` sama. Satu digit `8` hilang di master. Akibatnya, terukur:
-
-```
-cari master no_wa=62822342945  -> 0 baris
-cari master no_wa=082234278945 -> 0 baris
-cari master no_wa=622342782945 -> 1 baris (ASJ00222)
-```
-
-`findMasterByWa()` (`db/master.ts:47`) menormalkan WA lewat `normalizeWa`, dan
-`normalizeWa('622342782945')` mengembalikan `''` (hanya typo `6208…` yang diperbaiki,
-bukan `62` + digit hilang). Karena itu:
-
-- `getDrafCvMaster` menjawab **"Data Master belum ada untuk …"** padahal barisnya ADA;
-  CV/template kandidat ini gagal dibuat dengan pesan yang menyesatkan.
-- `handleUpdateKandidatSuper` (`registry/service.ts:149`) tidak menemukan master →
-  penulisan balik **dilewati tanpa pesan** (`if (m && m.id !== undefined)`).
-- Trigger 041 menggabung dengan `d.no_wa = NEW.no_wa` → **tidak pernah cocok**.
-
-### 2.3 ASJ00101 — alergi makanan laut tercetak "tidak ada alergi"
+### 2.1 ASJ00179 — alergi udang tercetak "tidak ada alergi"
 
 | | Nilai |
 |---|---|
-| `master.alergi` | `Alergi makanan laut` |
-| `master.alergi_jp` | `魚介食アレルギー` |
+| `master.alergi` | `Alergi udang` |
+| `master.alergi_jp` | `エビアレルギー` |
 | Yang dicetak JIPA `H16`/`I16` | **`無い(TIDAK)`** |
 
-Sebabnya satu baris di `src/lib/cv-template-factory/data.ts:101`:
+Sebabnya satu baris di `src/lib/cv-template-factory/data.ts`:
 
 ```ts
 alergi: v('ALERGI', 'medis.alergi'),
@@ -127,14 +104,53 @@ alergi: v('ALERGI', 'medis.alergi'),
 sedangkan `buildMasterNested` (`master-data/service.ts:437`) mengeluarkan kunci
 **`medis.alergi_id`**, bukan `medis.alergi`. `v()` tidak menemukan `medis.alergi`, lalu
 mengembalikan sentinel `'-'`, dan `negatif('-')` bernilai `true` → kolom alergi dicetak
-"tidak ada" untuk **semua** kandidat. Tujuh baris punya alergi terisi; semuanya salah cetak.
+"tidak ada" untuk **semua** kandidat.
+
+**Terukur di produksi: 43 baris punya alergi terisi.** Enam di antaranya alergi nyata
+(`ASJ00179` udang, `ASJ00152` ayam & telur, `ASJ00095` kripik usus, …); sisanya "TIDAK ADA"
+yang kebetulan benar. Untuk enam orang itu, form Jepang menyatakan mereka tidak punya
+alergi.
 
 > Catatan: `riwayat_medis` dan `riwayat_kecelakaan` **tidak** kena, karena keduanya sudah
-> memakai akhiran `_id` di `data.ts:103,105`. Hanya `alergi` yang tertinggal.
+> memakai akhiran `_id`. Hanya `alergi` yang tertinggal.
+
+### 2.2 ASJ00188 / ASJ00133 / ASJ00194 — nilai ujian dipakai sebagai tautan
+
+`jft` dan `jft_url` adalah **dua kolom berbeda**: yang pertama nilai ujian (isi CV), yang
+kedua tautan berkas (pratinjau). Di `database_candidate` hanya ada satu kolom (`jft`), dan
+`mapCandidate` mengambil `jftUrl` darinya:
+
+| Baris | `database_candidate.jft` | Akibat di dossier |
+|---|---|---|
+| ASJ00188 | `233` | tombol SERTIF JFT membuka alamat `233` |
+| ASJ00133 | `A1` | idem |
+| ASJ00194 | `A2/205` | idem |
+
+Terukur atas 264 baris: `jft` berisi URL **89**, nilai ujian **6**, kosong **169**. Jadi
+kolom itu memang dipakai untuk dua arti sekaligus — dan kode harus memisahkannya menurut
+bentuk nilai, bukan menurut nama kolom.
+
+### 2.3 ASJ00222 — baris master yang tidak bisa dijangkau aplikasi
+
+| | `no_wa` |
+|---|---|
+| `master_database_candidate` | `622342782945` |
+| `database_candidate` | **tidak ada barisnya** |
+
+Satu digit `8` hilang di master. `findMasterByWa()` (`db/master.ts:47`) menormalkan WA lewat
+`normalizeWa`, dan `normalizeWa('622342782945')` mengembalikan `''` (hanya typo `6208…`
+yang diperbaiki, bukan `62` + digit hilang). Karena itu:
+
+- baris ini **tidak pernah muncul** di daftar admin (daftar membaca `database_candidate`);
+- `getDrafCvMaster` tidak bisa menemukannya, jadi CV-nya tidak bisa dibuat;
+- trigger cermin tidak punya pasangan untuk digabung.
+
+Ini satu-satunya baris master tanpa pasangan di produksi. Tidak diperbaiki otomatis karena
+tanpa baris pembanding, WA yang benar tidak bisa dipastikan — perlu keputusan pemilik.
 
 ---
 
-## 3. Mengapa 311 sel menyimpang lagi — lima sebab, semuanya masih hidup
+## 3. Mengapa penyimpangan terbentuk lagi — lima sebab, semuanya masih hidup
 
 ### 3.1 Trigger 041 hanya menyalin nilai yang TIDAK KOSONG
 
@@ -379,6 +395,20 @@ langsung terlihat begitu ada yang menyambungkannya.
 
 ## 7. Yang perlu diperbaiki, urut dampak
 
+> ### Status 2026-11-12 20:30
+>
+> | Butir | Status | Bukti |
+> |---|---|---|
+> | P0-1 alergi `medis.alergi_id` | **selesai** | `e66817b`; tes regresi di `data.test.ts` |
+> | P0-2 trigger cermin | **selesai** | migrasi `053` (diterapkan; `migrate:status` 53 applied) |
+> | P0-3 rekonsiliasi data | **selesai** | migrasi `053` langkah 3–4; drift 16 kolom kini **0** |
+> | P0-4 ASJ00222 | **belum** | butuh keputusan pemilik: WA yang benar tidak bisa ditebak |
+> | P0-5 hapus baris uji | **tidak dilakukan** | baris uji hanya ada di proyek Supabase lama, bukan produksi |
+> | P1-6…9 template | **sebagian** | `e66817b` (specs, clearCells, label menang, sheet); record lama ditolak `256fbfc` |
+> | P2-10 `SYNC_SELECT.master` | **selesai** | `685880a`; gerbang skema terbukti gagal pada daftar lama |
+> | P2-11 `localFirst` | **belum** | perlu keputusan: sambungkan atau hapus |
+> | P3-13…15 | **sebagian** | `95989b7` (jft nilai vs URL) |
+
 ### P0 — salah cetak / data hilang (kerjakan dulu)
 
 1. **`data.ts:101`** — tambahkan `medis.alergi_id`:
@@ -489,5 +519,47 @@ Pilihannya:
   tetap "isi saja" (karena unggahan lama hanya ada di salinan), field identitas menang
   mutlak. Ini yang paling dekat dengan maksud komentar 041, dan yang saya sarankan.
 
-Sampai pilihan itu dibuat, setiap perbaikan trigger hanya akan memindahkan penyimpangan,
-bukan menghilangkannya.
+**Keputusan yang diambil di migrasi `053` (2026-11-12):** bukan A, bukan B, melainkan
+**"cerminkan hanya kolom yang benar-benar berubah di tulisan itu"** (`IS DISTINCT FROM OLD`).
+
+| Kejadian | Perilaku |
+|---|---|
+| admin mengosongkan TB di master | kolom `tb` berubah ⇒ salinan ikut kosong |
+| master menulis `ai_data_json` saja | `tb` tidak berubah ⇒ salinan TIDAK disentuh |
+| unggahan lama hanya ada di salinan | tidak ada tulisan master ke kolom itu ⇒ nilai bertahan |
+
+Jadi penghapusan berfungsi (cacat utama 041 hilang) tanpa menghapus nilai yang hanya hidup
+di salinan pada setiap tulisan yang tidak ada hubungannya. `nama_lengkap` dan `id_kandidat`
+tetap tidak pernah dikosongkan — keduanya identitas baris.
+
+---
+
+## 10. Catatan operasional: dua database, dan yang salah ada di `.env`
+
+Ini bukan temuan kode, tetapi penyebab audit yang saling bertentangan — termasuk draf
+pertama dokumen ini.
+
+| Berkas | Menunjuk | Dipakai oleh |
+|---|---|---|
+| `.env` | `gdwvffmevwtwnzrapjwy.supabase.co` (Supabase lama) | **tidak ada** — ledger berhenti di migrasi `016` |
+| `.env.local` | `ep-bold-sunset-…neon.tech` | perkakas repo (`load-env.mjs`: `.env.local` > `.env`) |
+| `env-kunci/PRODUCTION.env` | idem (Neon) | acuan produksi |
+
+Urutan di `scripts/lib/load-env.mjs` menyelamatkan perkakas repo: `['.env.local',
+'.env.lokal', '.env']` dan `process.env` menang. Tetapi **probe/audit yang membaca `.env`
+langsung** akan mengukur proyek Supabase lama tanpa peringatan apa pun — persis yang
+menghasilkan angka 311 sel di draf pertama dokumen ini.
+
+Aturan untuk probe berikutnya:
+
+1. Selalu cetak **host** database yang diukur (satu baris) sebelum menyimpulkan apa pun.
+2. Baca `.env.local` atau `env-kunci/PRODUCTION.env`, jangan `.env`.
+3. Kalau ledger `schema_migrations` tidak memuat migrasi terbaru, itu bukan "belum
+   dimigrasi" — kemungkinan besar itu database yang salah.
+
+Perkakas probe yang dipakai untuk dokumen ini (baca-saja, mencetak host):
+
+```
+node deliverables/_drift-probe.mjs            # default env-kunci/PRODUCTION.env
+node deliverables/_diag-053.mjs               # diagnosa trigger & join
+```
