@@ -200,6 +200,25 @@ function ym(v: unknown): string {
 }
 
 /**
+ * `2021-07` → `2021年7月1日` — khusus blok 学歴 (KINKI).
+ *
+ * Keputusan pemilik 2026-11-12: *"untuk hari silahkan isi auto saja, manual saya
+ * juga isi sama semua tanggal 1"*. Kandidat hanya menghafal tahun & bulan, dan
+ * form KINKI mencetak kolom tanggal lengkap; membiarkan harinya kosong membuat
+ * sel terbaca sebagai formulir belum selesai.
+ *
+ * Tahun saja tetap `2019年` — menambahkan bulan Januari berarti mengarang bulan,
+ * dan itu kesalahan yang lebih besar daripada sel kosong.
+ */
+function ymd(v: unknown): string {
+  const raw = s(v).trim();
+  if (/^\d{4}$/.test(raw)) return `${raw}年`;
+  const p = yearMonth(v);
+  if (!p.y || !p.m) return ym(v);
+  return `${p.y}${p.m}1日`;
+}
+
+/**
  * 期間. Di bawah setahun ditulis dalam BULAN — dulu semuanya dibulatkan ke
  * `1年`, sehingga pekerjaan 3 bulan tercetak "1年" dan riwayat kerjanya
  * terbaca jauh lebih panjang daripada kenyataan.
@@ -493,8 +512,8 @@ export function buildValues(data: CandidateData): Record<string, string> {
   const sekolah = bersih(sma.sekolah_jp) || bersih(sma.sekolah ?? sma.nama_sekolah ?? sma.sekolah_id);
   const jurusan = jpTerm(bersih(sma.jurusan_jp) || (sma.jurusan ?? sma.jurusan_id));
   if (isGood(sekolah)) {
-    cells.E20 = ym(sma.masuk ?? sma.tahun_masuk);
-    cells.F21 = ym(sma.lulus ?? sma.tahun_lulus);
+    cells.E20 = ymd(sma.masuk ?? sma.tahun_masuk);
+    cells.F21 = ymd(sma.lulus ?? sma.tahun_lulus);
     cells.I20 = durasi(sma.masuk ?? sma.tahun_masuk, sma.lulus ?? sma.tahun_lulus);
     // 地域 — kolom `wilayah_sekolah` (migrasi 022). Dulu selalu dikosongkan.
     cells.K20 = bersih(id.wilayah_sekolah);
@@ -511,8 +530,8 @@ export function buildValues(data: CandidateData): Record<string, string> {
   if (idxLpk >= 0) {
     const lpk = edu[idxLpk];
     sekolahLpk = bersih(lpk.sekolah_jp) || bersih(lpk.sekolah ?? lpk.nama_sekolah ?? lpk.sekolah_id);
-    cells.E22 = ym(lpk.masuk ?? lpk.tahun_masuk);
-    cells.F23 = isGood(s(lpk.lulus ?? lpk.tahun_lulus)) ? ym(lpk.lulus ?? lpk.tahun_lulus) : '今まで';
+    cells.E22 = ymd(lpk.masuk ?? lpk.tahun_masuk);
+    cells.F23 = isGood(s(lpk.lulus ?? lpk.tahun_lulus)) ? ymd(lpk.lulus ?? lpk.tahun_lulus) : '今まで';
     cells.I22 = durasi(lpk.masuk ?? lpk.tahun_masuk, lpk.lulus ?? lpk.tahun_lulus);
     cells.N22 = kouritsuSekolah(sekolahLpk, lpk.status_sekolah);
     cells.P22 = sekolahLpk;
@@ -558,7 +577,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
     // 月収: `Z` sudah berisi teks tetap `万円`. Menulis "2万円" di X membuat
     // sel terbaca "2万円万円" — 9 dari 9 CV manual menulis ANGKA saja di X.
     const gaji = manYenRp(p.gaji ?? p.penghasilan);
-    cells[`X${top}`] = gaji;
+    // `‐` bila barisnya berisi pekerjaan tetapi gajinya tidak diisi — sama
+    // dengan kolom 月収 keluarga. Baris yang benar-benar kosong dibiarkan ''.
+    const adaKerja = isGood(pt) || isGood(cells[`R${top}`]) || isGood(ym(masuk));
+    cells[`X${top}`] = gaji || (adaKerja ? '‐' : '');
     // 備考 — industri lalu catatan.
     cells[`AA${top}`] = bersih(p.catatan_jp) || bersih(p.bidang ?? p.industri) || bersih(p.catatan ?? p.keterangan);
   }
@@ -600,17 +622,28 @@ export function buildValues(data: CandidateData): Record<string, string> {
   for (let i = 0; i < FAM_ROWS; i++) {
     const row = FAM_START + i;
     const p = fam[i] ?? {};
+    /* Baris tanpa anggota keluarga = `□□`, bukan `■□`. Versi lama mencentang
+       同居 untuk SETIAP baris — termasuk baris kosong — sehingga form mengklaim
+       seluruh slot diisi orang yang tinggal serumah. 9 CV manual pemilik
+       (2026-11-12) selalu `□□` pada baris kosong.
+       "Ada anggota" = ada NAMA **atau** 続柄: baris Form Master boleh hanya
+       menyebut hubungan tanpa nama, dan baris seperti itu tetap anggota. */
+    const adaAnggota =
+      isGood(bersih(p.nama ?? p.nama_lengkap)) ||
+      isGood(bersih(p.hubungan_jp ?? p.hubungan));
     cells[`B${row}`] = sudahJp(p.hubungan_jp)
       ? bersih(p.hubungan_jp)
       : hubunganJp(bersih(p.hubungan_jp) || p.hubungan);
     cells[`D${row}`] = angka(p.usia ?? p.umur);
     cells[`F${row}`] = jpTerm(bersih(p.pekerjaan_jp) || p.pekerjaan);
-    cells[`K${row}`] = manYenRp(p.gaji ?? p.penghasilan);
+    // 月収 keluarga: angka, atau `‐` bila tidak ada — 9 dari 9 CV manual
+    // memakai tanda itu, termasuk pada baris yang tidak diisi.
+    cells[`K${row}`] = manYenRp(p.gaji ?? p.penghasilan) || '‐';
     // 同居/別居 — dulu dicetak `■`/`□` tetap (selalu "tinggal bersama").
     const tinggal = s(p.tinggal ?? p.status_tinggal).toUpperCase();
     const serumah = !/TIDAK|BEDA|LUAR|PISAH|MANDIRI|INDEPENDEN/.test(tinggal);
-    cells[`N${row}`] = serumah ? '■' : '□';
-    cells[`P${row}`] = serumah ? '□' : '■';
+    cells[`N${row}`] = !adaAnggota ? '□' : serumah ? '■' : '□';
+    cells[`P${row}`] = !adaAnggota ? '□' : serumah ? '□' : '■';
   }
   const darurat = hubunganJp(id.kontak_darurat_hubungan);
   cells.Y38 = darurat === 'その他' ? '' : darurat;
