@@ -1294,6 +1294,39 @@ export async function handleGetDrafCvMaster(payload: any[], sessionToken?: strin
   } catch (e: any) { return { error: safeError('Gagal memuat data Master.', e) }; }
 }
 
+/**
+ * Baris master LAIN dengan nama + tanggal lahir yang sama = orang yang sama
+ * disimpan dua kali.
+ *
+ * KENAPA ADA (2026-11-12). `master_database_candidate` berkunci unik pada
+ * `no_wa`, jadi salah ketik nomor menghasilkan baris BARU, bukan pembaruan.
+ * Terukur: `ASJ00222` (WA `622342782945`) adalah `ASJ00122` (WA
+ * `6282342782945`) yang kehilangan satu digit — nama, tanggal lahir, TB/BB
+ * identik. Baris kembar itu tidak muncul di daftar admin (tidak punya baris
+ * `database_candidate`) dan CV-nya tidak bisa dibuat.
+ *
+ * Fungsi ini MURNI supaya bisa diuji tanpa database. Pemanggil yang memutuskan
+ * apa yang dilakukan saat kembar ditemukan.
+ */
+export function cariKembaranMaster(
+  rows: Array<Record<string, unknown>>,
+  wa: string,
+  nama: string,
+  tglLahir: unknown,
+): Record<string, unknown> | null {
+  const tanggal = toDateOnly(tglLahir);
+  const n = String(nama || '').trim().toUpperCase();
+  if (!n || !tanggal) return null;
+  const target = nw(wa);
+  for (const r of rows) {
+    if (nw(String(r.no_wa || '')) === target) continue;
+    if (String(r.nama_lengkap || '').trim().toUpperCase() !== n) continue;
+    if (toDateOnly(r.tgl_lahir) !== tanggal) continue;
+    return r;
+  }
+  return null;
+}
+
 export async function handleSubmitMasterForm(payload: any[], sessionToken?: string) {
   const d = (payload && payload[0]) || {};
   const wa = nw(String(d.wa || ''));
@@ -1304,6 +1337,41 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
   try {
     let row = await findMasterByWa(wa);
     const nama = String(d.nama || '').trim().toUpperCase() || 'KANDIDAT';
+    /* Cegah duplikat SEBELUM menulis. Tanpa ini, salah ketik satu digit WA
+       membuat orang yang sama punya dua baris master — dan baris kedua tidak
+       akan pernah muncul di daftar admin karena tidak punya baris kandidat
+       (terukur: ASJ00222 vs ASJ00122). Pemeriksaan ini tidak boleh
+       menggagalkan simpan kalau query-nya sendiri gagal. */
+    if (!row) {
+      try {
+        const kandidatKembar = await supabaseJson('GET', 'master_database_candidate', {
+          query: {
+            select: 'id,id_kandidat,no_wa,nama_lengkap,tgl_lahir',
+            nama_lengkap: `ilike.${nama}`,
+            limit: '5',
+          },
+        });
+        const kembar = cariKembaranMaster(
+          Array.isArray(kandidatKembar) ? kandidatKembar : [],
+          wa,
+          nama,
+          d.tglLahir,
+        );
+        if (kembar) {
+          const w = String(kembar.no_wa || '');
+          const mask = w.length > 6 ? `${w.slice(0, 4)}****${w.slice(-3)}` : w;
+          return {
+            success: false,
+            error:
+              `Data master ${nama} (${toDateOnly(d.tglLahir)}) sudah ada dengan WA ${mask}. ` +
+              'Perbaiki nomor WA di data itu — jangan disimpan sebagai kandidat baru.',
+          };
+        }
+      } catch {
+        /* pemeriksaan duplikat bersifat pencegahan; kegagalannya tidak boleh
+           membatalkan simpan yang sah */
+      }
+    }
     const folder = masterFolder(nama);
     const fileUrls: Record<string, any> = {};
     for (const [from, col] of Object.entries(MASTER_FILE_COLUMNS)) {

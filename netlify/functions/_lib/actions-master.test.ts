@@ -16,7 +16,7 @@
 // Tes di bawah menjaga invarian itu, bukan isi sebuah daftar.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { buildAiOverflow, mergeAiOverflow, buildMasterBody, buildMasterNested, hanyaFieldBerubah, syncAiFromMasterPatch } from '../contexts/master-data';
+import { buildAiOverflow, mergeAiOverflow, buildMasterBody, buildMasterNested, cariKembaranMaster, hanyaFieldBerubah, syncAiFromMasterPatch } from '../contexts/master-data';
 import { TABLE_COLUMNS } from '../_lib/db/schema.generated';
 
 describe('buildMasterBody — setiap kolom yang ditulis ADA di kontrak', () => {
@@ -319,5 +319,44 @@ describe('syncAiFromMasterPatch — kolom skalar tercermin ke ai_data_json', () 
     expect(syncAiFromMasterPatch('', { jft: 'N3' })).toBeNull();
     expect(syncAiFromMasterPatch('-', { jft: 'N3' })).toBeNull();
     expect(syncAiFromMasterPatch('{rusak', { jft: 'N3' })).toBeNull();
+  });
+});
+
+/* ── Regresi 2026-11-12: duplikat master karena WA salah ketik ───────────────
+   `master_database_candidate` berkunci unik pada `no_wa`, jadi satu digit yang
+   hilang menghasilkan baris BARU, bukan pembaruan. Terukur di produksi:
+   ASJ00222 (WA 622342782945) = ASJ00122 (WA 6282342782945) — nama, tanggal
+   lahir, TB/BB identik. Baris kembar itu tidak punya baris kandidat, jadi ia
+   tidak pernah muncul di daftar admin dan CV-nya tidak bisa dibuat.
+   `cariKembaranMaster` adalah penjaganya, murni supaya bisa diuji tanpa DB. */
+describe('cariKembaranMaster — orang yang sama, WA berbeda', () => {
+  const baris = (idk: string, wa: string, nama: string, lahir: string) => ({
+    id_kandidat: idk,
+    no_wa: wa,
+    nama_lengkap: nama,
+    tgl_lahir: lahir,
+  });
+
+  it('menemukan kembar walau ejaan WA dan bentuk tanggal berbeda', () => {
+    const rows = [
+      baris('ASJ00122', '6282342782945', 'SATRIA PUTRA DEWANGGA', '2008-02-05'),
+    ];
+    const kembar = cariKembaranMaster(rows, '622342782945', 'SATRIA PUTRA DEWANGGA', '2008-02-05T00:00:00.000Z');
+    expect(kembar?.id_kandidat).toBe('ASJ00122');
+  });
+
+  it('baris dengan WA yang SAMA bukan kembar (itu barisnya sendiri)', () => {
+    const rows = [baris('ASJ00122', '6282342782945', 'SATRIA', '2008-02-05')];
+    expect(cariKembaranMaster(rows, '6282342782945', 'SATRIA', '2008-02-05')).toBeNull();
+  });
+
+  it('nama sama tetapi tanggal lahir beda = orang lain', () => {
+    const rows = [baris('ASJ00122', '6282342782945', 'BUDI', '2008-02-05')];
+    expect(cariKembaranMaster(rows, '6289999999999', 'BUDI', '1999-01-01')).toBeNull();
+  });
+
+  it('tanpa tanggal lahir tidak menebak', () => {
+    const rows = [baris('ASJ00122', '6282342782945', 'BUDI', '2008-02-05')];
+    expect(cariKembaranMaster(rows, '6289999999999', 'BUDI', '')).toBeNull();
   });
 });

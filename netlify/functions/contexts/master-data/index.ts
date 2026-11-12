@@ -23,6 +23,7 @@ export {
   AI_TO_MASTER_COLUMNS,
   pruneAiRiwayat,
   syncAiFromMasterPatch,
+  cariKembaranMaster,
 } from './service';
 // Alias: simpanUpdateMaster maps to handleSubmitMasterForm
 export { handleSubmitMasterForm as handleSimpanUpdateMaster } from './service';
