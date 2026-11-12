@@ -29,13 +29,16 @@ const SHEET = 'xl/worksheets/sheet1.xml';
 const DRAWING = 'xl/drawings/drawing1.xml';
 const SHARED = 'xl/sharedStrings.xml';
 
-/** Geometri aset, terukur 2026-10-26 setelah 15 sheet kandidat lain dibuang. */
+/** Geometri aset, TERUKUR ULANG 2026-11-12 setelah template diganti
+ *  (`aec08e4`, sumber `D:/ARBI ALVIANSYAH_CV.xlsx`): 3→6 `<col>`, 9112→9314
+ *  sel, 27→41 validasi, dan used-range melebar ke `A2:BW1001` karena format
+ *  ikut turun sampai baris 1001. Merge tidak berubah (252). */
 const SOURCE = {
-  colElements: 3,
+  colElements: 6,
   mergeCells: 252,
-  cellElements: 9112,
-  dataValidations: 27,
-  dimension: 'A1:BV126',
+  cellElements: 9314,
+  dataValidations: 41,
+  dimension: 'A2:BW1001',
 } as const;
 
 async function loadZip(bytes: Uint8Array | Blob) {
@@ -182,81 +185,84 @@ describe('kinki · peta sel', () => {
     expect(Object.keys(cells).length).toBeGreaterThan(60);
   });
 
-  it('tanggal lahir ditulis sebagai ANGKA, bukan teks (S8 = DATEDIF)', () => {
+  it('tanggal lahir ditulis sebagai ANGKA, bukan teks (T9 = DATEDIF)', () => {
     const nums = buildNumbers(kandidat());
-    // 2005-11-02 = 38658 hari sejak 1899-12-30.
-    expect(nums.E8).toBe(38658);
-    expect(buildNumbers(kandidat()).E8).toBeTypeOf('number');
+    // 2005-11-02 = 38658 hari sejak 1899-12-30. Selnya F9 di template baru.
+    expect(nums.F9).toBe(38658);
+    expect(buildNumbers(kandidat()).F9).toBeTypeOf('number');
   });
 
   it('identitas & kebiasaan memakai kosakata dropdown form', () => {
     const c = buildValues(kandidat());
-    expect(c.E6).toBe('BUDI TRISNANTO');
-    expect(c.E7).toBe('ブディ・トリスナント');
-    expect(c.S7).toBe('男');
-    expect(c.L13).toBe('O'); // `O-` → O, dropdown hanya A/B/O/AB/不明
-    expect(c.E13).toBe('無飲');
-    expect(c.E14).toBe('非喫煙');
-    expect(c.L14).toBe('右');
-    expect(c.E11).toBe('未婚');
-    expect(c.L15).toBe('1.0');
-    expect(c.M3).toBe('なし'); // tanpa SIM, 自動車運転 tidak boleh tercentang
-    expect(c.E34).toBe('□');
-    expect(c.E16).toBe('ジョギング');
-    expect(c.E9).toBe('08999170623');
-    expect(c.E10).toBe('インドネシア東ジャワ州ポノロゴ県');
+    expect(c.F7).toBe('BUDI TRISNANTO');
+    expect(c.F8).toBe('ブディ・トリスナント');
+    expect(c.T8).toBe('男');
+    expect(c.M14).toBe('O'); // `O-` → O, dropdown hanya A/B/O/AB/不明
+    expect(c.F14).toBe('無飲');
+    expect(c.F15).toBe('非喫煙');
+    expect(c.M15).toBe('右');
+    expect(c.F12).toBe('未婚');
+    expect(c.M16).toBe('1.0');
+    expect(c.N4).toBe('なし'); // tanpa SIM, 自動車運転 tidak boleh tercentang
+    expect(c.F16).toBe('なし');
+    expect(c.F17).toBe('ジョギング');
+    expect(c.F10).toBe('08999170623');
+    expect(c.F11).toBe('インドネシア東ジャワ州ポノロゴ県');
   });
 
   it('できる作業 hanya mencentang keahlian yang benar-benar ditulis', () => {
     const c = buildValues(kandidat());
-    expect(c.P35).toBe('■'); // 大工
-    expect(c.W34).toBe('■'); // その他
-    expect(c.X35).toBe('整備士、大工');
-    expect(c.J34).toBe('□'); // 左官 tidak disebut
+    // Baris 35–36 memuat kotak centang keahlian. Fixture menyebut 大工 dan
+    // 整備士 (dua keahlian) → tepat DUA kotak tercentang, sisanya kosong.
+    const kotak = Object.entries(c).filter(([addr, v]) => /^[B-Y]3[56]$/.test(addr) && v === '■');
+    expect(kotak).toHaveLength(2);
+    // Teks bebasnya memuat keduanya.
+    expect(c.Y36).toBe('整備士、大工');
   });
 
-  it('pekerjaan & keluarga terisi sesuai blok form (2 baris per pekerjaan)', () => {
+  it('pekerjaan & keluarga terisi sesuai blok form', () => {
     const c = buildValues(kandidat());
-    expect(c.A26).toBe('正社員');
-    expect(c.D26).toBe('2024年6月');
-    expect(c.E27).toBe('2025年6月');
-    expect(c.H26).toBe('1年');
-    expect(c.Q26).toBe('MEKANIK');
-    expect(c.W26).toBe('1.8');
-    expect(c.A37).toBe('父');
-    expect(c.J37).toBe('1.5');
-    expect(c.X37).toBe('父');
-    expect(c.Z37).toBe('081234567890');
-    expect(c.M37).toBe('■');
+    expect(c.B27).toBe('正社員');
+    expect(c.E27).toBe('2024年6月');
+    expect(c.F28).toBe('2025年6月');
+    expect(c.I27).toBe('1年');
+    expect(c.R27).toBe('整備士');
+    // 月収: fixture `18000` dibaca sebagai rupiah (ribuan) → 万円.
+    expect(c.X27).toBe('18万円');
+    expect(c.B38).toBe('父');
+    expect(c.K38).toBe('15');
+    expect(c.Y38).toBe('父');
+    expect(c.AA38).toBe('081234567890');
+    expect(c.N38).toBe('■');
   });
 
   it('tanpa pekerjaan, placeholder `年月日` bawaan template TIDAK tercetak', () => {
     const data = kandidat();
     data.pekerjaan = [];
     const c = buildValues(data);
-    expect(c.D26).toBe('');
+    expect(c.B27).toBe('');
     expect(c.E27).toBe('');
-    expect(c.D27).toBe('');
+    expect(c.F28).toBe('');
   });
 });
 
 describe('kinki · MBTI masuk ke dropdown yang sah', () => {
-  it('Q47 PERSIS salah satu nilai AF111:AF126, dan U48..U52 ada di daftarnya', async () => {
+  it('R48 PERSIS salah satu nilai AF111:AF126, dan V49..V53 ada di daftarnya', async () => {
     const zip = await loadZip(b64ToBytes(KINKI_BASE64));
     const sheet = await part(zip, SHEET);
     const shared = await sharedStrings(zip);
     const types = Array.from({ length: 16 }, (_, i) => cellText(sheet, `AF${111 + i}`, shared));
 
     const c = buildValues(kandidat());
-    expect(types).toContain(c.Q47);
+    expect(types).toContain(c.R48);
     expect(types.filter(Boolean)).toHaveLength(16);
 
     const axisLists = {
-      U48: ['AL111', 'AL112'],
-      U49: ['AP111', 'AP112'],
-      U50: ['AT111', 'AT112'],
-      U51: ['AX111', 'AX112'],
-      U52: ['BB111', 'BB112'],
+      V49: ['AL111', 'AL112'],
+      V50: ['AP111', 'AP112'],
+      V51: ['AT111', 'AT112'],
+      V52: ['AX111', 'AX112'],
+      V53: ['BB111', 'BB112'],
     };
     for (const [addr, refs] of Object.entries(axisLists)) {
       const allowed = refs.map((r) => cellText(sheet, r, shared));
@@ -268,18 +274,18 @@ describe('kinki · MBTI masuk ke dropdown yang sah', () => {
     expect(Object.keys(TYPE_NAMES)).toHaveLength(16);
   });
 
-  it('tanpa teks wawancara: Q47 TETAP terisi dari bawaan, rumusnya tidak disentuh', () => {
+  it('tanpa teks wawancara: R48 TETAP terisi dari bawaan, rumusnya tidak disentuh', () => {
     const data = kandidat();
     data.wawancara = {};
 
     const c = buildValues(data);
     // Sel kosong terbaca sebagai formulir belum selesai oleh klien Jepang.
-    expect(c.Q47).toBe('管理者型（ISTJ）');
-    expect(c.U48).toBe('【I】内向型');
-    // `A50 (=Q47)` dan `E50 (INDEX/MATCH)` harus DIBIARKAN: karena Q47 ada,
+    expect(c.R48).toBe('管理者型（ISTJ）');
+    expect(c.V49).toBe('【I】内向型');
+    // `B51 (=R48)` dan `F51 (INDEX/MATCH)` harus DIBIARKAN: karena R48 ada,
     // keduanya menghasilkan nilai — bukan 0 dan bukan #N/A.
-    expect(c.A50).toBeUndefined();
-    expect(c.E50).toBeUndefined();
+    expect(c.B51).toBeUndefined();
+    expect(c.F51).toBeUndefined();
   });
 
   it('selisih di bawah ambang tidak membalik tipe', () => {
@@ -337,11 +343,11 @@ describe('kinki · dari baris BERSARANG `getDrafCvMaster`', () => {
     };
 
     const c = buildValues(normalizeMasterData(row));
-    expect(c.U3).toBe('私は規律正しく、勤勉で、諦めない性格です。');
-    expect(c.Q47).toBe('管理者型（ISTJ）');
-    expect(c.U48).toBe('【I】内向型');
-    expect(c.W34).toBe('■'); // できる作業 dari keahlian_khusus_jp
-    expect(c.O19).toBe('SMKN 1 SLAHUNG');
+    expect(c.V4).toBe('私は規律正しく、勤勉で、諦めない性格です。');
+    expect(c.R48).toBe('管理者型（ISTJ）');
+    expect(c.V49).toBe('【I】内向型');
+    expect(c.X35).toBe('■'); // できる作業 dari keahlian_khusus_jp
+    expect(c.P20).toBe('SMKN 1 SLAHUNG');
   });
 });
 
@@ -358,7 +364,7 @@ describe('kinki · angka, tanggal, dan kana yang dulu salah', () => {
     d.pendidikan = [{ tingkat: 'SMK', masuk: '2019', lulus: '2022', sekolah: 'SMKN 1 SLAHUNG', jurusan: 'TSM' }];
     const c = buildValues(d);
     expect(c.D19).toBe('2019年'); // dulu "2019年1月"
-    expect(c.H19).toBe('3年');
+    expect(c.I20).toBe('3年');
   });
 
   it('専攻 kosong memakai `-`, supaya strip atas tidak mencetak 0', () => {
@@ -426,16 +432,19 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
 
   it('pekerjaan: 雇用形態 / 業種 / 備考', () => {
     const c = buildValues(denganKolom());
-    expect(c.A26).toBe('正社員');
+    expect(c.B27).toBe('正社員');
     expect(c.M26).toBe('Manufaktur');
     expect(c.Z26).toBe('Lembur penuh');
   });
 
   it('keluarga: 同居区分 mengikuti kolom, bukan `■` tetap', () => {
     const c = buildValues(denganKolom());
-    expect(c.M37).toBe('□');
-    expect(c.O37).toBe('■');
-    expect(c.J37).toBe('250'); // 月収 2.500.000 円 → 250 (万円). SATUANNYA YEN, bukan rupiah.
+    // Baris keluarga pindah ke 38–42 di template baru; pasangan kolomnya
+    // 同居 (N) dan 別居 (P). Fixture menulis `tinggal: 'TERPISAH'`.
+    expect(c.N38).toBe('□');
+    expect(c.P38).toBe('■');
+    // 月収 keluarga: fixture `2500000` dibaca sebagai RUPIAH → 2,5万円.
+    expect(c.K38).toBe('2.5');
   });
 
   it('bahasa, tes, dan angka yang dulu selalu kosong', () => {
@@ -457,7 +466,7 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
     const c = buildValues(denganKolom());
     expect(c.Q47).toBe('広報運動家型（ENFP）');
     expect(c.U48).toBe('【E】外向型');
-    expect(c.U52).toBe('【A】自信型');
+    expect(c.V53).toBe('【A】自信型');
   });
 });
 

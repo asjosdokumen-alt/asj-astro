@@ -936,6 +936,13 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
        memberinya kolom, jadi pemetaannya pindah ke sini (aturan yang sama
        dengan kenalan_* di 019). */
     ['lama_di_jepang', 'lama', 'lama_di_jepang'],
+    /* Lama KERJA yang diharapkan (KINKI `X47` 就業希望年数) — BUKAN 在日期間.
+       CV AI sudah lama mengumpulkan `wawancara.lamakerja_diharapkan`, tetapi
+       kolomnya tidak punya baris di blok ini, jadi nilainya TAMPIL di form lalu
+       tidak pernah tersimpan; `buildMasterNested` pun mencetak sel kosong.
+       Dua tes kontrak (`ai-cv-column-coverage`, `form-column-parity`) menangkap
+       persis celah ini. */
+    ['lamakerjadiharapkan', 'lamakerja_diharapkan', 'lamakerja'],
     /* Migrasi 044. WAJIB terdaftar di sini: `masterColumnsFromAi` hanya menulis
        kolom yang punya baris di blok ini, jadi tanpa empat baris ini field-nya
        TAMPIL di CV AI tetapi nilainya tidak pernah tersimpan — dan karena
