@@ -664,10 +664,21 @@ export function buildValues(data: CandidateData): Record<string, string> {
   // 集団生活年数 / 就業希望年数 / 体力試験 — dulu seluruhnya dikosongkan.
   cells.R46 = bersih(data.fisik.tes_hitung);
   cells.Y46 = manYenRp(data.wawancara.tabungan);
+  /* 試験合格 (U39) — hasil uji bahasa yang SUDAH lulus (`bahasa`, mis.
+     "JFT-BASIC A2" / "JLPT N5"). Sebelum ini sel itu tidak pernah ditulis,
+     sehingga form resmi selalu kosong di baris 試験合格 walaupun kolomnya ada.
+     `level_bahasa_jepang` TIDAK dipakai di sini — itu level yang ditampilkan di
+     J4, dan menyalinnya ke U39 akan menyatakan "lulus N4" hanya karena
+     levelnya N4. */
+  cells.U39 = bersih(data.sertifikasi.bahasa);
   cells.U38 = durasiJp(data.sertifikasi.lama_belajar_jp);
   cells.U40 = bersih(data.sertifikasi.status_belajar_jp);
-  cells.R42 = bersih(data.sertifikasi.level_bahasa_inggris);
-  cells.U42 = bersih(data.sertifikasi.bahasa_lain);
+  /* 英語レベル / その他外国語: `無` saat kolomnya kosong.
+     7 dari 9 CV manual pemilik (2026-11-12) menulis `無` — bukan sel kosong.
+     Bedanya penting di form resmi: sel kosong terbaca "belum diisi", `無`
+     terbaca "memang tidak punya". */
+  cells.R42 = bersih(data.sertifikasi.level_bahasa_inggris) || '無';
+  cells.U42 = bersih(data.sertifikasi.bahasa_lain) || '無';
   cells.Y42 = masaTinggal(data.fisik.tinggal_kursus_tahun);
   cells.Y48 = bersih(data.wawancara.lamakerja_diharapkan);
   cells.AC52 = angka(data.fisik.tes_pushup);
