@@ -427,3 +427,38 @@ describe('processAIChat — terjemahan hanya dibayar saat giliran itu menambah d
     expect(JSON.stringify(res.data)).toContain('ブディ');
   });
 });
+
+/**
+ * Nomor urut dari model (owner 2026-11-12): hasil terjemahan masuk ke kolom
+ * CV sebagai "1. …\n2. …\n3. …" sehingga harus dihapus manual satu per satu.
+ * `tanpaNomorUrut` membuang penanda daftar di awal baris; `bersihkanNomorJp`
+ * menerapkannya HANYA pada nilai Jepang.
+ */
+describe('tanpaNomorUrut — penanda daftar dari model dibuang', () => {
+  it('membuang 1. 2. 3., bullet, angka lingkaran, dan tanda kutip', async () => {
+    const { tanpaNomorUrut } = await import('./chat');
+    expect(tanpaNomorUrut('1. 農家\n2. 主婦\n3. 学生')).toBe('農家\n主婦\n学生');
+    expect(tanpaNomorUrut('① 責任感が強い')).toBe('責任感が強い');
+    expect(tanpaNomorUrut('・丁寧に取り組む')).toBe('丁寧に取り組む');
+    expect(tanpaNomorUrut('「明るい性格です」')).toBe('明るい性格です');
+  });
+
+  it('TIDAK merusak angka yang bukan nomor daftar', async () => {
+    const { tanpaNomorUrut } = await import('./chat');
+    expect(tanpaNomorUrut('2020年7月から3年')).toBe('2020年7月から3年');
+    expect(tanpaNomorUrut('第25課中')).toBe('第25課中');
+  });
+
+  it('hanya menyentuh nilai *_jp / katakana', async () => {
+    const { bersihkanNomorJp } = await import('./chat');
+    const out = bersihkanNomorJp({
+      kelebihan: '1. Disiplin',
+      kelebihan_jp: '1. 規律',
+      keluarga: [{ pekerjaan: '1. PETANI', pekerjaan_jp: '2. 農家' }],
+    }) as Record<string, unknown> & { keluarga: Array<Record<string, string>> };
+    expect(out.kelebihan).toBe('1. Disiplin');
+    expect(out.kelebihan_jp).toBe('規律');
+    expect(out.keluarga[0].pekerjaan).toBe('1. PETANI');
+    expect(out.keluarga[0].pekerjaan_jp).toBe('農家');
+  });
+});

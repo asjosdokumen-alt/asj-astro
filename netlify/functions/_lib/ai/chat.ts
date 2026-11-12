@@ -265,6 +265,48 @@ export function kumpulkanTugasTerjemah(
  * "sudah diterjemahkan" yang salah lebih mahal daripada kolom yang masih
  * kosong (bisa diulang, dan terlihat).
  */
+/**
+ * Buang nomor urut / bullet yang ikut terbawa dari balasan model.
+ *
+ * Pemilik 2026-11-12: hasil terjemahan masuk ke kolom CV sebagai
+ * "1. …\n2. …\n3. …" sehingga ia harus menghapus nomornya satu per satu.
+ * Yang dibuang HANYA penanda daftar di awal baris — "3年" atau "2020年" tidak
+ * tersentuh karena tidak diikuti titik/kurung.
+ */
+export function tanpaNomorUrut(teks: string): string {
+  return String(teks ?? '')
+    .split('\n')
+    .map((baris) =>
+      baris
+        .replace(/^\s*(?:\d{1,2}\s*[.)、．]|\(\s*\d{1,2}\s*\)|[\u2460-\u2473]|[-・•●○▪])\s*/, '')
+        .replace(/^["'「『]+/, '')
+        .replace(/["'」』]+$/, '')
+        .trim(),
+    )
+    .filter((baris) => baris !== '')
+    .join('\n')
+    .trim();
+}
+
+const KUNCI_JP = /(_jp|katakana)$/;
+
+/**
+ * Terapkan `tanpaNomorUrut` pada nilai Jepang saja (`*_jp`, `katakana`).
+ * Kolom Indonesia dibiarkan apa adanya — nomor urut di sana bukan urusan kita.
+ */
+export function bersihkanNomorJp<T>(nilai: T, kunci = ''): T {
+  if (typeof nilai === 'string') {
+    return (KUNCI_JP.test(kunci) ? tanpaNomorUrut(nilai) : nilai) as unknown as T;
+  }
+  if (Array.isArray(nilai)) return nilai.map((x) => bersihkanNomorJp(x, kunci)) as unknown as T;
+  if (nilai && typeof nilai === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(nilai as Record<string, unknown>)) out[k] = bersihkanNomorJp(v, k);
+    return out as unknown as T;
+  }
+  return nilai;
+}
+
 export function terapkanHasilTerjemah(
   data: Record<string, unknown>,
   tugas: TugasTerjemah[],
@@ -276,7 +318,7 @@ export function terapkanHasilTerjemah(
   for (const key of Object.keys(hasil)) {
     const idx = Number(key);
     if (!Number.isInteger(idx) || idx < 0) continue;
-    const teks = String(hasil[key] ?? '').trim();
+    const teks = tanpaNomorUrut(String(hasil[key] ?? '').trim());
     if (!teks) continue;
     const t = byIndex.get(idx);
     if (!t) continue;
@@ -365,6 +407,8 @@ async function autoTranslateMissingJp(data: Record<string, unknown>, batas = 16)
     const parsed = parseJsonLoose(text);
     if (!parsed || typeof parsed !== 'object') return;
     const { jumlah } = terapkanHasilTerjemah(data, tugas, parsed as Record<string, unknown>);
+    // Nomor urut dari model tidak boleh ikut tersimpan (owner 2026-11-12).
+    Object.assign(data, bersihkanNomorJp(data));
     console.log(`[autoTranslate] Filled ${jumlah}/${tugas.length} fields`);
   } catch (e) {
     console.error('[autoTranslateMissingJp] error:', (e as { message?: string })?.message || e);
@@ -438,7 +482,8 @@ export const AI_FORM_DATA_INSTRUCTION =
   'WAJIB isi KEDUANYA (_id DAN _jp) — jangan kosongkan salah satu.\n' +
   'TERJEMAHAN: Jika kandidat meminta terjemahkan/translate, WAJIB kembalikan JSON dengan SEMUA field _jp terisi dari _id. ' +
   'Contoh: kelebihan_id = \"Disiplin\" → kelebihan_jp = \"建局がある\". ' +
-  'Untuk array (pendidikan, pekerjaan, keluarga): terjemahkan SEMUA baris.\n';
+  'Untuk array (pendidikan, pekerjaan, keluarga): terjemahkan SEMUA baris.\n' +
+  'JANGAN menuliskan nomor urut (1. 2. 3.), bullet, atau tanda kutip di dalam nilai — isi HANYA teksnya.\n';
 
 /**
  * Gerbang VIP AI CV Master — SATU definisi untuk dua pintu masuk.
@@ -553,7 +598,9 @@ export async function handleTerjemahkanKolomCv(payload: unknown, sessionToken?: 
     // kali ini: satu kiriman dibatasi `MAKS_TUGAS_SEKALI`, dan klien memakai
     // angka ini untuk menawarkan "tekan lagi".
     const sisa = semua.length - jumlah;
-    return { success: true, data, jumlah, sisa };
+    // Buang nomor urut / bullet / tanda kutip dari nilai Jepang sebelum dikirim
+    // ke klien — kalau tidak, pemilik harus menghapusnya manual di form.
+    return { success: true, data: bersihkanNomorJp(data), jumlah, sisa };
   } catch (e) {
     const f = aiFailure(e, 'Gagal menerjemahkan kolom. Coba lagi sebentar.');
     return {
