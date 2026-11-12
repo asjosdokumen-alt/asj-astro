@@ -77,6 +77,16 @@ const JOB_BLOCKS = 3;
 const FAM_START = 38;
 const FAM_ROWS = 5;
 
+/**
+ * Nama 日本語学校 yang dicetak di P22.
+ *
+ * Keputusan pemilik 2026-11-12: *"P22 kan auto terjemah otomatis CV AI … LPK
+ * Amanah Sakura Japan, sedangkan pihak TSK KINKI sebut kita ASJ日本語学校"*.
+ * Jadi nama hasil terjemahan otomatis TIDAK dipakai di form ini — klien KINKI
+ * mengenal lembaganya dengan nama Jepang yang tetap.
+ */
+const NAMA_SEKOLAH_JP = 'ASJ日本語学校';
+
 const AGAMA_JP: Record<string, string> = {
   ISLAM: 'イスラム教', KRISTEN: 'キリスト教', KATOLIK: 'カトリック',
   HINDU: 'ヒンドゥー教', BUDHA: '仏教', BUDDHA: '仏教', KONGHUCU: '儒教',
@@ -173,15 +183,6 @@ function jepangLevel(v: unknown): string {
   return lulus ? `${level}合格` : `${level}レベル`;
 }
 
-/**
- * 試験合格 — dropdown hanya berisi hasil LULUS (`なし/N5合格/…/N1合格`).
- * `N5レベル` TIDAK sah di sel ini; nilainya harus `なし`.
- */
-function lulusJp(v: unknown): string {
-  const level = jepangLevel(v);
-  return level.endsWith('合格') ? level : 'なし';
-}
-
 /** 四輪免許 — dropdown: あり/なし. */
 function simJp(v: unknown): string {
   if (negatif(v)) return 'なし';
@@ -222,11 +223,22 @@ function masaKerjaJp(v: unknown): string {
   const raw = s(v).trim();
   if (!raw) return '';
   const t = raw.toLowerCase();
+  /* Dropdown 就業希望年数: １年間 / ３年間 / ５年間 / ５年間以上 / １０年間 /
+     １０年以上 / 永住. Nilai di luar itu ditandai tidak valid oleh Excel, jadi
+     teks bebas dipetakan ke pilihan TERDEKAT — dan angka memakai digit lebar
+     penuh supaya sama persis dengan daftar. */
   if (/jangka panjang|long ?term|selamanya|permanen/.test(t)) return '５年間以上';
-  if (/jangka pendek|short ?term/.test(t)) return '１～３年';
+  if (/jangka pendek|short ?term/.test(t)) return '３年間';
+  if (/永住|permanent/.test(t)) return '永住';
   const th = /(\d+)\s*(tahun|thn|year)/.exec(t);
-  if (th) return `${Number(th[1])}年間`;
-  if (/^\d+$/.test(raw)) return `${raw}年間`;
+  const n = th ? Number(th[1]) : /^\d+$/.test(raw) ? Number(raw) : NaN;
+  if (Number.isFinite(n)) {
+    const zen = String(n).replace(/\d/g, (d) => '０１２３４５６７８９'[Number(d)]);
+    if (n >= 10) return `${zen}年以上`;
+    if (n >= 5) return '５年間';
+    if (n >= 3) return '３年間';
+    return '１年間';
+  }
   return raw;
 }
 function ymd(v: unknown): string {
@@ -271,19 +283,59 @@ function durasi(masuk: unknown, lulus: unknown): string {
  * Karena itu yang spesifik diperiksa lebih dulu, dan pencocokan `KARYAWAN`
  * baru dipakai kalau tidak ada penanda lain.
  */
+/**
+ * 雇用形態 (B27/B29/B31) — HANYA nilai yang ada di dropdown template:
+ * `アルバイト, 正社員, 非正社員, インターン, 家業`.
+ *
+ * Versi lama mengembalikan `契約社員` dan `技能実習生` — dua nilai yang TIDAK ada
+ * di daftar itu. Excel menandainya tidak valid, dan di form cetak selnya terbaca
+ * sebagai pilihan kosong. Terukur pada database: `KARYAWAN KONTRAK` 8 baris dan
+ * `MAGANG JEPANG` 1 baris jatuh ke dua nilai haram itu.
+ */
 function jenisKerjaJp(v: unknown): string {
   const t = s(v).toUpperCase();
   if (!isGood(t)) return '';
-  if (t.includes('BELUM') || t.includes('TIDAK BEKERJA') || t.includes('PENSIUN')) return '無職';
-  if (t.includes('PNS') || t.includes('ASN') || t.includes('TNI') || t.includes('POLRI')) return '公務員';
-  if (t.includes('FREELANCE') || t.includes('WIRAUSAHA') || t.includes('PEMILIK USAHA')) return '自営業';
-  if (t.includes('JEPANG')) return '技能実習生';
-  if (t.includes('INTERN') || t.includes('MAGANG')) return 'インターン';
+  if (t.includes('BELUM') || t.includes('TIDAK BEKERJA') || t.includes('PENSIUN')) return '非正社員';
+  if (t.includes('PNS') || t.includes('ASN') || t.includes('TNI') || t.includes('POLRI')) return '正社員';
+  if (t.includes('FREELANCE') || t.includes('WIRAUSAHA') || t.includes('PEMILIK USAHA')) return '家業';
+  if (t.includes('MAGANG') || t.includes('INTERN') || t.includes('JEPANG')) return 'インターン';
   if (t.includes('KELUARGA') || t.includes('USAHA')) return '家業';
   if (t.includes('HARIAN') || t.includes('LEPAS') || t.includes('PART') || t.includes('ALBAITO')) return 'アルバイト';
-  if (t.includes('KONTRAK') || t.includes('HONORER') || t.includes('ALIH')) return '契約社員';
+  if (t.includes('KONTRAK') || t.includes('HONORER') || t.includes('ALIH')) return '非正社員';
   if (t.includes('TETAP') || t.includes('KARYAWAN')) return '正社員';
   return '非正社員';
+}
+
+/**
+ * 試験合格 (U39) — dropdown: `なし, N5合格 … N1合格`.
+ *
+ * Kolom `bahasa` menyimpan hasil uji apa adanya. Dua aturan:
+ *   1. **JFT-BASIC A2 setara N5–N4** (keputusan pemilik 2026-11-12: *"kalau
+ *      lulus JFT A2, N5 lulus dong"*). Yang diklaim **N5** — mengklaim N4 akan
+ *      melebih-lebihkan kemampuan kandidat di form resmi.
+ *   2. JLPT (`JLPT N3`, `N4 LULUS`, …) → `N{n}合格`. Kolom ini mencatat
+ *      sertifikat yang DIMILIKI, jadi levelnya sendiri sudah berarti lulus.
+ * Selain itu `なし` — termasuk JFT-BASIC A1 dan "BELUM TES".
+ */
+function lulusUjianJp(bahasa: unknown, jft: unknown): string {
+  const t = `${s(bahasa)} ${s(jft)}`.toUpperCase();
+  if (/JFT[-\s]?BASIC/.test(t) && /\bA2\b/.test(t)) return 'N5合格';
+  const jlpt = /N([1-5])/.exec(t);
+  return jlpt ? `N${jlpt[1]}合格` : 'なし';
+}
+
+/**
+ * 学習状況 (U40) — dropdown: `N5勉強中 … N1勉強中`.
+ *
+ * Butuh DUA hal: levelnya diketahui, dan statusnya memang "sedang belajar".
+ * Kandidat yang sudah 修了 (selesai) tidak boleh dicetak "masih belajar".
+ */
+function belajarJp(status: unknown, level: unknown): string {
+  const lv = /\bN([1-5])\b/.exec(s(level).toUpperCase());
+  if (!lv) return 'なし';
+  const st = s(status).toLowerCase();
+  const sedang = /belajar|勉強|kursus|sekolah|menempuh/.test(st);
+  return sedang ? `N${lv[1]}勉強中` : 'なし';
 }
 
 /** 続柄 — huruf Jepang saja, sesuai kolom sempit A. */
@@ -553,8 +605,8 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells.F23 = isGood(s(lpk.lulus ?? lpk.tahun_lulus)) ? ymd(lpk.lulus ?? lpk.tahun_lulus) : '今まで';
     cells.I22 = durasi(lpk.masuk ?? lpk.tahun_masuk, lpk.lulus ?? lpk.tahun_lulus);
     cells.N22 = kouritsuSekolah(sekolahLpk, lpk.status_sekolah);
-    cells.P22 = sekolahLpk;
-    cells.X22 = '日本語';
+    cells.P22 = NAMA_SEKOLAH_JP;
+    cells.X22 = '日本語専攻';
   } else {
     // Tanpa baris 日本語学校, tanda `～` bawaan template menggantung sendirian
     // di kolom periode.
@@ -568,7 +620,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
   if (isGood(sekolah)) {
     isiSekolah.push(jurusan ? `学校では${jurusan}を学びました。` : `${sekolah}で学びました。`);
   }
-  if (isGood(sekolahLpk)) isiSekolah.push(`現在は${sekolahLpk}で日本語を勉強しています。`);
+  if (isGood(sekolahLpk)) isiSekolah.push(`現在は${NAMA_SEKOLAH_JP}で日本語を勉強しています。`);
   cells.F24 = isiSekolah.join(' ');
 
   /* ── pekerjaan: tiga blok x dua baris ──────────────────────────────────── */
@@ -665,21 +717,13 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`P${row}`] = !adaAnggota ? '□' : serumah ? '□' : '■';
   }
   const darurat = hubunganJp(id.kontak_darurat_hubungan);
-  cells.Y38 = darurat === 'その他' ? '' : darurat;
+  cells.Y38 = (darurat === 'その他' ? '' : darurat) || bersih(id.kontak_darurat_nama);
   cells.AA38 = hpLokal(id.hp_darurat);
 
   /* ── wawancara ─────────────────────────────────────────────────────────── */
-  cells.U39 = lulusJp(data.sertifikasi.jft ?? id.jft);
+  cells.U39 = lulusUjianJp(data.sertifikasi.bahasa, data.sertifikasi.jft);
   cells.R44 = cells.N4 === 'あり' ? '' : 'なし';
   const ken = data.kenalan_jepang;
-  /* 緊急連絡先 (Y37) — nama/hubungan di Y38, telepon di AA38.
-     Sebelum ini ketiganya tidak pernah ditulis, sehingga baris 緊急連絡先 di
-     form resmi selalu kosong walau kolom `kontak_darurat_*` ada isinya.
-     Hubungan (AYAH/IBU/…) diterjemahkan; kalau kosong, nama dipakai apa adanya. */
-  const daruratNama = bersih(data.identitas.kontak_darurat_nama);
-  const daruratHub = bersih(data.identitas.kontak_darurat_hubungan);
-  cells.Y38 = hubunganJp(daruratHub) || daruratNama;
-  cells.AA38 = hpLokal(data.identitas.hp_darurat);
   cells.Y40 = isGood(bersih(ken.nama_jp) || bersih(ken.nama_id))
     ? bersih(ken.nama_jp) || bersih(ken.nama_id)
     : '無し';
@@ -691,15 +735,8 @@ export function buildValues(data: CandidateData): Record<string, string> {
   // 集団生活年数 / 就業希望年数 / 体力試験 — dulu seluruhnya dikosongkan.
   cells.R46 = bersih(data.fisik.tes_hitung);
   cells.Y46 = manYenRp(data.wawancara.tabungan);
-  /* 試験合格 (U39) — hasil uji bahasa yang SUDAH lulus (`bahasa`, mis.
-     "JFT-BASIC A2" / "JLPT N5"). Sebelum ini sel itu tidak pernah ditulis,
-     sehingga form resmi selalu kosong di baris 試験合格 walaupun kolomnya ada.
-     `level_bahasa_jepang` TIDAK dipakai di sini — itu level yang ditampilkan di
-     J4, dan menyalinnya ke U39 akan menyatakan "lulus N4" hanya karena
-     levelnya N4. */
-  cells.U39 = bersih(data.sertifikasi.bahasa);
   cells.U38 = durasiJp(data.sertifikasi.lama_belajar_jp);
-  cells.U40 = bersih(data.sertifikasi.status_belajar_jp);
+  cells.U40 = belajarJp(data.sertifikasi.status_belajar_jp, data.sertifikasi.level_bahasa_jepang);
   /* 英語レベル / その他外国語: `無` saat kolomnya kosong.
      7 dari 9 CV manual pemilik (2026-11-12) menulis `無` — bukan sel kosong.
      Bedanya penting di form resmi: sel kosong terbaca "belum diisi", `無`

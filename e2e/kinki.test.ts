@@ -460,13 +460,13 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
     const c = buildValues(denganKolom());
     expect(c.J4).toBe('N4レベル'); // kolom menang atas tebakan dari teks JFT
     expect(c.U38).toBe('6ヶ月'); // durasiJp: teks Indonesia → bentuk Jepang
-    expect(c.U40).toBe('sedang belajar');
+    expect(c.U40).toBe('N4勉強中'); // dropdown 学習状況, bukan teks bebas
     expect(c.R42).toBe('menengah');
     expect(c.U42).toBe('Mandarin dasar');
     expect(c.R46).toBe('85');
     expect(c.Y42).toBe('2ヶ月'); // ヶ月, sama dengan 学習期間
     expect(c.Y46).toBe('3');
-    expect(c.Y48).toBe('5年間'); // teks Indonesia -> bentuk Jepang
+    expect(c.Y48).toBe('５年間'); // dropdown 就業希望年数: digit lebar penuh
     expect(c.AC52).toBe('30');
     expect(c.AC53).toBe('40');
   });
@@ -539,5 +539,32 @@ describe('kinki · bahasa kolom Jepang', () => {
     // Dengan jurusan, kalimatnya tetap seperti semula.
     d.pendidikan = [{ tingkat: 'SMA', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMKN 1', jurusan: 'TEKNIK OTOMOTIF' }];
     expect(buildValues(d).F24).toBe('学校では自動車を学びました。');
+  });
+});
+
+/* ── 試験合格: dropdown, bukan teks bebas (2026-11-12) ───────────────────────
+   Pemilik: *"JFT A2 itu setara N5 ke N4 ya, jadi kalau lulus JFT A2 N5 lulus
+   dong, bukan kosong"*. Kolom `bahasa` menyimpan hasil uji apa adanya, dan
+   dropdown U39 hanya menerima `なし / N5合格 … N1合格`. */
+describe('kinki · 試験合格 memakai kosakata dropdown', () => {
+  const denganBahasa = (bahasa: string, jft = '') => {
+    const d = kandidat();
+    d.sertifikasi = { ...d.sertifikasi, bahasa, jft };
+    return buildValues(d).U39;
+  };
+
+  it('JFT-BASIC A2 → N5合格 (setara N5–N4, klaim terendah)', () => {
+    expect(denganBahasa('JFT-BASIC A2', '233')).toBe('N5合格');
+  });
+
+  it('JLPT N3 → N3合格', () => {
+    expect(denganBahasa('JLPT N3 | N3')).toBe('N3合格');
+    expect(denganBahasa('JLPT N1')).toBe('N1合格');
+  });
+
+  it('JFT-BASIC A1 dan "BELUM TES" → なし', () => {
+    expect(denganBahasa('A1')).toBe('なし');
+    expect(denganBahasa('BELUM TES')).toBe('なし');
+    expect(denganBahasa('-')).toBe('なし');
   });
 });
