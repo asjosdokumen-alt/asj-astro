@@ -172,8 +172,8 @@ function decorate(table: string, row: Record<string, unknown>): Record<string, u
     return stripRaw([mapCandidate(row) as Record<string, unknown>])[0];
   }
   if (table === 'master') {
-    // Proyeksi ringan sudah dilakukan di repository (`SYNC_SELECT.master` =
-    // 11 kolom, bukan 169). Dekorasinya identitas — jadi cukup diteruskan.
+    // Proyeksi ringan sudah dilakukan di repository (`SYNC_SELECT.master` = 8
+    // kolom, bukan 282). Dekorasinya identitas — jadi cukup diteruskan.
     return { ...row };
   }
   // forms: draf CV master apa adanya. Bentuknya sudah kecil dan belum punya

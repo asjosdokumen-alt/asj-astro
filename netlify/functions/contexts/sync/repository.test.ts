@@ -35,12 +35,15 @@ vi.mock('../../_lib/db/client', () => ({
 }));
 
 import {
+  SYNC_KEYS,
   SYNC_LIMIT,
+  SYNC_TABLES,
   isSyncKey,
   syncRowsSince,
   syncWatermarks,
   syncManifest,
 } from './repository';
+import { columnsOf } from '../../_lib/db/schema.generated';
 
 const q = (i: number) => m.calls[i].opts.query as Record<string, string>;
 
@@ -62,13 +65,40 @@ describe('syncRowsSince — batas inklusif & proyeksi', () => {
     expect(q(0).limit).toBe(String(SYNC_LIMIT));
   });
 
-  it('master terproyeksi 11 kolom — bukan select * (169 kolom)', async () => {
+  it('master terproyeksi ringan — bukan select * (282 kolom)', async () => {
     await syncRowsSince('master', 'w');
     const select = q(0).select.split(',');
-    expect(select).toHaveLength(11);
     expect(select).toContain('updated_at');
     expect(select).toContain('id_kandidat');
     expect(select).not.toContain('*');
+    // Plafon, bukan angka mati: proyeksi ini hanya untuk delta, dan setiap
+    // kolom tambahan dibayar di setiap polling.
+    expect(select.length).toBeLessThanOrEqual(12);
+  });
+
+  /* ── Gerbang yang bisa gagal ────────────────────────────────────────────────
+     Sampai 2026-11-12 proyeksi master menyebut `status_proses`, `tahapan`, dan
+     `id_loker` — tiga kolom yang TIDAK ADA di tabelnya. PostgREST menjawab
+     400 / 42703, `syncRowsSince('master')` selalu melempar, dan delta master
+     tidak pernah sekali pun berhasil. Tidak ada yang tahu karena kegagalannya
+     berbentuk `{success:false}` yang ditelan klien.
+
+     Daftar tangan seperti itu selalu basi. Yang benar adalah membandingkannya
+     dengan KONTRAK skema (`schema.generated.ts`), yang diregenerasi dari DB. */
+  it('setiap kolom proyeksi sync ada di kontrak skema', async () => {
+    const salah: string[] = [];
+    for (const key of SYNC_KEYS) {
+      m.calls = [];
+      await syncRowsSince(key, 'w');
+      const { table } = SYNC_TABLES[key];
+      const select = q(0).select;
+      if (select === '*') continue;
+      const known = columnsOf(table) ?? [];
+      for (const col of select.split(',')) {
+        if (!known.includes(col)) salah.push(`${table}.${col}`);
+      }
+    }
+    expect(salah).toEqual([]);
   });
 
   it('kolom master TIDAK memuat kolom berat yang sudah dibuktikan berlebihan', async () => {

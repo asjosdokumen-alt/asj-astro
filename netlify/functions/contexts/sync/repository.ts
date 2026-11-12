@@ -52,7 +52,16 @@ export const SYNC_TABLES = {
  */
 const SYNC_SELECT: Record<SyncKey, string> = {
   jobs: '*',
-  master: 'id_kandidat,nama_lengkap,no_wa,gender,tb,bb,email,status_proses,tahapan,id_loker,updated_at',
+  /* Hanya kolom yang ADA di `master_database_candidate`.
+     Sampai 2026-11-12 daftar ini memuat `status_proses`, `tahapan`, dan
+     `id_loker` — tiga nama yang tidak pernah ada di tabel itu (status/tahapan
+     hidup di `database_candidate`, dengan nama `status_kandidat`,
+     `tahapan_seleksi`, `id_loker_pilihan`). PostgREST menjawab 400 / 42703,
+     `syncRowsSince('master')` selalu melempar, dan delta master tidak pernah
+     berhasil sekali pun — tanpa satu pun pesan yang terlihat.
+     Dijaga `repository.test.ts` dengan membandingkan daftar ini terhadap
+     kontrak `schema.generated.ts`. */
+  master: 'id_kandidat,nama_lengkap,no_wa,gender,tb,bb,email,updated_at',
   forms: '*',
   candidates: '*',
 };
