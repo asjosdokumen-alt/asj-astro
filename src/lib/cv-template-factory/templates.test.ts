@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { cvFactory } from './templates';
+/* 🔴 Impor dari ENTRI publik (`./index`), BUKAN `./templates`.
+ *
+ * Bedanya bukan kosmetik: `./index` harus mendaftarkan kelima renderer sebagai
+ * side effect. Kalau impor registrasi itu hilang dari entri (seperti pada
+ * `aca84be`, 2026-11-12), `cvFactory.list()` kosong di aplikasi — dan seluruh
+ * tes di berkas ini akan merah karena tidak ada satu pun template terdaftar.
+ * Dengan mengimpor `./templates` langsung, tes ini tetap hijau meski aplikasi
+ * menampilkan nol pilihan; itu yang membuat regresi tersebut lolos. */
+import { cvFactory } from './index';
 import { buildValues, buildNumbers } from './renderers/kinki';
 import type { CandidateData, RenderContext } from './types';
 
