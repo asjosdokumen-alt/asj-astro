@@ -461,7 +461,11 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
     expect(c.J4).toBe('N4レベル'); // kolom menang atas tebakan dari teks JFT
     expect(c.U38).toBe('6ヶ月'); // durasiJp: teks Indonesia → bentuk Jepang
     expect(c.U40).toBe('N4勉強中'); // dropdown 学習状況, bukan teks bebas
-    expect(c.R42).toBe('menengah');
+    // 2026-11-13: `fdc3af0` memetakan LEVEL_INGGRIS lewat `inggrisJp()`, jadi
+    // sel 英語レベル berisi 中級 — dulu kata Indonesia (`menengah`) tercetak
+    // apa adanya di form Jepang. Fixture menulis `menengah` (huruf kecil);
+    // pemetaannya tidak peka huruf.
+    expect(c.R42).toBe('中級');
     expect(c.U42).toBe('Mandarin dasar');
     expect(c.R46).toBe('85');
     expect(c.Y42).toBe('2ヶ月'); // ヶ月, sama dengan 学習期間

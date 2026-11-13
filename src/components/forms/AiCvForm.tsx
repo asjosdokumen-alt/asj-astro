@@ -2515,7 +2515,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 ada tempatnya adalah SCAN-nya, padahal agensi memintanya saat
                 pemberkasan. Diletakkan tepat setelah SSW supaya grid 2 kolom
                 genap (9 slot -> 10) dan tidak menyisakan lubang. */}
-            <UploadRow type="sim" label={t('cv.upload_sim')} icon="fa-id-card" color="amber" accept=".pdf,image/*" status={docStatus['sim']} preview={docPreview.sim} onPreview={() => setPreviewDoc({ type: 'sim', title: t('cv.upload_sim') })} onUpload={handleDocUpload} />
+            <UploadRow type="sim" label={t('cv.upload_sim')} icon="fa-id-card" color="amber" accept=".pdf,image/*" status={docStatus.sim} preview={docPreview.sim} onPreview={() => setPreviewDoc({ type: 'sim', title: t('cv.upload_sim') })} onUpload={handleDocUpload} />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* PARITY ai_form.html:325-370 — enam dokumen ini (KTP, KK, dan

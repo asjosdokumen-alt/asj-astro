@@ -8,6 +8,7 @@ import rirekishoFirmaTemplate from './renderers/rirekisho-firma';
 import kinkiTemplate from './renderers/kinki';
 import jipaTemplate from './renderers/jipa';
 import rirekishoDetailTemplate from './renderers/rirekisho-detail';
+import kaigoHyogoTemplate from './renderers/kaigo-hyogo';
 
 const rirekishoA4Template: CvTemplate = {
   id: 'rirekisho-a4',
@@ -57,6 +58,13 @@ cvFactory.register(jipaTemplate);
 // foto di I2:J9 dan blok personalia jauh lebih lengkap (視力, 長所/短所,
 // 志望動機, 貯金額目標, 帰国後の仕事).
 cvFactory.register(rirekishoDetailTemplate);
+// Form keenam, dari `F:/template/HERLINA MEY REYGITA CAHYANI_CV.xlsx`
+// (2026-11-13). Satu-satunya form DWIBAHASA: label Indonesia–Jepang berpasangan,
+// 14 kolom (A–N), pas foto di M3:N10, ditambah blok 資格・免許, 家族構成 tujuh
+// baris, dan esai 日本での目標. Berkas kosongnya
+// (`CV KAIGO HYOGO履歴書 - 特定技能 2026年.xlsx`) punya 88 merge yang sama —
+// jadi keduanya satu template: satu contoh isian, satu blanko.
+cvFactory.register(kaigoHyogoTemplate);
 
 export { cvFactory };
 

@@ -41,6 +41,7 @@ import { buildValues as jipaValues } from '../src/lib/cv-template-factory/render
 import { buildValues as xlsxValues } from '../src/lib/cv-template-factory/renderers/rirekisho-xlsx';
 import { buildValues as firmaValues } from '../src/lib/cv-template-factory/renderers/rirekisho-firma';
 import { buildValues as detailValues } from '../src/lib/cv-template-factory/renderers/rirekisho-detail';
+import { buildValues as kaigoValues } from '../src/lib/cv-template-factory/renderers/kaigo-hyogo';
 
 const MASTER = 'master_database_candidate';
 
@@ -271,13 +272,14 @@ function recordReads(data: CandidateData, run: (d: CandidateData) => unknown): s
   return [...seen].filter((p) => !p.endsWith('[]'));
 }
 
-/** Lima template yang ditawarkan pemilih, dengan fungsi pemetaan nilainya. */
+/** Enam template yang ditawarkan pemilih, dengan fungsi pemetaan nilainya. */
 const TEMPLATES: Array<{ id: string; read: (d: CandidateData) => unknown }> = [
   { id: 'rirekisho-xlsx', read: (d) => xlsxValues(d) },
   { id: 'rirekisho-firma', read: (d) => firmaValues(d) },
   { id: 'kinki', read: (d) => { kinkiValues(d); kinkiNumbers(d); } },
   { id: 'jipa', read: (d) => jipaValues(d) },
   { id: 'rirekisho-detail', read: (d) => detailValues(d) },
+  { id: 'kaigo-hyogo', read: (d) => kaigoValues(d) },
 ];
 
 /**

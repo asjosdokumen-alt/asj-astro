@@ -431,7 +431,14 @@ const show = true;
     // landing page pins its theme, so the prop is read three times in the
     // template — `<html data-theme>` , `<html data-theme-lock>` and
     // `<body data-theme-lock>`. One read per attribute, no more.
-    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'canonical', 'canonical', 'description', 'description', 'description', 'inter400Woff2', 'inter700Woff2', 'jsonLd', 'jsonLd', 'lang', 'lang', 'noIndex', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'orgJsonLd', 'orgJsonLd', 'scrollProgress', 'showBottomNav', 'showBottomNav', 'showFooter', 'themeLock', 'themeLock', 'themeLock', 'title', 'title', 'title', 'titleKey']);
+    //
+    // +1 `showVersionBadge` (2026-11-13, MEASURED from the failure diff):
+    // `094e64e` (fix(cv-ai): KTP selebar baris di ponsel, halaman /ai-cv
+    // berhenti bisa digulir) added the prop to BaseLayout so /ai-cv can turn
+    // the badge off; the template reads it once (`{showVersionBadge && …}`).
+    // The commit did not move this list, so HEAD was red before this session
+    // touched anything. This session's own changes add no read here.
+    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'canonical', 'canonical', 'description', 'description', 'description', 'inter400Woff2', 'inter700Woff2', 'jsonLd', 'jsonLd', 'lang', 'lang', 'noIndex', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'orgJsonLd', 'orgJsonLd', 'scrollProgress', 'showBottomNav', 'showBottomNav', 'showFooter', 'showVersionBadge', 'themeLock', 'themeLock', 'themeLock', 'title', 'title', 'title', 'titleKey']);
     for (const o of occs) {
       const ref = r.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
       expect(ref).toBeDefined();

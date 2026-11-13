@@ -64,12 +64,15 @@ const mockContext: RenderContext = {
 };
 
 describe('CV Template Factory', () => {
-  it('factory has 9 registered templates', () => {
+  it('factory has 10 registered templates', () => {
     // 8 -> 9 (2026-11-04): `rirekisho-detail`, form kelima dari
     // `F:/template/*_CV.xlsx` — layout berbeda (pas foto I2:J9, blok personalia
     // lengkap), jadi template tersendiri, bukan pengganti form ASJ.
+    // 9 -> 10 (2026-11-13): `kaigo-hyogo`, form keenam dari
+    // `F:/template/HERLINA MEY REYGITA CAHYANI_CV.xlsx` — satu-satunya form
+    // dwibahasa (14 kolom, pas foto M3:N10, 88 merge).
     const list = cvFactory.list();
-    expect(list.length).toBe(9);
+    expect(list.length).toBe(10);
   });
 
   it('only the real Excel forms are offered in the picker', () => {
@@ -83,7 +86,7 @@ describe('CV Template Factory', () => {
     // `CvTemplateSelector`, dan template yang lupa didaftarkan di sini tetap
     // muncul di sana tanpa ada yang memeriksa apakah ia layak ditawarkan.
     const listed = cvFactory.list().filter((t) => t.listed !== false).map((t) => t.id);
-    expect(listed).toEqual(['rirekisho-xlsx', 'rirekisho-firma', 'kinki', 'jipa', 'rirekisho-detail']);
+    expect(listed).toEqual(['rirekisho-xlsx', 'rirekisho-firma', 'kinki', 'jipa', 'rirekisho-detail', 'kaigo-hyogo']);
   });
 
   it('includes the KINKI form as the third real xlsx template', () => {
