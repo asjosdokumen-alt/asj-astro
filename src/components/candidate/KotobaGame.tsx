@@ -497,6 +497,16 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const [sswMemuat, setSswMemuat] = useState(false);
   const [sswGalat, setSswGalat] = useState('');
 
+  /* ── Panel admin: pilih kandidat yang dilihat ─────────────────────────────
+     Halaman `/kotoba` PUBLIK dan kandidat membawa WA-nya dari sesi (`auth.wa`).
+     Admin tidak punya WA, jadi `wa` kosong ⇒ efek pemuat berhenti di
+     `if (!wa) return`, bank tidak pernah diambil, dan AKIBATNYA filter bab
+     (Buku) maupun bidang (SSW) tidak berisi satu pun pilihan — dropdown-nya
+     tampak "tidak bisa dibuka". Terukur 2026-11-13 dari tangkapan layar
+     pemilik: tab "Bidang Kerja (SSW)" aktif, dropdown kosong, "0 kosakata".
+     Kandidat tidak pernah melihat ini karena `auth.wa` selalu terisi. */
+  const [waInput, setWaInput] = useState('');
+
   /* ── ronde kuis / ketik ────────────────────────────────────────────────── */
   /**
    * TAK ADA BATAS SOAL. Ronde berjalan sampai nyawa habis — sama seperti
@@ -658,6 +668,36 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     if (!wa) return;
     muatRef.current(wa);
   }, [wa, loginGate]);
+
+  /**
+   * Panel admin: ganti kandidat yang dilihat.
+   *
+   * Bank dan daftar filter DIKOSONGKAN lebih dulu. Tanpa itu, efek pemuat untuk
+   * WA baru berjalan tetapi dropdown masih berisi bidang/bab kandidat
+   * sebelumnya — daftar yang salah lebih menyesatkan daripada daftar kosong.
+   * WA juga ditulis ke URL supaya muat ulang tidak kembali ke keadaan "tanpa
+   * kandidat" yang jadi sumber keluhan 2026-11-13.
+   */
+  const pilihTarget = (nomor: string) => {
+    const bersih = String(nomor || '').replace(/\D/g, '');
+    if (!bersih) return;
+    setWa(bersih);
+    setBank([]);
+    setDaftarBab([]);
+    setBidangList([]);
+    setBidangId('');
+    setVip(null);
+    setGalat('');
+    setSswGalat('');
+    setWaInput('');
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('wa', bersih);
+      window.history.replaceState({}, '', u.toString());
+    } catch {
+      /* URL bukan syarat; kalau gagal, state tetap sudah benar. */
+    }
+  };
 
   /**
    * Pegangan ke `muatSsw` versi terbaru — alasannya sama dengan `muatRef`:
@@ -1392,6 +1432,44 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
         </button>
       </header>
 
+      {/* ── Panel admin: kandidat mana yang dilihat ──
+          Tanpa ini admin membuka halaman tanpa target, bank tidak dimuat, dan
+          filter bab/bidang tampil KOSONG — terbaca sebagai "dropdown rusak"
+          (keluhan pemilik 2026-11-13). Kandidat tidak pernah kena karena WA-nya
+          datang dari sesi. */}
+      {admin && (
+        <div class="mb-3 flex flex-wrap items-center gap-2 rounded-control border border-line bg-surface-raised px-3 py-2">
+          <span class="text-[11px] font-bold text-fg-muted">{t('kotoba.admin_target')}</span>
+          <input
+            type="tel"
+            inputMode="numeric"
+            aria-label={t('kotoba.admin_target_wa')}
+            placeholder="628…"
+            value={waInput}
+            onInput={(e) => setWaInput((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => {
+              if ((e as KeyboardEvent).key === 'Enter') pilihTarget(waInput);
+            }}
+            class="min-h-9 w-40 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
+          />
+          <button
+            type="button"
+            onClick={() => pilihTarget(waInput)}
+            class="min-h-9 rounded-control border border-line bg-surface-sunken px-3 text-[12px] font-bold text-fg"
+          >
+            {t('kotoba.admin_target_muat')}
+          </button>
+          <span class="text-[11px] text-fg-muted">
+            {wa
+              ? `${t('kotoba.admin_target_aktif')}: ${wa}`
+              : t('kotoba.admin_target_pilih')}
+          </span>
+          {vip === false && (
+            <span class="text-[11px] font-bold text-accent-red">{t('kotoba.admin_bukan_siswa')}</span>
+          )}
+        </div>
+      )}
+
       {/* Seluruh area permainan ada di dalam arena gelap. Kamus sengaja DI LUAR
           (lihat komentar di `arcade.css`): ia lembar hafalan yang dicetak. */}
       <div class="arc">
@@ -1464,6 +1542,12 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
             onChange={(e) => setBidangId((e.target as HTMLSelectElement).value)}
             class="min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
           >
+            {/* Tanpa opsi sama sekali, `<select>` native tampil sebagai kotak
+                kosong dan klik tidak membuka apa pun — terbaca sebagai kontrol
+                rusak. Satu opsi penjelas membuat keadaannya jujur. */}
+            {bidangList.length === 0 && (
+              <option value="">{t('kotoba.filter_kosong')}</option>
+            )}
             {bidangList.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.nama}
@@ -1670,6 +1754,21 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 {papan.map((r, i) => {
                   const milikSendiri = Boolean(wa && r.no_wa === wa);
                   const medali = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                  /* Isi baris dipakai dua kali: sebagai <button> untuk admin
+                     (klik nama = lihat kandidat itu) dan sebagai teks biasa
+                     untuk kandidat, yang tidak boleh berpindah identitas. */
+                  const isi = (
+                    <>
+                      <strong class="mr-1.5">{medali}</strong>
+                      <span class="font-bold text-fg">{r.nama}</span>
+                      {r.kelas && <span class="ml-1 text-fg-muted">({r.kelas})</span>}
+                      {milikSendiri && (
+                        <span class="ml-1.5 rounded-pill bg-accent-violet/15 px-1.5 py-0.5 text-[10px] font-bold text-accent-violet">
+                          ⭐ {t('arcade.anda')}
+                        </span>
+                      )}
+                    </>
+                  );
                   return (
                     <li
                       key={`${r.nama}-${r.skor}-${i}`}
@@ -1677,16 +1776,18 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                         milikSendiri ? 'border-accent-violet bg-accent-violet/10' : 'border-line bg-surface-sunken'
                       }`}
                     >
-                      <span class="min-w-0 truncate">
-                        <strong class="mr-1.5">{medali}</strong>
-                        <span class="font-bold text-fg">{r.nama}</span>
-                        {r.kelas && <span class="ml-1 text-fg-muted">({r.kelas})</span>}
-                        {milikSendiri && (
-                          <span class="ml-1.5 rounded-pill bg-accent-violet/15 px-1.5 py-0.5 text-[10px] font-bold text-accent-violet">
-                            ⭐ {t('arcade.anda')}
-                          </span>
-                        )}
-                      </span>
+                      {admin ? (
+                        <button
+                          type="button"
+                          onClick={() => pilihTarget(r.no_wa)}
+                          title={t('kotoba.admin_target_lihat')}
+                          class="min-w-0 truncate text-left underline-offset-2 hover:underline"
+                        >
+                          {isi}
+                        </button>
+                      ) : (
+                        <span class="min-w-0 truncate">{isi}</span>
+                      )}
                       <strong class="shrink-0 font-mono text-fg">{r.skor.toLocaleString('id-ID')}</strong>
                     </li>
                   );

@@ -1942,6 +1942,21 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.misi_harian": "Misi hari ini · 20 kata benar",
     "kotoba.kilat": "Kilat",
     "kotoba.filter": "Filter",
+    /* Panel admin di halaman /kotoba: halaman ini publik dan kandidat membawa
+       WA dari sesi, sedangkan admin tidak. Tanpa pemilih ini admin membuka
+       halaman tanpa target, bank tidak dimuat, dan dropdown bab/bidang kosong
+       (keluhan pemilik 2026-11-13: "dropdown kosakata bab pilihan kok gak bisa
+       di buka"). Kandidat tidak pernah melihat panel ini. */
+    "kotoba.admin_target": "Lihat sebagai kandidat",
+    "kotoba.admin_target_wa": "WA kandidat",
+    "kotoba.admin_target_muat": "Muat",
+    "kotoba.admin_target_aktif": "aktif",
+    "kotoba.admin_target_pilih": "Masukkan WA kandidat, atau klik nama di Papan Skor.",
+    "kotoba.admin_target_lihat": "Lihat kandidat ini",
+    "kotoba.admin_bukan_siswa": "Kandidat ini belum terdaftar sebagai siswa ASJ — bank latihan kosong.",
+    /* Opsi penjelas saat daftar filter belum punya data (admin tanpa target).
+       Tanpa ini `<select>` tampil kosong dan tidak membuka apa pun. */
+    "kotoba.filter_kosong": "— pilih kandidat dulu —",
     /* Tingkat kesulitan menggantikan sakelar "Kilat" (2026-11-10). Pemilik:
        "kotoba sih gak perlu cepat kan fungsinya melatih bener, ada game bikin
        saja di kesulitannya kan bisa milih sendiri". Satu kontrol, tiga keadaan:

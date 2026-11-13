@@ -1378,6 +1378,16 @@ export const jpTranslations: Record<string, string> = {
     "kotoba.misi_harian": "今日のミッション · 20語正解",
     "kotoba.kilat": "スピード",
     "kotoba.filter": "絞り込み",
+    /* Panel admin di halaman /kotoba (2026-11-13): admin tidak punya WA, jadi
+       tanpa pemilih ini bank tidak dimuat dan filter 課/分野 kosong. */
+    "kotoba.admin_target": "受験者として表示",
+    "kotoba.admin_target_wa": "受験者のWA",
+    "kotoba.admin_target_muat": "読み込む",
+    "kotoba.admin_target_aktif": "表示中",
+    "kotoba.admin_target_pilih": "受験者のWAを入力するか、スコアボードの名前をクリックしてください。",
+    "kotoba.admin_target_lihat": "この受験者を表示",
+    "kotoba.admin_bukan_siswa": "この受験者はASJの生徒として登録されていません — 練習バンクは空です。",
+    "kotoba.filter_kosong": "— 先に受験者を選んでください —",
     "kotoba.tingkat": "難易度",
     "kotoba.tk_santai": "ゆっくり",
     "kotoba.tk_normal": "普通",
