@@ -104,11 +104,23 @@ export interface Props {
    * Decorative, so it is `aria-hidden` and carries no text.
    */
   scrollProgress?: boolean;
+  /**
+   * Render `<VersionBadge>` (versi build + "Periksa pembaruan").
+   *
+   * Default `true` — ia satu-satunya jalan kandidat melihat versi yang sedang
+   * dipakai dan memicu pemeriksaan service worker. Dimatikan HANYA pada rute
+   * yang tingginya dikunci ke layar (`100dvh`), karena di sana baris ini tidak
+   * pernah terlihat tetapi tetap MENAMBAH TINGGI BODY: terukur di /ai-cv,
+   * badge ini membuat halaman bisa digulir ~69 px, dan guliran itu menggeser
+   * panel form ke atas sampai kepala panel yang melekat masuk ke bawah toolbar
+   * tetap. Elemen yang tak terjangkau jari tidak boleh mengubah tata letak.
+   */
+  showVersionBadge?: boolean;
   /** Extra JSON-LD payload (already serialised) to inject into `<head>`. */
   jsonLd?: string;
 }
 
-const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false, titleKey, ogImage, noIndex, scrollProgress = false, themeLock, jsonLd } = Astro.props;
+const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false, titleKey, ogImage, noIndex, scrollProgress = false, showVersionBadge = true, themeLock, jsonLd } = Astro.props;
 
 // ─── Discovery metadata (JSON-LD + hreflang) ─────────────────────────────────
 // ADDED 2026-09-29. MEASURED that day: this site emitted 0 JSON-LD and 0
@@ -491,7 +503,7 @@ const orgJsonLd = jsonLdScript(
        Footer, karena Footer hanya dirender 3 dari 11 halaman sementara halaman
        yang paling sering dipakai (admin, kandidat, master) justru tanpa footer.
        Detail alasan: src/components/VersionBadge.astro. -->
-  <VersionBadge padBottom={showBottomNav} />
+  {showVersionBadge && <VersionBadge padBottom={showBottomNav} />}
   <BottomNav client:only="preact" show={showBottomNav} />
 
   <!-- Mounted here, once, so it can never be forgotten on a new page.

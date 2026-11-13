@@ -1765,11 +1765,24 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               <PairSelect label={t("cv.field_status_nikah")} id="status" value={cv.status} pairs={STATUS_NIKAH_PAIRS}
                 touched={touchedFields.has('status')} testId="ai-pair-status"
                 onChange={(v) => handlePairEdit('status', v)} />
-              <Field label={t("form.mf_anak")} id="anak" value={cv.anak} center mode="numeric"
+              {/* NIK 16 digit tidak muat di satu track pada layar 360 px (kotak
+                  155 px, angka 16 digit ≈ 168 px) — angkanya menggulir di dalam
+                  kotak dan yang diketik tidak terbaca utuh. `span={2}` membuat
+                  kotaknya selebar baris DI PONSEL; `spanMd={1}` mengembalikannya
+                  ke 1 track di `md` supaya baris 5-kolom di layar lebar tidak
+                  berubah. `Jumlah Anak` di atasnya ikut selebar baris — kalau
+                  tidak, ia berdiri sendiri di separuh baris dan grid-nya
+                  kelihatan belum selesai. */}
+              <Field label={t("form.mf_anak")} id="anak" value={cv.anak} center mode="numeric" span={2} spanMd={1}
                 touched={touchedFields.has('anak')} onInput={(v) => handleManualEdit('anak', v)} />
               {/* KTP pindah ke sini (2026-10-27): di baris lama ia menggantung
                   sendirian bersama kontak darurat, menyisakan 1 track kosong. */}
-              <Field label={t("form.mf_ktp")} id="ktp" value={cv.ktp} mode="tel"
+              {/* NIK 16 digit tidak muat di satu track pada layar 360 px (kotak
+                  155 px, angka 16 digit ≈ 168 px) — angkanya menggulir di dalam
+                  kotak dan yang diketik tidak terbaca utuh. Dua track di ponsel
+                  berarti selebar baris; di `md` ia tetap 1 track seperti
+                  sebelumnya (`spanMd={1}`), jadi baris 5-kolom tidak berubah. */}
+              <Field label={t("form.mf_ktp")} id="ktp" value={cv.ktp} mode="tel" span={2} spanMd={1}
                 ph="16 digit" touched={touchedFields.has('ktp')} onInput={(v) => handleManualEdit('ktp', v)} />
 
               <div class="col-span-full mt-2 mb-0.5 text-[11px] md:text-[10px] font-extrabold uppercase tracking-wider text-sky-400/80">
@@ -2630,7 +2643,7 @@ function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, typ
   // gulir mendatar di dalam kotak form — terukur pada `alamat`/`alamat_jp`,
   // yang satu-satunya kolom ber-`span={3}` di form ini.
   const spanClass = span && span > 1 ? 'col-span-2' : '';
-  const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : '';
+  const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : spanMd === 1 ? 'md:col-span-1' : '';
   const domId = `ai_${id}`;
   return (
     <div class={`${spanClass} ${mdSpanClass}`}>
@@ -2694,7 +2707,7 @@ function PairSelect({ label, id, value, pairs, span, spanMd, onChange, touched, 
   // gulir mendatar di dalam kotak form — terukur pada `alamat`/`alamat_jp`,
   // yang satu-satunya kolom ber-`span={3}` di form ini.
   const spanClass = span && span > 1 ? 'col-span-2' : '';
-  const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : '';
+  const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : spanMd === 1 ? 'md:col-span-1' : '';
   // A value the registry does not know (typed by an older AI, or free text from
   // a previous session) is kept as its own option rather than silently dropped.
   // Legacy did the same, and dropping it would erase stored data on first edit.
@@ -2780,7 +2793,7 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
   // gulir mendatar di dalam kotak form — terukur pada `alamat`/`alamat_jp`,
   // yang satu-satunya kolom ber-`span={3}` di form ini.
   const spanClass = span && span > 1 ? 'col-span-2' : '';
-  const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : '';
+  const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : spanMd === 1 ? 'md:col-span-1' : '';
   const domId = `ai_${id}`;
   const listId = `${domId}-list`;
 
