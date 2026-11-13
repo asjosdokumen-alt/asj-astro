@@ -51,7 +51,7 @@ template; total unik 98).
 |---|---|
 | `identitas.hp` → kolom `no_wa` | nomor WA adalah identitas baris, bukan pertanyaan CV. Tidak diedit di form mana pun. |
 | `identitas.id_kandidat` (jipa `H5`) | dibaca dari `data.raw`, bukan dari form. |
-| 3 fallback mati di renderer: `kinki id.jft`, `jipa id.id_kandidat`, `rirekisho-xlsx data.sertifikasi.sim` | nilainya selalu `undefined`, jadi yang dipakai adalah sisi kanan `??` yang SUDAH ada kolomnya. Tidak berbahaya, tapi menyesatkan pembaca. **Belum dihapus** — dicatat di sini. |
+| 3 fallback mati di renderer: `kinki id.jft`, `jipa id.id_kandidat`, `rirekisho-xlsx data.sertifikasi.sim` | nilainya selalu `undefined`, jadi yang dipakai adalah sisi kanan `??` yang SUDAH ada kolomnya. Tidak berbahaya, tapi menyesatkan pembaca. **Dihapus 2026-11-13** (§6.2) — bersama tiga lain yang tidak terlihat oleh analisis teks waktu itu. |
 | `candidate_pekerjaan` tidak punya `kota`/`alasan` | nilainya hidup di kolom slot dan dibaca balik lewat pencocokan `pekerjaan_N_nama_perusahaan` (bukan posisi, karena RPC menomori ulang `urutan`). |
 
 ## 4. Cakupan riwayat
@@ -66,8 +66,51 @@ kunci riwayat yang dibaca template tanpa slot.**
 1. **Tidak ada renderer yang mencetak `alasan`.** Pemilik: *"bakal kepake, dulu ada
    CV model gitu"*. Kolomnya disiapkan; template yang membutuhkannya tinggal
    membaca `data.pekerjaan[].alasan`.
-2. **Belum ada gerbang otomatis** "field yang dibaca template ⊆ field yang bisa
-   ditulis form". Yang ada sekarang: `form-column-parity` (Master ↔ AI) dan
-   `ai-cv-column-coverage` (AI → kolom). Arah template → form masih diukur manual
-   di dokumen ini.
-3. Tiga fallback mati di §3.3 belum dibersihkan.
+2. ~~Belum ada gerbang otomatis~~ — **DITUTUP 2026-11-13**, lihat §6.
+3. ~~Tiga fallback mati di §3.3 belum dibersihkan~~ — **DITUTUP 2026-11-13**, dan
+   ternyata ada ENAM, bukan tiga (§6.2).
+
+---
+
+## 6. Tindak lanjut 2026-11-13 — gerbang arah template → form
+
+Pertanyaan §5.2 dijawab dengan tes, bukan dengan dokumen: blok ketiga
+`e2e/form-column-parity.test.ts` (`paritas template → form`).
+
+### 6.1 Cara mengukurnya
+
+| Lapis | Yang diukur | Cara |
+|---|---|---|
+| 1. Bacaan mati | path yang dibaca `buildValues`/`buildNumbers` harus ada di kontrak `normalizeMasterData` | Proxy merekam setiap `get` pada `data`, termasuk elemen array; tiga dataset (kosong · penuh · **tanpa kunci**) |
+| 2. Ada pengisi | path itu harus punya kolom yang mengisinya | perturbasi satu kolom: `buildMasterNested` → `normalizeMasterData`, bandingkan dengan baseline |
+| 3. Form bisa menulis | kolom pengisi harus ada di peta Form Master, peta CV AI, atau slot `buildRiwayatSlots` | himpunan diminta dari penulisnya (`buildRiwayatSlots(…, true)`), bukan diketik |
+
+Dataset ketiga (**tanpa kunci**) wajib: `normalizeMasterData` tidak pernah
+mengembalikan `undefined` — field kosong menjadi `'-'` — sehingga `a ?? b` TIDAK
+PERNAH mengevaluasi `b`. Terbukti lewat uji mutasi: mengembalikan
+`data.sertifikasi.jft ?? id.jft` ke `kinki.ts` tetap HIJAU pada dua dataset
+pertama, dan baru MERAH setelah dataset ketiga ada.
+
+### 6.2 Temuan (semuanya diperbaiki di sesi yang sama)
+
+| Temuan | Bukti | Tindakan |
+|---|---|---|
+| 6 bacaan mati, bukan 3: `identitas.jft` (kinki, firma), `identitas.id_kandidat` (jipa), `sertifikasi.sim` (rirekisho-xlsx), `raw.idKandidat` + `raw.nomorPeserta` (rirekisho-xlsx), `raw.jft` (firma) | gerbang lapis 1 | rantai `??`/`\|\|` dipendekkan ke kunci yang benar-benar ada |
+| **`wawancara.motivasi_ke_jepang_jp` selalu `'-'`** — alias di `data.ts` hanya menyebut `wawancara.motivasi_jp`, yang tidak pernah dibuat `buildMasterNested`. Kolom `motivasi_ke_jepang_jp` ADA dan terisi, tetapi tidak pernah sampai ke KINKI | gerbang lapis 2 | alias `wawancara.motivasi_ke_jepang_jp` ditambahkan |
+| **`keluarga_2..5_pekerjaan_jp` tidak ada** — CV AI mengumpulkan `keluarga[i].pekerjaan_jp`, `buildRiwayatSlots` tidak punya tujuan, KINKI mencetak 5 baris 家族の職業 | gerbang lapis 3 | migrasi **058** (4 kolom) + slot `['_pekerjaan_jp', 'pekerjaan_jp']` |
+| Fixture `rirekisho-xlsx.test.ts` memakai `raw.idKandidat` — ejaan yang tidak pernah ada di produksi | tes hijau karena fallback mati | fixture memakai `raw.id_kandidat` |
+
+**Gate:** backend 122 berkas/**1679** · frontend 131 berkas/**1800** · tsc bersih ·
+lint-ratchet PASSED (debt −4) · `verify:schema` IN SYNC (`sha256:3518fc776f39`).
+Uji mutasi: menyuntikkan kembali `?? id.jft` ⇒ gerbang MERAH (`kinki: identitas.jft`).
+
+### 6.3 Masih terbuka
+
+- **Tidak ada renderer yang mencetak `alasan`** (sama seperti §5.1) — butuh
+  keputusan template mana yang memakainya.
+- Cakupan gerbang = lapisan **pemetaan nilai** (`buildValues`/`buildNumbers`),
+  bukan `render()` (yang merakit zip dan memanggil `fetch`/`createImageBitmap`).
+  Sisa bacaan di `render()` hanya `uploads.photo` dan nama sheet.
+- `uploads.*` dilewati dengan alasan tertulis (berkas unggahan, bukan pertanyaan
+  form); `raw.*` diperiksa terhadap kunci yang benar-benar dikembalikan
+  `handleGetDrafCvMaster`.

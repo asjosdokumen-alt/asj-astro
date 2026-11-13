@@ -561,7 +561,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
      `N5レベル` dibiarkan, dan itu berarti **243 dari 268** kandidat — yang
      kolom `jft`-nya kosong — tercetak mengaku level N5 di formulir resmi.
      Sel kosong lebih jujur daripada klaim kemampuan yang tidak pernah diisi. */
-  const levelJp = bersih(data.sertifikasi.level_bahasa_jepang) || jepangLevel(data.sertifikasi.jft ?? id.jft);
+  /* `?? id.jft` dibuang 2026-11-13: `identitas` tidak punya kunci `jft`
+     (nilai ujian hidup di `sertifikasi.jft`), jadi cabang itu tidak pernah
+     terpakai — hanya menyamarkan bahwa sumbernya satu. */
+  const levelJp = bersih(data.sertifikasi.level_bahasa_jepang) || jepangLevel(data.sertifikasi.jft);
   cells.J4 = levelJp;
 
   /* ── pendidikan: baris 20 = PENDIDIKAN TERAKHIR, baris 22 = 日本語学校 ────

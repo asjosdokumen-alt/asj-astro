@@ -146,7 +146,16 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
       hobi: v('HOBI', 'HOBIID', 'wawancara.hobi_id'),
       hobi_jp: v('HOBIJP', 'wawancara.hobi_jp'),
       motivasi_ke_jepang: v('MOTIVASIKEJEPANG', 'MOTIVASIID', 'wawancara.motivasi_ke_jepang', 'wawancara.motivasi_id'),
-      motivasi_ke_jepang_jp: v('MOTIVASIKEJEPANGJP', 'MOTIVASIJP', 'wawancara.motivasi_jp'),
+      /* 🔴 `wawancara.motivasi_ke_jepang_jp` WAJIB ada di daftar. `buildMasterNested`
+         menulis kunci itu dari kolom `motivasi_ke_jepang_jp`, tetapi daftar ini
+         hanya menyebut `wawancara.motivasi_jp` — yang TIDAK PERNAH dibuat bentuk
+         bersarang. Akibatnya seluruh rantai `v()` gagal dan nilainya selalu
+         sentinel `'-'`; KINKI lalu jatuh ke `tujuan_ke_jepang_jp` dan kolom
+         kanji 志望動機 milik `motivasi_ke_jepang_jp` tidak pernah tercetak.
+         Terukur 2026-11-13 oleh gerbang `form-column-parity` (arah template →
+         form): field ini satu-satunya yang "dibaca template tanpa kolom pengisi"
+         padahal kolomnya ADA dan terisi. */
+      motivasi_ke_jepang_jp: v('MOTIVASIKEJEPANGJP', 'MOTIVASIJP', 'wawancara.motivasi_ke_jepang_jp', 'wawancara.motivasi_jp'),
       // 🔴 `getDrafCvMaster` mengembalikan bentuk BERSARANG, dan di bentuk itu
       // kuncinya bernama `wawancara.promosi_jp` — BUKAN `promosi_diri_jp`
       // (`buildMasterNested`, service.ts:374). Renderer form KINKI dulu membaca

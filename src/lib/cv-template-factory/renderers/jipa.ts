@@ -221,7 +221,11 @@ export function buildValues(data: CandidateData): Record<string, string> {
   const id = data.identitas;
   const cells: Record<string, string> = {
     /* ── identitas ──────────────────────────────────────────────────────── */
-    H5: bersih(id.id_kandidat ?? (data.raw as Record<string, unknown>).id_kandidat),
+    /* `id.id_kandidat` DULU ada di sini sebagai cadangan pertama, padahal
+       `identitas` tidak pernah punya kunci itu: `normalizeMasterData` hanya
+       menyalin field CV. Nilainya selalu `undefined`, jadi yang dipakai memang
+       `raw.id_kandidat` — dan sekarang hanya itu yang tertulis. */
+    H5: bersih((data.raw as Record<string, unknown>).id_kandidat),
     F7: bersih(id.nama_lengkap),
     F8: kanaJp(id.katakana),
     F9: bersih(id.panggilan_katakana) || bersih(id.panggilan),

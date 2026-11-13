@@ -154,7 +154,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
   const raw = data.raw as Record<string, unknown>;
   const cells: Record<string, string> = {
     /* ── identity block ─────────────────────────────────────────────────── */
-    E4: s(raw.idKandidat ?? raw.id_kandidat ?? raw.nomorPeserta),
+    /* Dua ejaan pertama (`idKandidat`, `nomorPeserta`) TIDAK PERNAH ada di
+       respons `getDrafCvMaster` — handler hanya menempel `id_kandidat`. Rantai
+       `??` yang panjang membuat sel ini tampak punya tiga sumber padahal satu. */
+    E4: s(raw.id_kandidat),
     H4: genderLabel(id.gender),
     H5: s(id.umur),
     D6: s(id.nama_lengkap),
@@ -231,7 +234,9 @@ export function buildValues(data: CandidateData): Record<string, string> {
   /* ── certificates ───────────────────────────────────────────────────── */
   const jftTeks = s(data.sertifikasi.jft).trim();
   cells.C42 = negatif(jftTeks) ? 'TIDAK\u3000（無）' : jftTeks;
-  cells.F42 = adaLabel(data.sertifikasi.sim ?? data.identitas.sim);
+  /* `sertifikasi.sim` tidak ada di `normalizeMasterData` (SIM hidup di
+     `identitas.sim`), jadi `??` di sini tidak pernah berguna. */
+  cells.F42 = adaLabel(data.identitas.sim);
   /* 他 LAIN-LAIN (`H42:I42`) — dulu selalu kosong. Isinya sertifikat di luar
      JLPT & SIM: lisensi SSW, lalu sertifikat lain yang diketik bebas. */
   const lain = [s(data.sertifikasi.ssw), s(data.sertifikasi.sertifikat_lain)]

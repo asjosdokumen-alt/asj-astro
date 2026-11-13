@@ -836,6 +836,15 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
     ['_katakana', 'katakana'],
     ['_usia', 'usia', 'umur'],
     ['_pekerjaan', 'pekerjaan', 'pekerjaan_id'],
+    /* 家族の職業 (kanji). Kolomnya ada sejak migrasi 022 dan DIBACA
+       `buildMasterNested` + dicetak KINKI (`F…` = `jpTerm(pekerjaan_jp ||
+       pekerjaan)`), tetapi slot ini tidak pernah ditulis: CV AI MENGUMPULKAN
+       `keluarga[].pekerjaan_jp` (FamRow di `AiCvForm`), lalu nilainya dibuang
+       saat simpan karena `buildRiwayatSlots` tidak punya tujuan untuknya —
+       persis kelas bug `katakana` di atas (migrasi 046). Akibatnya sel kanji
+       jatuh ke teks Indonesia. Ditambahkan 2026-11-13; terukur lewat gerbang
+       `form-column-parity` arah template → form. */
+    ['_pekerjaan_jp', 'pekerjaan_jp'],
     ['_gaji', 'gaji', 'pendapatan'],
     /* Migrasi 022: 同居区分 / 電話. */
     ['_tinggal', 'tinggal', 'status_tinggal'],

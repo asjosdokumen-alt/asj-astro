@@ -96,7 +96,11 @@ function anggun(): CandidateData {
     wawancara: { tujuan_ke_jepang_jp: '日本で働きたいです' },
     kenalan_jepang: { nama_id: '', nama_jp: '' },
     uploads: { photo: '' },
-    raw: { idKandidat: 'P - 002' },
+    /* E4 dibaca dari `raw.id_kandidat` — kunci yang benar-benar ditempel
+       `handleGetDrafCvMaster`. Fixture ini dulu memakai `idKandidat`, ejaan yang
+       TIDAK PERNAH ada di respons produksi; tesnya hijau karena renderer punya
+       rantai `??` mati ke ejaan itu (dibersihkan 2026-11-13). */
+    raw: { id_kandidat: 'P - 002' },
   } as unknown as CandidateData;
 }
 

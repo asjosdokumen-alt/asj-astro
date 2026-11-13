@@ -203,7 +203,6 @@ function kebiasaan(v: unknown): { label: string; jumlah: string } {
  */
 export function buildValues(data: CandidateData): Record<string, string> {
   const id = data.identitas;
-  const raw = data.raw as Record<string, unknown>;
   const minum = kebiasaan(data.medis.alkohol);
   const rokok = kebiasaan(data.medis.rokok);
   const cells: Record<string, string> = {
@@ -291,7 +290,11 @@ export function buildValues(data: CandidateData): Record<string, string> {
   // `??` tidak pernah jatuh ke cadangan: `data.sertifikasi.jft` SELALU ada
   // (string kosong kalau tidak diisi), jadi rantainya harus `||` pada nilai
   // yang sudah dibersihkan.
-  cells.D31 = bersih(data.sertifikasi.jft) || bersih(id.jft) || bersih(raw.jft);
+  /* `|| bersih(id.jft) || bersih(raw.jft)` dibuang 2026-11-13: dua-duanya
+     membaca kunci yang tidak pernah ada (`identitas` tidak punya `jft`, dan
+     `raw` adalah baris BERSARANG — nilai ujian ada di `raw.sertifikasi.jft`,
+     bukan `raw.jft`). Yang benar hanya satu: `sertifikasi.jft`. */
+  cells.D31 = bersih(data.sertifikasi.jft);
   /* Baris 31-33: kolom kedua tiap baris (G/H, I/J, K) dulu dibiarkan kosong.
      Sekarang diisi dari kolom yang memang disediakan untuknya. */
   cells.D32 = bersih(data.sertifikasi.bahasa) || bersih(data.sertifikasi.level_bahasa_jepang);
