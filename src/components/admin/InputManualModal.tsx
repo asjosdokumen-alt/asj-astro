@@ -128,9 +128,12 @@ export default function InputManualModal() {
         // Dulu `loker.trim() || 'UMUM'`. 'UMUM' BUKAN kategori — kode job yang
         // sah hanya `TG<n>ASJ` (Tokutei Ginou) dan `GJ<n>ASJ` (Magang), lihat
         // `JOB_CODE_PREFIX` di contexts/jobs/repository.ts. Sentinel itu
-        // mengalir ke `database_asj_form.code_job` dan membuat 12 baris lama
+        // mengalir ke `database_asj_form.code_job` dan membuat baris lama
         // tampil sebagai lowongan "UMUM" yang tidak pernah ada. Yang kosong
         // sekarang dikirim kosong, dan pesan validasinya menyebut formatnya.
+        // Sisa sentinel di data lama dibersihkan migrasi 059 (terukur
+        // 2026-11-13: 93 baris `database_candidate.id_loker_pilihan` + 2 baris
+        // `database_asj_form.code_job`).
         loker: loker.trim(),
         gender,
         usia,
