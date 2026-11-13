@@ -2465,9 +2465,12 @@ html.has-cursor .u-cursor {
 }
 
 .u-cursor-ring {
-  width: 34px;
-  height: 34px;
-  margin: -17px 0 0 -17px;
+  /* 34 -> 28px (2026-11-14). Diukur bersama cincin yang tertinggal: 34 px
+     menutupi label tombol yang sedang ditunjuk. 28 px cukup untuk terbaca
+     sebagai cincin dan tidak menutupi apa pun. */
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
   border: 1px solid #fff;
   transition: transform 260ms var(--ease-out-expo);
 }

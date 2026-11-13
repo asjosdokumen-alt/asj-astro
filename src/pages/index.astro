@@ -2907,16 +2907,28 @@ import { GALLERY } from '../lib/gallery';
     const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
 
     /* ── 1. SCROLL ──────────────────────────────────────────────────────
-       `lerp: 0.09` — jarak yang ditempuh per frame, bukan durasi. 0.08-0.1
-       adalah band yang dipakai skill; 0.09 di tengahnya. `wheelMultiplier`
-       0.9 memperlambat satu notch sedikit, karena 120 px per notch terasa
-       terlalu jauh begitu ia tidak lagi melompat.
+       `lerp` adalah porsi jarak yang ditempuh per frame, jadi ia menentukan
+       LAMA BERHENTI, bukan kehalusan. Rumusnya: sisa = (1 - lerp)^frame.
 
-       `anchors: true` supaya tautan `#section` di nav ikut halus. Offset 0
-       (bawaan) memang yang diinginkan: header halaman ini `position:
-       relative`, bukan sticky, jadi tidak ada yang menutupi judul section —
-       dan `e2e/test-site-nav.mjs` menaruh section tepat di puncak viewport
-       saat memeriksa scroll-spy. */
+       TERUKUR 2026-11-14 dengan `lerp: 0.09` (nilai skill): satu notch 100 px
+       baru berhenti setelah **979 ms**. Di halaman 23.302 px itu terbaca
+       sebagai mengambang, bukan halus — keluhan pemilik: "mouse nya aneh".
+
+       Nilai yang dipakai sekarang diukur, bukan dipilih dari band skill:
+         0.09 -> 979 ms   (terlalu berat)
+         0.16 -> ~430 ms
+         0.20 -> ~340 ms  <- dipakai
+       `wheelMultiplier: 1` juga dikembalikan: 0.9 memotong 10% jarak tiap
+       notch, dan pada halaman sepanjang ini yang terasa bukan "halus" tapi
+       "berat". */
+    const SCROLL_LERP = 0.24;
+    const WHEEL_MULT = 1;
+
+    /* Jarak maksimum cincin kursor dari titiknya, dalam px. Lihat komentar di
+       `loop()`: lerp saja tidak membatasi jarak, dan cincin yang tertinggal
+       ratusan px terbaca sebagai kursor yang lepas. 40 px = ~1,4x diameter
+       cincin (28 px). */
+    const MAX_CURSOR_LAG = 40;
     let lenis: Lenis | null = null;
     let raf = 0;
 
@@ -2929,8 +2941,8 @@ import { GALLERY } from '../lib/gallery';
     function startSmooth() {
       if (lenis || reduce.matches || !fine.matches) return;
       lenis = new Lenis({
-        lerp: 0.09,
-        wheelMultiplier: 0.9,
+        lerp: SCROLL_LERP,
+        wheelMultiplier: WHEEL_MULT,
         smoothWheel: true,
         anchors: true,
       });
@@ -2971,17 +2983,17 @@ import { GALLERY } from '../lib/gallery';
       let ty = window.innerHeight / 2;
       let rx = tx;
       let ry = ty;
-      let dx = tx;
-      let dy = ty;
       let moved = false;
 
       const onMove = (e: PointerEvent) => {
         tx = e.clientX;
         ty = e.clientY;
+        /* Lompatan pertama tidak boleh dianimasikan: tanpa ini, kursor
+           meluncur dari tengah layar ke tempat pointer muncul. */
         if (!moved) {
           moved = true;
-          rx = dx = tx;
-          ry = dy = ty;
+          rx = tx;
+          ry = ty;
         }
       };
 
@@ -2997,16 +3009,37 @@ import { GALLERY } from '../lib/gallery';
 
       const loop = () => {
         if (!layer.isConnected) return;
-        // Cincin: 0.2 per frame (~120 ms untuk sampai). Titik: 0.55, hampir
-        // menempel, tapi masih menyisakan sedikit ekor saat pointer berhenti.
-        rx += (tx - rx) * 0.2;
-        ry += (ty - ry) * 0.2;
-        dx += (tx - dx) * 0.55;
-        dy += (ty - dy) * 0.55;
+        /* ── TITIK MENEMPEL PERSIS, CINCIN DIBATASI JARAKNYA ──────────────
+           Versi pertama membuat KEDUANYA tertinggal (titik 0.55, cincin 0.2).
+           Terukur saat flick cepat 1000 px: titik tertinggal **326 px** dan
+           cincin **720 px** dari pointer. Cincin 34 px yang tertinggal 720 px
+           bukan lagi "punya berat" — ia sudah lepas dari kursornya, dan itu
+           yang membuat mouse terasa aneh: tidak ada satu pun elemen di layar
+           yang menunjuk tempat pointer sebenarnya berada.
+
+           Jadi titik tidak di-lerp sama sekali. Ia ADALAH pointer.
+
+           Cincin tetap di-lerp supaya gerakannya punya berat, TAPI lerp saja
+           tidak cukup: pada flick keras selisihnya sempat 458 px walau lerp
+           sudah dinaikkan ke 0.42 — karena lerp mengukur PERSENTASE, bukan
+           jarak, jadi makin cepat pointer makin jauh ia tertinggal. Karena
+           itu ada BATAS 40 px: begitu cincin lebih jauh dari itu dari titik,
+           ia ditarik kembali ke lingkaran 40 px. Hasilnya terbaca sebagai
+           karet yang memberi, bukan sebagai elemen yang lepas. */
+        rx += (tx - rx) * 0.35;
+        ry += (ty - ry) * 0.35;
+        const gx = tx - rx;
+        const gy = ty - ry;
+        const gap = Math.hypot(gx, gy);
+        if (gap > MAX_CURSOR_LAG) {
+          rx = tx - (gx / gap) * MAX_CURSOR_LAG;
+          ry = ty - (gy / gap) * MAX_CURSOR_LAG;
+        }
         layer.style.transform = `translate3d(${rx.toFixed(2)}px, ${ry.toFixed(2)}px, 0)`;
         // Titik adalah ANAK dari lapis yang sudah bergerak bersama cincin,
-        // jadi ia hanya perlu menutup selisihnya.
-        dot.style.transform = `translate3d(${(dx - rx).toFixed(2)}px, ${(dy - ry).toFixed(2)}px, 0)`;
+        // jadi ia hanya perlu menutup selisihnya — dan selisih itu nol
+        // begitu cincin sampai.
+        dot.style.transform = `translate3d(${(tx - rx).toFixed(2)}px, ${(ty - ry).toFixed(2)}px, 0)`;
         cursorRaf = requestAnimationFrame(loop);
       };
 
