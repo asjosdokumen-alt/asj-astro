@@ -1207,7 +1207,15 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           golongan_darah: cv.goldar, status_nikah: cv.status, anak: cv.anak,
           email: cv.email, alamat: cv.alamat, alamat_jp: alamatJp, hp: cv.hp, hp_darurat: cv.hpdarurat,
           darurat_nama: cv.darurat_nama, darurat_hubungan: cv.darurat_hubungan,
-          darurat_nama_jp: cv.darurat_nama_jp,
+          /* Nama kontak darurat versi KANJI. Kuncinya WAJIB
+             `kontak_darurat_nama_jp` — itu nama yang dibaca balik
+             (`AI_CV_PATHS.darurat_nama_jp`), dipetakan ke kolom
+             (`kontak_darurat_nama_jp`), DAN ditulis penerjemah AI
+             (`_lib/ai/chat.ts`). Dulu baris ini mengirim `darurat_nama_jp`,
+             jadi setiap simpan MENGHAPUS hasil terjemahan kanji-nya: `identitas`
+             adalah seksi terkelola, sehingga nilai yang ditulis penerjemah
+             ditimpa payload yang memakai nama lain. */
+          kontak_darurat_nama_jp: cv.darurat_nama_jp,
           ktp: cv.ktp, paspor: cv.paspor, sim: cv.sim,
           // Legacy menyimpan status paspor/SIM di identitas.* (ai_form.ts
           // enableSimPasporConditional). Tanpa ini jawaban "TIDAK ADA" hilang:
