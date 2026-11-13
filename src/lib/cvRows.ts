@@ -53,6 +53,34 @@ export const TINGKAT_OPTIONS = [
   'SD', 'SMP', 'SMA', 'SMK', 'MA', 'D3', 'D4', 'S1', 'S2', 'LPK',
 ] as const;
 
+/**
+ * Label Jepang untuk jenjang sekolah — HANYA untuk tampilan dropdown.
+ *
+ * Nilai yang disimpan tetap `SD`/`SMP`/… karena `getTingkatVal` (urutan),
+ * `tingkatJp` (cetak), dan kolom `pendidikan_N_tingkat` semuanya membaca
+ * singkatan itu. Yang berubah hanya teks yang dilihat kandidat: pemilik
+ * 2026-11-13 meminta semua dropdown berpasangan ID–JP, dan "SD" sendiri tidak
+ * memberi tahu apa pun tentang cara menulisnya di 学歴.
+ */
+export const TINGKAT_JP: Record<string, string> = {
+  SD: '小学校',
+  SMP: '中学校',
+  SMA: '高等学校',
+  SMK: '高等学校（職業）',
+  MA: 'マドラサ・アリヤ',
+  D3: '短大 (D3)',
+  D4: '大学 (D4)',
+  S1: '大学 (S1)',
+  S2: '大学院 (S2)',
+  LPK: '研修校 (LPK)',
+};
+
+/** `SD` → `SD（小学校）`. Jenjang yang tidak dikenal dikembalikan apa adanya. */
+export function tingkatLabel(v: string): string {
+  const jp = TINGKAT_JP[v];
+  return jp ? `${v}（${jp}）` : v;
+}
+
 /** A school level that is not in `TINGKAT_OPTIONS` still has to be selectable. */
 export function levelOptions(current: string): string[] {
   const out: string[] = ['', ...TINGKAT_OPTIONS];

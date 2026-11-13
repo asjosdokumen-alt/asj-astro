@@ -1935,7 +1935,7 @@ export const jpTranslations: Record<string, string> = {
     "ai_cv.row_jurusan_jp": "専攻（JP）",
     "ai_cv.row_perusahaan": "会社名（ID）",
     "ai_cv.row_perusahaan_jp": "会社名（JP）",
-    "ai_cv.row_jabatan": "役職（ID）",
+    "ai_cv.row_jabatan": "職種（ID）",
     "ai_cv.row_jabatan_jp": "役職（JP）",
     "ai_cv.combo_hint": "入力または一覧から選択…",
     "ai_cv.combo_manual": "一覧にありません — 入力したテキストを使用します",

@@ -311,10 +311,16 @@ describe('opsi-form — integritas daftar gabungan', () => {
     // Angka ini SENGAJA ditulis, bukan diturunkan dari panjang tiap blok: yang
     // dijaga adalah "daftar tidak menyusut", dan penambahan yang lupa
     // didokumentasikan harus terlihat di sini.
-    expect(PEKERJAAN).toHaveLength(115);
-    // 94 -> 96 (2026-10-30): dua jurusan LPK (bahasa Jepang), diminta pemilik
-    // supaya kandidat tidak mengetik jurusannya sendiri dengan ejaan berbeda.
-    expect(JURUSAN).toHaveLength(96);
+    // 115 -> 139 (2026-11-13): 24 pekerjaan yang benar-benar muncul di CV
+    // kandidat ASJ tetapi belum ada — jasa rumah tangga & perawatan (TKI/TKW,
+    // house keeping, perawat rumah sakit), kuli & perancah (pekerjaan yang
+    // paling banyak dicetak KINKI), seni/media, dan status non-kerja untuk
+    // baris KELUARGA (mahasiswa, pelajar, meninggal dunia).
+    expect(PEKERJAAN).toHaveLength(139);
+    // 96 -> 144 (2026-11-13): 48 jurusan SMK tambahan (kesehatan, kemaritiman,
+    // pertambangan, konstruksi jalan, PPLG/TJKT/SIJA). Nama lama TIDAK diganti
+    // karena baris yang sudah tersimpan memakainya.
+    expect(JURUSAN).toHaveLength(144);
     expect(HUBUNGAN_LEGACY).toHaveLength(7);
     // 7 legacy + 12 hubungan berjenis kelamin (2026-10-21). Angka ini SENGAJA
     // dihitung ulang, bukan diturunkan dari `HUBUNGAN_LEGACY.length`: yang

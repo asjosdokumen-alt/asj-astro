@@ -211,6 +211,38 @@ export const PEKERJAAN_TAMBAHAN: Opsi[] = [
   ['FREELANCE', 'FREELANCE (フリーランス)'],
   ['PENSIUNAN', 'PENSIUNAN (退職者)'],
   ['TIDAK BEKERJA', 'TIDAK BEKERJA (無職)'],
+  /* ── Tambahan 2026-11-13 (permintaan pemilik: *"perbanyak … bidang kerja dan
+     pekerjaan"*, dengan contoh daftar dari adminjls). Yang ditambahkan di sini
+     adalah pekerjaan yang benar-benar muncul di CV kandidat ASJ tetapi belum
+     ada — bukan daftar profesi lengkap. ─────────────────────────────────── */
+  // Jasa rumah tangga & perawatan (paling sering untuk TKI/TKW)
+  ['TKI / TKW (PEKERJA MIGRAN)', 'TKI / TKW (メイド)'],
+  ['HOUSE KEEPING', 'HOUSE KEEPING (ハウスキーピング)'],
+  ['ASISTEN PERAWAT LANSIA', 'ASISTEN PERAWAT LANSIA (介護助手)'],
+  ['PERAWAT RUMAH SAKIT', 'PERAWAT RUMAH SAKIT (看護師)'],
+  ['PENGASUH ANAK / BABYSITTER', 'PENGASUH ANAK / BABYSITTER (ベビーシッター)'],
+  ['PENATA RIAS / MUA', 'PENATA RIAS / MUA (ヘアメイク)'],
+  ['BARBER / TUKANG CUKUR', 'BARBER / TUKANG CUKUR (理容師)'],
+  ['PENJAHIT', 'PENJAHIT (縫製工)'],
+  ['PENJUAL BAJU', 'PENJUAL BAJU (衣服販売)'],
+  ['PEDAGANG BUAH / SAYUR', 'PEDAGANG BUAH / SAYUR (青果販売)'],
+  ['STAFF CUCI MOTOR', 'STAFF CUCI MOTOR (バイク洗車スタッフ)'],
+  // Konstruksi & angkut (pekerjaan yang paling banyak dicetak di CV KINKI)
+  ['PEKERJA PASANG PERANCAH', 'PEKERJA PASANG PERANCAH (足場組立作業員)'],
+  ['PENGANGKUT MATERIAL (KULI)', 'PENGANGKUT MATERIAL (荷揚げ作業員)'],
+  ['PEKERJA MUAT BARANG', 'PEKERJA MUAT BARANG (積み込み作業員)'],
+  ['OPERATOR ALAT BERAT', 'OPERATOR ALAT BERAT (重機オペレーター)'],
+  // Seni, media, olahraga
+  ['MUSISI', 'MUSISI (音楽家)'],
+  ['SENIMAN / PELUKIS', 'SENIMAN / PELUKIS (芸術家)'],
+  ['FOTOGRAFER / VIDEOGRAFER', 'FOTOGRAFER / VIDEOGRAFER (カメラマン)'],
+  ['KONTEN KREATOR', 'KONTEN KREATOR (コンテンツクリエイター)'],
+  ['ATLET / PELATIH', 'ATLET / PELATIH (スポーツ選手)'],
+  // Status non-kerja (dipakai baris KELUARGA & kenalan, bukan riwayat kerja)
+  ['MAHASISWA', 'MAHASISWA (大学生)'],
+  ['PELAJAR / SISWA', 'PELAJAR / SISWA (学生)'],
+  ['BELAJAR BAHASA JEPANG', 'BELAJAR BAHASA JEPANG (日本語勉強)'],
+  ['MENINGGAL DUNIA', 'MENINGGAL DUNIA (故人)'],
 ];
 
 /**
@@ -375,6 +407,72 @@ export const JURUSAN_SMK: Opsi[] = [
   // Umum / non-teknis
   ['MIPA / IPA', 'MIPA / IPA (理科)'],
   ['TEKNOLOGI INFORMASI', 'TEKNOLOGI INFORMASI (情報技術)'],
+  /* ── Tambahan 2026-11-13 — permintaan pemilik: *"bisa kah di perbanyak
+     jurusan smk dropdownnya"*. Daftar lama 48 baris hanya memuat jurusan yang
+     paling sering muncul, sehingga siswa jurusan lain (kesehatan, kemaritiman,
+     pertambangan, PPLG/TJKT) tidak menemukan dirinya dan mengetik bebas —
+     ejaan bebas itulah yang kemudian tercetak di 学歴. Nama mengikuti spektrum
+     Kemendikbud; jurusan versi kurikulum 2021 (PPLG/TJKT/SIJA) DITAMBAHKAN,
+     bukan menggantikan nama lama, karena baris yang sudah tersimpan memakai
+     nama lama. ──────────────────────────────────────────────────────────── */
+  // Teknologi manufaktur & rekayasa (lanjutan)
+  ['TEKNIK FABRIKASI LOGAM', 'TEKNIK FABRIKASI LOGAM (金属加工)'],
+  ['TEKNIK OTOMASI INDUSTRI', 'TEKNIK OTOMASI INDUSTRI (産業オートメーション)'],
+  ['TEKNIK ELEKTRONIKA DAYA', 'TEKNIK ELEKTRONIKA DAYA (電力電子)'],
+  ['TEKNIK AUDIO VIDEO', 'TEKNIK AUDIO VIDEO (音響・映像機器)'],
+  ['TEKNIK TELEKOMUNIKASI', 'TEKNIK TELEKOMUNIKASI (通信技術)'],
+  ['TEKNIK JARINGAN AKSES', 'TEKNIK JARINGAN AKSES (アクセスネットワーク)'],
+  ['TEKNIK PERAWATAN MESIN INDUSTRI', 'TEKNIK PERAWATAN MESIN INDUSTRI (産業機械整備)'],
+  ['TEKNIK PENGENDALIAN PENCEMARAN', 'TEKNIK PENGENDALIAN PENCEMARAN (公害防止)'],
+  ['TEKNIK INDUSTRI', 'TEKNIK INDUSTRI (工業管理)'],
+  ['DESAIN MANUFAKTUR', 'DESAIN MANUFAKTUR (製造デザイン)'],
+  ['TEKNIK BODI OTOMOTIF', 'TEKNIK BODI OTOMOTIF (自動車板金)'],
+  ['TEKNIK ALAT BERAT', 'TEKNIK ALAT BERAT (重機整備)'],
+  ['TEKNIK PEMBANGKITAN TENAGA LISTRIK', 'TEKNIK PEMBANGKITAN TENAGA LISTRIK (発電設備)'],
+  // Teknologi informasi — nama kurikulum 2021
+  ['PENGEMBANGAN PERANGKAT LUNAK & GIM (PPLG)', 'PENGEMBANGAN PERANGKAT LUNAK & GIM / PPLG (ソフトウェア・ゲーム開発)'],
+  ['TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI (TJKT)', 'TEKNIK JARINGAN KOMPUTER & TELEKOMUNIKASI / TJKT (ネットワーク・通信)'],
+  ['SISTEM INFORMASI JARINGAN & APLIKASI (SIJA)', 'SISTEM INFORMASI JARINGAN & APLIKASI / SIJA (情報システム)'],
+  // Kesehatan & pekerjaan sosial
+  ['KEPERAWATAN', 'KEPERAWATAN (看護)'],
+  ['KEPERAWATAN GIGI', 'KEPERAWATAN GIGI (歯科看護)'],
+  ['FARMASI (SMK)', 'FARMASI (薬学・調剤)'],
+  ['ANALIS KESEHATAN', 'ANALIS KESEHATAN (臨床検査)'],
+  ['PEKERJAAN SOSIAL', 'PEKERJAAN SOSIAL (社会福祉)'],
+  ['CARING / PERAWATAN SOSIAL', 'CARING / PERAWATAN SOSIAL (介護福祉)'],
+  // Agribisnis & agriteknologi (lanjutan)
+  ['PEMULIAAN & PERBENIHAN TANAMAN', 'PEMULIAAN & PERBENIHAN TANAMAN (育種・採種)'],
+  ['TEKNIK KIMIA INDUSTRI', 'TEKNIK KIMIA INDUSTRI (化学工業)'],
+  // Kemaritiman
+  ['NAUTIKA KAPAL NIAGA', 'NAUTIKA KAPAL NIAGA (航海)'],
+  ['TEKNIKA KAPAL NIAGA', 'TEKNIKA KAPAL NIAGA (船舶機関)'],
+  ['TEKNIK PERKAPALAN', 'TEKNIK PERKAPALAN (造船)'],
+  ['TEKNIK MESIN KAPAL', 'TEKNIK MESIN KAPAL (舶用機械)'],
+  // Bisnis & manajemen (lanjutan)
+  ['MANAJEMEN PERKANTORAN & LAYANAN BISNIS (MPLB)', 'MANAJEMEN PERKANTORAN & LAYANAN BISNIS / MPLB (事務・ビジネス)'],
+  ['PEMASARAN', 'PEMASARAN (マーケティング)'],
+  ['AKUNTANSI & KEUANGAN LEMBAGA', 'AKUNTANSI & KEUANGAN LEMBAGA (会計・金融)'],
+  ['ADMINISTRASI BISNIS', 'ADMINISTRASI BISNIS (ビジネス管理)'],
+  // Pariwisata (lanjutan)
+  ['TATA GRAHA / HOUSEKEEPING', 'TATA GRAHA / HOUSEKEEPING (ハウスキーピング)'],
+  ['JASA BOGA', 'JASA BOGA (給食・ケータリング)'],
+  ['PENGELOLAAN PERHOTELAN', 'PENGELOLAAN PERHOTELAN (ホテル運営)'],
+  // Seni & ekonomi kreatif (lanjutan)
+  ['FOTOGRAFI', 'FOTOGRAFI (写真)'],
+  ['DESAIN INTERIOR', 'DESAIN INTERIOR (インテリアデザイン)'],
+  ['PRODUKSI FILM & TELEVISI', 'PRODUKSI FILM & TELEVISI (映像制作)'],
+  ['TEKNIK BROADCASTING', 'TEKNIK BROADCASTING (放送技術)'],
+  ['DESAIN MODE', 'DESAIN MODE (ファッションデザイン)'],
+  // Konstruksi & properti (lanjutan)
+  ['TEKNIK KONSTRUKSI JALAN & JEMBATAN', 'TEKNIK KONSTRUKSI JALAN & JEMBATAN (道路・橋梁)'],
+  ['TEKNIK SURVEI & PEMETAAN', 'TEKNIK SURVEI & PEMETAAN (測量)'],
+  ['TEKNIK PEMELIHARAAN BANGUNAN', 'TEKNIK PEMELIHARAAN BANGUNAN (建築維持管理)'],
+  ['TEKNIK PENGELOLAAN AIR BERSIH & AIR LIMBAH', 'TEKNIK PENGELOLAAN AIR BERSIH & AIR LIMBAH (上下水道)'],
+  // Energi & pertambangan
+  ['TEKNIK GEOLOGI PERTAMBANGAN', 'TEKNIK GEOLOGI PERTAMBANGAN (地質鉱山)'],
+  ['TEKNIK PERTAMBANGAN', 'TEKNIK PERTAMBANGAN (鉱山技術)'],
+  ['TEKNIK PERMINYAKAN', 'TEKNIK PERMINYAKAN (石油技術)'],
+  ['TEKNIK ENERGI TERBARUKAN', 'TEKNIK ENERGI TERBARUKAN (再生可能エネルギー)'],
 ];
 
 /** SMA/MA major (penjurusan). */
@@ -1087,16 +1185,20 @@ export const VISUS_MATA: Opsi[] = [
 ];
 
 /**
- * KOTA PENERBIT PASPOR — daftar kota yang paling sering muncul di paspor
- * kandidat (kantor imigrasi), dengan katakana sebagai petunjuk cara menulisnya
- * di form Jepang. Nilai yang disimpan tetap nama Indonesia: kolomnya
- * `kota_terbit_pasport` dan itulah yang dicetak.
+ * KOTA INDONESIA — dipakai TIGA tempat: kota penerbit paspor, kota sekolah,
+ * dan kota tempat kerja. Dulu hanya yang pertama yang punya daftar; dua yang
+ * lain kotak teks bebas, jadi satu kota ditulis "PONOROGO", "Ponorogo", dan
+ * "ponorogo, jatim" oleh tiga kandidat — dan renderer mencetak ketiganya apa
+ * adanya ke 地域 (KINKI `K20`/`K27`).
+ *
+ * Nilai yang disimpan tetap nama Indonesia (kolom `kota_terbit_pasport`,
+ * `pendidikan_N_kota`, `pekerjaan_N_kota`); katakana hanya petunjuk di label.
  *
  * `ComboSelect` memakai daftar ini sebagai SARAN, bukan pagar — kota yang tidak
- * ada di sini tetap bisa diketik bebas, dan itu disengaja: pemegang paspor bisa
- * menerbitkan di kota mana pun.
+ * ada di sini tetap bisa diketik bebas, dan itu disengaja: ada 514 kabupaten/kota
+ * dan tidak ada gunanya memaksakan daftar setengah lengkap.
  */
-export const KOTA_PASPOR: Opsi[] = [
+export const KOTA_INDONESIA: Opsi[] = [
   ['JAKARTA', 'JAKARTA (ジャカルタ)'],
   ['SURABAYA', 'SURABAYA (スラバヤ)'],
   ['BANDUNG', 'BANDUNG (バンドゥン)'],
@@ -1142,6 +1244,50 @@ export const KOTA_PASPOR: Opsi[] = [
   ['SIDOARJO', 'SIDOARJO (シドアルジョ)'],
   ['PROBOLINGGO', 'PROBOLINGGO (プロボリンゴ)'],
   ['BLITAR', 'BLITAR (ブリタル)'],
+];
+
+/**
+ * 業種 — BIDANG INDUSTRI tempat kandidat bekerja (KINKI `AA`/備考, Firma, JIPA).
+ *
+ * Dulu kotak teks bebas, jadi satu pabrik yang sama ditulis "PETERNAKAN",
+ * "peternakan sapi", dan "PETERNAKAN SAPI PERAH" oleh tiga kandidat — dan
+ * renderer mencetak ketiganya apa adanya ke form Jepang. Daftar ini yang
+ * dicetak KINKI sebagai 業種; teks bebas tetap diterima lewat ComboSelect
+ * supaya bidang yang belum terdaftar tidak terhalang.
+ */
+export const BIDANG_KERJA: Opsi[] = [
+  ['PERTANIAN', 'PERTANIAN (農業)'],
+  ['PERKEBUNAN', 'PERKEBUNAN (プランテーション)'],
+  ['HORTIKULTURA', 'HORTIKULTURA (園芸)'],
+  ['PETERNAKAN', 'PETERNAKAN (畜産)'],
+  ['PERIKANAN / BUDIDAYA', 'PERIKANAN / BUDIDAYA (水産・養殖)'],
+  ['KEHUTANAN', 'KEHUTANAN (林業)'],
+  ['PERTAMBANGAN', 'PERTAMBANGAN (鉱業)'],
+  ['KONSTRUKSI / BANGUNAN', 'KONSTRUKSI / BANGUNAN (建設)'],
+  ['MANUFAKTUR / PABRIK', 'MANUFAKTUR / PABRIK (製造)'],
+  ['MAKANAN & MINUMAN', 'MAKANAN & MINUMAN (食品)'],
+  ['TEKSTIL & GARMEN', 'TEKSTIL & GARMEN (繊維・衣料)'],
+  ['KULIT & SEPATU', 'KULIT & SEPATU (皮革・靴)'],
+  ['KAYU & FURNITURE', 'KAYU & FURNITURE (木工・家具)'],
+  ['KERTAS & PERCETAKAN', 'KERTAS & PERCETAKAN (紙・印刷)'],
+  ['KIMIA & PLASTIK', 'KIMIA & PLASTIK (化学・プラスチック)'],
+  ['LOGAM & MESIN', 'LOGAM & MESIN (金属・機械)'],
+  ['ELEKTRONIKA', 'ELEKTRONIKA (電子)'],
+  ['OTOMOTIF', 'OTOMOTIF (自動車)'],
+  ['ALAT BERAT', 'ALAT BERAT (重機)'],
+  ['ENERGI & LISTRIK', 'ENERGI & LISTRIK (エネルギー・電力)'],
+  ['LOGISTIK & TRANSPORTASI', 'LOGISTIK & TRANSPORTASI (物流・運輸)'],
+  ['PERDAGANGAN / RETAIL', 'PERDAGANGAN / RETAIL (小売)'],
+  ['PERHOTELAN', 'PERHOTELAN (ホテル)'],
+  ['RESTORAN / KULINER', 'RESTORAN / KULINER (飲食)'],
+  ['PARIWISATA', 'PARIWISATA (観光)'],
+  ['KESEHATAN / PERAWATAN', 'KESEHATAN / PERAWATAN (医療・介護)'],
+  ['PENDIDIKAN', 'PENDIDIKAN (教育)'],
+  ['JASA KEUANGAN', 'JASA KEUANGAN (金融)'],
+  ['JASA PROFESIONAL', 'JASA PROFESIONAL (専門サービス)'],
+  ['KEBERSIHAN & LAUNDRY', 'KEBERSIHAN & LAUNDRY (清掃・洗濯)'],
+  ['KEAMANAN', 'KEAMANAN (警備)'],
+  ['TEKNOLOGI INFORMASI', 'TEKNOLOGI INFORMASI (情報技術)'],
 ];
 
 /** スポーツ — KINKI `E16`. Nilai = istilah Jepang yang dicetak. */

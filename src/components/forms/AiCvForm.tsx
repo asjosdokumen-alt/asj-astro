@@ -31,10 +31,10 @@ import {
   SSW_BIDANG, UJIAN_JP, UJIAN_BAHASA,
   /* Angka & ukuran berlabel Jepang (2026-11-13): nilai tetap angka, label
      yang berbahasa Jepang — lihat catatan di `opsi-form.ts` §3f. */
-  LAMA_ASRAMA, LAMA_KERJA_JP, VISUS_MATA, KOTA_PASPOR,
+  LAMA_ASRAMA, LAMA_KERJA_JP, VISUS_MATA, KOTA_INDONESIA, BIDANG_KERJA,
   labelJp, pairDisplay, type Opsi,
 } from '../../lib/opsi-form';
-import { levelOptions, sortEduRows } from '../../lib/cvRows';
+import { levelOptions, sortEduRows, tingkatLabel } from '../../lib/cvRows';
 import { joinPeriod, monthLabel, monthOptions, splitPeriod, yearOptions } from '../../lib/cvPeriod';
 import { useOverlay } from '../ui/useOverlay';
 import DocumentPreviewModal from '../DocumentPreviewModal';
@@ -1892,7 +1892,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               {/* Kota penerbit — ketik-untuk-menyarig dari daftar kota yang
                   sering muncul di paspor, dan tetap boleh diketik bebas: kota
                   penerbit mengikuti kantor imigrasi, bukan daftar kita. */}
-              <ComboSelect label={t("form.mf_kota_paspor")} id="kota_paspor" value={cv.kota_paspor} pairs={KOTA_PASPOR}
+              <ComboSelect label={t("form.mf_kota_paspor")} id="kota_paspor" value={cv.kota_paspor} pairs={KOTA_INDONESIA}
                 placeholder="ketik kota, mis. SURABAYA"
                 onInput={(v) => handleManualEdit('kota_paspor', v)} onPick={(v) => handleManualEdit('kota_paspor', v)} />
 
@@ -2246,7 +2246,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                       yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
                       onChange={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, lulus: v } : r))} />
                     <RowSelect label={t('ai_cv.row_tingkat')} id={`ai-edu-tingkat-${i}`} value={edu.tingkat}
-                      options={levelOptions(edu.tingkat)}
+                      options={levelOptions(edu.tingkat)} labelOf={tingkatLabel}
                       onChange={(v) => editEdu(l => sortEduRows(l.map((r, j) => j === i ? { ...r, tingkat: v } : r)))} />
                     <Field label={t('ai_cv.row_sekolah')} id={`edu-sekolah-id-${i}`} value={edu.sekolah_id}
                       onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, sekolah_id: v, status_sekolah: r.status_sekolah || (v.trim() ? (kouritsuSekolah(v) === '公立' ? 'NEGERI' : 'SWASTA') : '') } : r))} />
@@ -2256,13 +2256,16 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                         di atas hanya berisi PROVINSI (keluhan pemilik 2026-11-12:
                         *"dropdownnya provinsi semua yg alamat kota sekolah"*), jadi
                         kota ditanyakan PER BARIS di sini dan dicetak ke K20. */}
-                    <Field label={t('ai_cv.row_kota')} id={`edu-kota-${i}`} value={edu.kota}
-                      onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))} />
+                    <ComboSelect label={t('ai_cv.row_kota')} id={`edu-kota-${i}`} value={edu.kota} pairs={KOTA_INDONESIA}
+                      placeholder="ketik atau pilih kota"
+                      onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))}
+                      onPick={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))} />
                     {/* 国公私 — dicetak 公立/私立 di form Jepang. Terisi otomatis
                         dari nama sekolah, dan tetap bisa dikoreksi (sekolah negeri
                         yang namanya tidak berawalan SDN/SMPN/SMAN). */}
                     <RowSelect label={t('ai_cv.row_status_sekolah')} id={`ai-edu-status-${i}`}
                       value={edu.status_sekolah || ''} options={['', 'NEGERI', 'SWASTA']}
+                      labelOf={(v) => (v === 'NEGERI' ? 'NEGERI（公立）' : v === 'SWASTA' ? 'SWASTA（私立）' : v)}
                       onChange={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, status_sekolah: v } : r))} />
                     {/* Jurusan memakai daftar resmi yang SAMA dengan CV Master
                         (MasterFullForm -> ManualSelect list JURUSAN), supaya kandidat
@@ -2320,8 +2323,10 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                     <Field label={t('ai_cv.row_perusahaan_jp')} id={`job-perusahaan-jp-${i}`} value={job.perusahaan_jp} jp
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, perusahaan_jp: v } : r))} />
                     {/* 地域 — kota tempat kerja (migrasi 056), dicetak ke K27/K29/K31. */}
-                    <Field label={t('ai_cv.row_kota')} id={`job-kota-${i}`} value={job.kota}
-                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))} />
+                    <ComboSelect label={t('ai_cv.row_kota')} id={`job-kota-${i}`} value={job.kota} pairs={KOTA_INDONESIA}
+                      placeholder="ketik atau pilih kota"
+                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))}
+                      onPick={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))} />
                     <ComboSelect label={t('ai_cv.row_jabatan')} id={`job-jabatan-id-${i}`} value={job.jabatan_id}
                       pairs={PEKERJAAN} placeholder={t('ai_cv.combo_hint')}
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jabatan_id: v } : r))}
@@ -2353,8 +2358,16 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                           pairs={JENIS_KERJA_PAIRS} placeholder="ketik atau pilih"
                           onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))}
                           onPick={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))} />
-                        <Field label="Bidang industri (業種)" id={`job-bidang-${i}`} value={job.bidang}
-                          onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, bidang: v } : r))} />
+                        {/* BIDANG PEKERJAAN (業種) — beda dari PROFESI (職種).
+                            Profesi = apa yang dikerjakan ("PETANI", "WELDER");
+                            bidang = industrinya ("PERTANIAN", "LOGAM & MESIN").
+                            Dua dropdown terpisah supaya CV bisa mencetak
+                            keduanya, seperti form KINKI (職種 di kolom N,
+                            業種 di 備考). */}
+                        <ComboSelect label="Bidang pekerjaan (業種)" id={`job-bidang-${i}`} value={job.bidang} pairs={BIDANG_KERJA}
+                          placeholder="ketik atau pilih bidang"
+                          onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, bidang: v } : r))}
+                          onPick={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, bidang: v } : r))} />
                         <Field label="Catatan kerja (備考)" id={`job-catatan-${i}`} value={job.catatan}
                           onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, catatan: v } : r))} />
                         {/* 退職理由 — migrasi 057. Disimpan walau belum ada
@@ -2585,16 +2598,21 @@ function RepeaterRow({ index, label, onRemove, removable, children }: {
   );
 }
 
-/** A labelled `<select>` for the dynamic rows (school level, year, month). */
-function RowSelect({ label, id, value, options, onChange }: {
-  label: string; id: string; value: string; options: string[]; onChange: (v: string) => void;
+/** A labelled `<select>` for the dynamic rows (school level, year, month).
+ *
+ * `labels` menerjemahkan NILAI ke teks yang ditampilkan. Dipakai jenjang
+ * sekolah & status sekolah: nilainya tetap `SD`/`NEGERI` (kolom + renderer
+ * membacanya), tetapi yang dibaca kandidat adalah `SD（小学校）`. */
+function RowSelect({ label, id, value, options, labelOf, onChange }: {
+  label: string; id: string; value: string; options: string[];
+  labelOf?: (v: string) => string; onChange: (v: string) => void;
 }) {
   return (
     <div>
       <label class="block text-[11px] text-[#e2e8f0] mb-0.5" for={id}>{label}</label>
       <select id={id} value={value} onChange={(e) => onChange((e.target as HTMLSelectElement).value)}
         class="input-micro w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white">
-        {options.map(o => <option key={o} value={o}>{o || '\u2014'}</option>)}
+        {options.map(o => <option key={o} value={o}>{o ? (labelOf ? labelOf(o) : o) : '\u2014'}</option>)}
       </select>
     </div>
   );

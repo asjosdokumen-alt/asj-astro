@@ -2519,7 +2519,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ai_cv.row_jurusan_jp": "Jurusan (JP)",
     "ai_cv.row_perusahaan": "Perusahaan (ID)",
     "ai_cv.row_perusahaan_jp": "Perusahaan (JP)",
-    "ai_cv.row_jabatan": "Jabatan (ID)",
+    "ai_cv.row_jabatan": "Profesi / jabatan (職種)",
     "ai_cv.row_jabatan_jp": "Jabatan (JP)",
     // Shown inside the suggestion list of ComboSelect when nothing matches, so
     // the candidate is told their text is being kept rather than ignored.
