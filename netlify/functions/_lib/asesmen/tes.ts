@@ -253,6 +253,7 @@ async function sinkronKeCv(
   wa: string,
   jenis: JenisTes,
   hasil: Record<string, unknown>,
+  timpa = false,
 ): Promise<{ ditulis: string[]; dilewati: string[] }> {
   const kosong = (v: unknown) => {
     const s = String(v ?? '').trim();
@@ -280,9 +281,12 @@ async function sinkronKeCv(
       };
       const kanan = angka(v.kanan);
       const kiri = angka(v.kiri);
-      if (kosong(r.mata_kanan)) patch.mata_kanan = kanan;
+      /* `timpa` = tes ULANG. Kolom yang diisi tes ini sebelumnya pasti berasal
+         dari hasil yang sedang diganti, jadi membiarkannya berarti CV tetap
+         memuat angka yang salah — persis yang ingin diperbaiki kandidat. */
+      if (timpa || kosong(r.mata_kanan)) patch.mata_kanan = kanan;
       else if (String(r.mata_kanan).trim() !== kanan) dilewati.push('mata_kanan');
-      if (kosong(r.mata_kiri)) patch.mata_kiri = kiri;
+      if (timpa || kosong(r.mata_kiri)) patch.mata_kiri = kiri;
       else if (String(r.mata_kiri).trim() !== kiri) dilewati.push('mata_kiri');
     }
 
@@ -309,6 +313,8 @@ export async function simpanHasil(input: {
   wa: string;
   jenis: unknown;
   hasil: unknown;
+  /** true = kandidat menekan "Tes Ulang": hasil lama DIGANTI, bukan ditolak. */
+  ulang?: boolean;
 }): Promise<Record<string, unknown>> {
   const wa = normalizeWa(String(input.wa ?? ''));
   if (!wa) return { success: false, message: 'Nomor WA kosong.' };
@@ -328,18 +334,31 @@ export async function simpanHasil(input: {
   const id = await identitasSiswa(wa);
   if (!id) return { success: false, message: 'Kandidat tidak ditemukan.' };
 
+  const baris = {
+    no_wa: wa,
+    nama: id.nama,
+    kelas: id.kelas,
+    jenis: input.jenis,
+    ringkasan: ringkas(input.jenis, cek.nilai),
+    hasil: cek.nilai,
+  };
   try {
-    await supabaseJson('POST', 'candidate_assessments', {
-      body: {
-        no_wa: wa,
-        nama: id.nama,
-        kelas: id.kelas,
-        jenis: input.jenis,
-        ringkasan: ringkas(input.jenis, cek.nilai),
-        hasil: cek.nilai,
-      },
-      headers: { Prefer: 'return=minimal' },
-    });
+    if (input.ulang) {
+      /* TES ULANG: timpa baris yang ada. `dibuat_pada` ikut diperbarui karena
+         kolom itu satu-satunya jejak waktu yang dimiliki tabel ini — tanpa itu
+         hasil baru tercatat bertanggal percobaan pertama, dan admin mengira
+         angkanya sudah basi. */
+      await supabaseJson('PATCH', 'candidate_assessments', {
+        query: { no_wa: `eq.${wa}`, jenis: `eq.${String(input.jenis)}` },
+        body: { ...baris, dibuat_pada: new Date().toISOString() },
+        headers: { Prefer: 'return=minimal' },
+      });
+    } else {
+      await supabaseJson('POST', 'candidate_assessments', {
+        body: baris,
+        headers: { Prefer: 'return=minimal' },
+      });
+    }
   } catch (e) {
     /* 23505 = unique_violation. Jangan laporkan sebagai galat umum: siswa perlu
        tahu bahwa tesnya SUDAH tersimpan, bukan bahwa penyimpanan gagal. */
@@ -350,7 +369,13 @@ export async function simpanHasil(input: {
     return { success: false, message: 'Gagal menyimpan hasil tes. Coba lagi.' };
   }
 
-  return { success: true, jenis: input.jenis, ringkasan: ringkas(input.jenis, cek.nilai), cv: await sinkronKeCv(wa, input.jenis, cek.nilai) };
+  return {
+    success: true,
+    jenis: input.jenis,
+    ulang: input.ulang === true,
+    ringkasan: ringkas(input.jenis, cek.nilai),
+    cv: await sinkronKeCv(wa, input.jenis, cek.nilai, input.ulang === true),
+  };
 }
 
 /** Daftar hasil untuk tab admin. `jenis` opsional. */

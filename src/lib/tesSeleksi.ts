@@ -390,6 +390,83 @@ export const PLATE_ISHIHARA: PlateIshihara[] = [
   },
 ];
 
+/**
+ * Kembaran angka — dipakai menyusun pilihan jawaban plate.
+ *
+ * Dipilih menurut kemiripan BENTUK, bukan kedekatan nilai: pada plate yang
+ * titiknya berdesakan, `3` paling mudah tertukar dengan `8`, `5` dengan `6`,
+ * dan `7` dengan `1`. Kalau pengecohnya angka yang jauh berbeda (`29` vs `74`),
+ * pilihan ganda menjadi terlalu mudah dan hasilnya tidak mengukur apa pun.
+ */
+const MIRIP: Record<string, string> = {
+  '0': '86',
+  '1': '74',
+  '2': '73',
+  '3': '895',
+  '4': '19',
+  '5': '638',
+  '6': '580',
+  '7': '129',
+  '8': '360',
+  '9': '473',
+};
+
+/** Sebaran deterministik string → bilangan; untuk mengacak urutan tanpa PRNG. */
+function sebar(teks: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < teks.length; i += 1) {
+    h ^= teks.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/**
+ * Empat pilihan jawaban untuk satu plate: jawaban benar + tiga pengecoh yang
+ * MENYERUPAI-nya. Urutannya tetap untuk plate yang sama.
+ *
+ * KENAPA PILIHAN GANDA (pemilik, 2026-11-13): *"kelamaan kalau ketik angka, 5s
+ * gak cukup, kadang salah ketik juga — gimana kalau kasih pilihan ganda yang
+ * nomornya menyerupai, 4-5 angka, tinggal pencet."* Mengetik memang mengukur
+ * kecepatan mengetik, bukan penglihatan; salah ketik juga tercatat sebagai
+ * jawaban salah.
+ *
+ * Pengecoh diambil dari `MIRIP` dengan dua cara: menukar posisi digit (`29` →
+ * `92`) dan mengganti satu digit dengan kembarannya (`29` → `79`, `23`).
+ * Semua pengecoh sama panjang dengan jawabannya, jadi jumlah digit tidak
+ * membocorkan apa pun.
+ */
+export function pilihanPlate(plate: PlateIshihara): string[] {
+  const benar = String(plate.normal);
+  const digit = benar.split('');
+  const kandidat: string[] = [];
+
+  if (digit.length === 2) kandidat.push(digit[1] + digit[0]);
+  for (let i = 0; i < digit.length; i += 1) {
+    for (const ganti of MIRIP[digit[i]] ?? '') {
+      const salinan = [...digit];
+      salinan[i] = ganti;
+      kandidat.push(salinan.join(''));
+    }
+  }
+
+  const pengecoh: string[] = [];
+  for (const c of kandidat) {
+    if (c === benar || pengecoh.includes(c) || c.length !== benar.length) continue;
+    pengecoh.push(c);
+    if (pengecoh.length === 3) break;
+  }
+  /* Jaring terakhir: plate dengan satu digit yang semua kembarannya sudah
+     terpakai. Angka berbeda panjang tidak dipakai — itu justru membocorkan
+     jawaban. */
+  for (let n = 1; pengecoh.length < 3 && n <= 9; n += 1) {
+    const c = String(n).repeat(benar.length).slice(0, benar.length);
+    if (c !== benar && !pengecoh.includes(c)) pengecoh.push(c);
+  }
+
+  return [benar, ...pengecoh].sort((a, b) => sebar(`${plate.no}|${a}`) - sebar(`${plate.no}|${b}`));
+}
+
 export type StatusIshihara =
   | 'NORMAL'
   | 'TIDAK_VALID'
@@ -485,6 +562,67 @@ export type ArahLandolt =
 
 /** Empat arah yang dipakai saringan kontras. */
 export type ArahKontras = Extract<ArahLandolt, 'ATAS' | 'KANAN' | 'BAWAH' | 'KIRI'>;
+
+/**
+ * Sudut pusat celah per arah, dalam DERAJAT.
+ *
+ * 0° = arah jam 3 (kanan), positif searah jarum jam — persis konvensi `rotate()`
+ * SVG, yang bekerja pada sistem koordinat y-ke-bawah. Karena itu `BAWAH` = +90,
+ * bukan -90: kalau tandanya dibalik, seluruh pilihan arah menjadi cermin dan
+ * kandidat yang menjawab benar dihitung salah.
+ */
+export const SUDUT_ARAH: Record<ArahLandolt, number> = {
+  KANAN: 0,
+  BAWAH_KANAN: 45,
+  BAWAH: 90,
+  BAWAH_KIRI: 135,
+  KIRI: 180,
+  ATAS_KIRI: 225,
+  ATAS: 270,
+  ATAS_KANAN: 315,
+};
+
+/**
+ * Geometri cincin Landolt untuk satu arah.
+ *
+ * KENAPA DIPISAH DARI KOMPONEN
+ * ----------------------------
+ * Arah celah adalah satu-satunya hal yang diukur tes ini, dan ia ditentukan
+ * oleh tiga angka yang saling bergantung: panjang dash, panjang celah, dan
+ * offset pola dash. Ketiganya dulu dirakit langsung di JSX, jadi tidak ada satu
+ * pun yang bisa menguji "apakah celah benar-benar menunjuk ke arah yang
+ * diminta". Pemilik, 2026-11-13: *"arahnya bener gak"*.
+ *
+ * `dashoffset` setengah celah adalah intinya: pola dash MULAI di jam 3 dan
+ * celah jatuh di UJUNG pola, sehingga tanpa offset pusat celah berada
+ * `celah/2` sebelum 0° — pada level 0,5 itu 14° di atas "kanan". Setengah dari
+ * sudut 45° antar pilihan, jadi cukup untuk membuat jawaban yang benar terlihat
+ * seperti "kanan atas".
+ */
+export function geometriCincin(
+  diameterPx: number,
+  tebalPx: number,
+  celahPx: number,
+  arah: ArahLandolt,
+): { r: number; tebal: number; keliling: number; celah: number; dasharray: string; dashoffset: number; rotasi: number } {
+  const angka = (v: number, min: number) => (Number.isFinite(v) ? Math.max(min, v) : min);
+  const d = angka(diameterPx, 1);
+  const tebal = Math.min(angka(tebalPx, 0.4), d * 0.6);
+  const r = Math.max(0.2, (d - tebal) / 2);
+  const keliling = 2 * Math.PI * r;
+  /* Celah tidak boleh melebihi keliling: kalau iya, dasharray-nya negatif dan
+     cincinnya hilang sama sekali. */
+  const celah = Math.min(angka(celahPx, 0.1), keliling * 0.9);
+  return {
+    r,
+    tebal,
+    keliling,
+    celah,
+    dasharray: `${keliling - celah} ${celah}`,
+    dashoffset: -celah / 2,
+    rotasi: SUDUT_ARAH[arah],
+  };
+}
 
 /**
  * Ukuran celah & diameter cincin dalam piksel.

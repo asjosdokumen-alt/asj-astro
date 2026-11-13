@@ -207,6 +207,68 @@ describe('hasil mata: kontras & astigmatisme (2026-11-08)', () => {
   });
 });
 
+describe('tes ulang (2026-11-13)', () => {
+  /* Pemilik: *"yang sudah pernah tes gimana tes ulang, kan jadi salah tadi
+     tes saya"*. Tanpa cabang ini `simpanHasil` selalu POST, constraint unik
+     menolaknya, dan hasil yang salah terkunci selamanya. */
+  const ish = { skor: 10, total: 12, status: 'NORMAL', label: 'Normal' };
+  const hasil = { ishihara: ish, visus: { kanan: 1, kiri: 0.7 } };
+
+  async function panggil(ulang: boolean) {
+    const { supabaseJson } = await import('../db/client');
+    const mock = vi.mocked(supabaseJson);
+    mock.mockReset();
+    const calls: Array<{ method: string; table: string; body?: Record<string, unknown> }> = [];
+    mock.mockImplementation((async (method: string, table: string, opts?: { body?: Record<string, unknown> }) => {
+      calls.push({ method, table, body: opts?.body });
+      if (table === 'sys_config') return [{ config_type: 'tes_mata', config_value: 'on', is_active: true }];
+      if (table === 'master_database_candidate') {
+        return [{ nama_lengkap: 'BUDI', kelas: 'A', mata_kanan: '', mata_kiri: '' }];
+      }
+      return [];
+    }) as never);
+    const r = await simpanHasil({ wa: '6281234567890', jenis: 'mata', hasil, ulang });
+    const simpan = calls.filter((c) => c.table === 'candidate_assessments');
+    return { r, simpan, calls };
+  }
+
+  it('tanpa ulang: hasil ditulis dengan POST (perilaku lama tidak berubah)', async () => {
+    const { r, simpan } = await panggil(false);
+    expect(r.success).toBe(true);
+    expect(simpan).toHaveLength(1);
+    expect(simpan[0].method).toBe('POST');
+  });
+
+  it('dengan ulang: baris yang ada di-PATCH, bukan ditolak', async () => {
+    const { r, simpan } = await panggil(true);
+    expect(r.success).toBe(true);
+    expect(r.ulang).toBe(true);
+    expect(simpan).toHaveLength(1);
+    expect(simpan[0].method).toBe('PATCH');
+    expect(simpan[0].body?.hasil).toEqual(hasil);
+    expect(String(simpan[0].body?.ringkasan)).toContain('OD 1.0');
+  });
+
+  it('dengan ulang: kolom CV yang sudah terisi DITIMPA (angka lama tidak bertahan)', async () => {
+    const { supabaseJson } = await import('../db/client');
+    const mock = vi.mocked(supabaseJson);
+    mock.mockReset();
+    const patch: Array<{ table: string; body?: Record<string, unknown> }> = [];
+    mock.mockImplementation((async (method: string, table: string, opts?: { body?: Record<string, unknown> }) => {
+      if (method === 'PATCH' && table === 'master_database_candidate') patch.push({ table, body: opts?.body });
+      if (table === 'sys_config') return [{ config_type: 'tes_mata', config_value: 'on', is_active: true }];
+      /* CV sudah berisi angka dari percobaan PERTAMA yang salah. */
+      if (table === 'master_database_candidate') {
+        return [{ nama_lengkap: 'BUDI', kelas: 'A', mata_kanan: '0.2', mata_kiri: '0.1' }];
+      }
+      return [];
+    }) as never);
+    await simpanHasil({ wa: '6281234567890', jenis: 'mata', hasil, ulang: true });
+    expect(patch).toHaveLength(1);
+    expect(patch[0].body).toMatchObject({ mata_kanan: '1.0', mata_kiri: '0.7' });
+  });
+});
+
 describe('tulis hasil mata ke CV', () => {
   it('angkaCv memformat visus desimal, dan 0 berarti di bawah ambang', () => {
     expect(angkaCv(1.2)).toBe('1.2');

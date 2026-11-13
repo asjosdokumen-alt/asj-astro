@@ -45,12 +45,14 @@ export const TES_ACTIONS: Record<
    * hasil yang tertimpa diam-diam.
    */
   simpanHasilTes: async (p: unknown[], s?: string) => {
-    const d = (p?.[0] || {}) as { wa?: unknown; jenis?: unknown; hasil?: unknown };
+    const d = (p?.[0] || {}) as { wa?: unknown; jenis?: unknown; hasil?: unknown; ulang?: unknown };
     const wa = String(d.wa ?? '').trim();
     const tolak = await tolakKecualiSiswa(s, wa);
     if (tolak) return tolak;
     const { simpanHasil } = await import('../_lib/asesmen/tes');
-    return simpanHasil({ wa, jenis: d.jenis, hasil: d.hasil });
+    /* `ulang: true` = kandidat menekan "Tes Ulang" dan hasil baru MENGGANGGU
+       yang lama. Tanpa ini, satu hasil yang salah terkunci selamanya. */
+    return simpanHasil({ wa, jenis: d.jenis, hasil: d.hasil, ulang: d.ulang === true });
   },
 
   /** Daftar hasil untuk tab admin. */

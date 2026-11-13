@@ -29,6 +29,8 @@ import {
   simpulkanAstig,
   simpulkanKontras,
   simpulkanVisus,
+  geometriCincin,
+  pilihanPlate,
   ukuranLandolt,
   type ArahKontras,
   type ArahLandolt,
@@ -42,7 +44,10 @@ import { IsiTes, useGerbangTes, type HasilTersimpan } from './GerbangTes';
 type Fase = 'intro' | 'ishihara' | 'jeda' | 'kalibrasi' | 'landolt' | 'kontras' | 'astig' | 'hasil';
 type Mata = 'KANAN' | 'KIRI';
 
-const DETIK_PLATE = 5;
+/* 8 detik, bukan 5: dengan pilihan ganda tidak ada lagi waktu terbuang untuk
+   mengetik, tetapi pembaca yang benar-benar harus MENGENALI angka di antara
+   titik butuh lebih dari lima detik. Pemilik 2026-11-13: "5s gak cukup". */
+const DETIK_PLATE = 8;
 const LEBAR_KTP_MM = 85.6;
 const TINGGI_KTP_MM = 53.98;
 const ARAH: ArahLandolt[] = [
@@ -56,17 +61,6 @@ const ARAH: ArahLandolt[] = [
   'BAWAH_KANAN',
 ];
 const ARAH_KONTRAS: ArahKontras[] = ['ATAS', 'KIRI', 'KANAN', 'BAWAH'];
-/** Rotasi SVG untuk memindahkan celah dari 3 o'clock ke arah yang diminta. */
-const ROTASI: Record<ArahLandolt, number> = {
-  KANAN: 0,
-  BAWAH_KANAN: 45,
-  BAWAH: 90,
-  BAWAH_KIRI: 135,
-  KIRI: 180,
-  ATAS_KIRI: 225,
-  ATAS: 270,
-  ATAS_KANAN: 315,
-};
 
 interface HasilMata {
   ishihara: { skor: number; total: number; status: string; label: string };
@@ -96,7 +90,14 @@ function Tahap({ n, label }: { n: number; label: string }) {
 }
 
 /** Kartu hasil — dipakai hasil baru maupun yang sudah tersimpan. */
-function KartuHasil({ hasil, baru, catatan }: { hasil: HasilMata; baru: boolean; catatan?: string }) {
+function KartuHasil({ hasil, baru, catatan, onUlang }: {
+  hasil: HasilMata;
+  baru: boolean;
+  catatan?: string;
+  /** Ada hanya untuk kartu hasil TERSIMPAN — hasil yang baru selesai tidak
+   *  perlu tombol ulang, kandidat bisa memuat ulang halaman kalau mau. */
+  onUlang?: () => void;
+}) {
   const v = simpulkanVisus(hasil.visus.kanan, hasil.visus.kiri);
   const normal = hasil.ishihara.status === 'NORMAL';
   return (
@@ -179,6 +180,18 @@ function KartuHasil({ hasil, baru, catatan }: { hasil: HasilMata; baru: boolean;
           {catatan}
         </p>
       )}
+      {onUlang && (
+        <div class="rounded-card border border-line bg-surface p-4">
+          <p class="mb-2 text-[11.5px] leading-relaxed text-fg-muted">{t('tes.mata_ulang_ket')}</p>
+          <button
+            type="button"
+            onClick={onUlang}
+            class="min-h-11 w-full rounded-control border-2 border-accent-sky px-5 text-sm font-bold text-accent-sky"
+          >
+            {t('tes.mata_ulang')}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -189,7 +202,8 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
   /* Ishihara */
   const [plateIdx, setPlateIdx] = useState(0);
   const [sisa, setSisa] = useState(DETIK_PLATE);
-  const [masukan, setMasukan] = useState('');
+  /* `true` = kandidat memilih mengulang; kartu hasil tersimpan dilewati. */
+  const [ulang, setUlang] = useState(false);
   const [jawaban, setJawaban] = useState<JawabanPlate[]>([]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -218,10 +232,32 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
   const [galat, setGalat] = useState('');
   const [catatanCv, setCatatanCv] = useState('');
 
-  /* Sudah pernah mengerjakan: tampilkan yang tersimpan. */
-  if (gerbang.tersimpan && !hasil) {
+  /** Kembali ke awal untuk mengulang. Kalibrasi (lebar KTP & jarak) sengaja
+   *  DIPERTAHANKAN: itu ukuran layar, bukan jawaban. */
+  const mulaiUlang = () => {
+    setUlang(true);
+    setHasil(null);
+    setJawaban([]);
+    setPlateIdx(0);
+    setSisa(DETIK_PLATE);
+    setVisus({ kanan: 0, kiri: 0 });
+    setKontrasSkor({ kanan: 0, kiri: 0 });
+    setAstigPilih({ kanan: '', kiri: '' });
+    setLevel(0);
+    setPercobaan(0);
+    setBenarLevel(0);
+    setGalat('');
+    setCatatanCv('');
+    setFase('intro');
+  };
+
+  /* Sudah pernah mengerjakan: tampilkan yang tersimpan — TAPI dengan tombol
+     "Tes Ulang". Tanpa jalan keluar itu, satu hasil yang salah (mis. karena
+     plate lama yang angkanya tidak terbaca) terkunci selamanya: server menolak
+     simpanan kedua, jadi halaman ini hanya bisa menampilkan hasil lama. */
+  if (gerbang.tersimpan && !hasil && !ulang) {
     const h = gerbang.tersimpan.hasil as unknown as HasilMata;
-    if (h?.ishihara && h?.visus) return <KartuHasil hasil={h} baru={false} />;
+    if (h?.ishihara && h?.visus) return <KartuHasil hasil={h} baru={false} onUlang={mulaiUlang} />;
   }
   if (hasil) return <KartuHasil hasil={hasil} baru catatan={catatanCv} />;
 
@@ -237,7 +273,6 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
     const isi = (teks || '').trim().toUpperCase() || 'TIDAK ADA';
     const baru = [...jawaban, { no: plate.no, jawaban: isi }];
     setJawaban(baru);
-    setMasukan('');
     if (plateIdx + 1 < PLATE_ISHIHARA.length) {
       setPlateIdx((i) => i + 1);
       setSisa(DETIK_PLATE);
@@ -304,7 +339,7 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
         cv?: { ditulis?: string[]; dilewati?: string[] };
       }>(
         'simpanHasilTes',
-        [{ wa: gerbang.wa, jenis: 'mata', hasil: payload }],
+        [{ wa: gerbang.wa, jenis: 'mata', hasil: payload, ulang }],
         { onSessionInvalid: 'throw', silent: true },
       );
       if (d.success === false) {
@@ -440,7 +475,6 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
           onClick={() => {
             setPlateIdx(0);
             setJawaban([]);
-            setMasukan('');
             setSisa(DETIK_PLATE);
             setFase('ishihara');
           }}
@@ -454,6 +488,7 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
 
   /* ── ISHIHARA ─────────────────────────────────────────────────────────── */
   if (fase === 'ishihara') {
+    const pilihan = pilihanPlate(plate);
     return (
       <div class="flex flex-col items-center rounded-card border border-line bg-surface p-4 sm:p-6">
         <Tahap n={1} label={t('tes.mata_ishihara')} />
@@ -479,37 +514,31 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
         />
 
         <div class="mt-4 w-full max-w-xs space-y-2.5">
-          <label for="tes-mata-jawab" class="block text-[11px] font-bold text-fg-muted">
-            {t('tes.mata_ketik_angka')}
-          </label>
-          <input
-            id="tes-mata-jawab"
-            type="text"
-            inputMode="numeric"
-            autocomplete="off"
-            value={masukan}
-            onInput={(e) => setMasukan((e.target as HTMLInputElement).value)}
-            onKeyDown={(e) => {
-              if ((e as KeyboardEvent).key === 'Enter') kirimPlate(masukan);
-            }}
-            class="min-h-11 w-full rounded-control border-2 border-line bg-surface-sunken px-3 text-center text-lg font-black text-fg focus:border-accent-sky focus:outline-none"
-          />
+          <p class="block text-[11px] font-bold text-fg-muted">{t('tes.mata_pilih_angka')}</p>
+          {/* PILIHAN GANDA, bukan kotak ketik. Pemilik 2026-11-13: *"kelamaan
+              kalau ketik angka, 5s gak cukup, kadang salah ketik juga"*.
+              Empat pilihan: jawaban benar + tiga pengecoh yang menyerupai
+              (`29` → `92`, `79`, `23`), dirakit `pilihanPlate` supaya tidak
+              pernah menampilkan angka yang tidak mungkin. */}
           <div class="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => kirimPlate('TIDAK ADA')}
-              class="min-h-11 rounded-control border border-line px-2 text-[11.5px] font-bold text-fg-muted hover:text-fg"
-            >
-              {t('tes.mata_tidak_ada')}
-            </button>
-            <button
-              type="button"
-              onClick={() => kirimPlate(masukan)}
-              class="min-h-11 rounded-control bg-accent-sky px-2 text-[11.5px] font-bold text-canvas"
-            >
-              {t('tes.mata_jawab')}
-            </button>
+            {pilihan.map((opsi) => (
+              <button
+                key={opsi}
+                type="button"
+                onClick={() => kirimPlate(opsi)}
+                class="min-h-11 rounded-control bg-slate-900 px-2 text-lg font-black text-white active:bg-slate-700"
+              >
+                {opsi}
+              </button>
+            ))}
           </div>
+          <button
+            type="button"
+            onClick={() => kirimPlate('TIDAK ADA')}
+            class="min-h-11 w-full rounded-control border border-line px-2 text-[11.5px] font-bold text-fg-muted hover:text-fg"
+          >
+            {t('tes.mata_tidak_ada')}
+          </button>
         </div>
       </div>
     );
@@ -608,9 +637,11 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
   /* ── LANDOLT ──────────────────────────────────────────────────────────── */
   if (fase === 'landolt') {
     const d = ukuran.diameterPx;
-    const tebal = ukuran.tebalPx;
-    const celah = ukuran.celahPx;
-    const keliling = Math.PI * Math.max(0.01, d - tebal);
+    /* Geometri (r, tebal, dash, offset, rotasi) dirakit `geometriCincin`, BUKAN
+       di sini: arah celah adalah satu-satunya hal yang diukur tes ini, dan ia
+       hanya bisa diuji kalau angkanya keluar dari JSX. Lihat catatan di
+       `tesSeleksi.ts`. */
+    const g = geometriCincin(d, ukuran.tebalPx, ukuran.celahPx, arah);
     const kotak = Math.max(56, Math.ceil(d + 32));
     return (
       <div class="flex flex-col items-center rounded-card border border-line bg-surface p-4 sm:p-6">
@@ -641,12 +672,13 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
             <circle
               cx={d / 2}
               cy={d / 2}
-              r={Math.max(0.2, (d - tebal) / 2)}
+              r={g.r}
               fill="none"
               stroke="currentColor"
-              stroke-width={tebal}
-              stroke-dasharray={`${Math.max(0.1, keliling - celah)} ${celah}`}
-              transform={`rotate(${ROTASI[arah]} ${d / 2} ${d / 2})`}
+              stroke-width={g.tebal}
+              stroke-dasharray={g.dasharray}
+              stroke-dashoffset={g.dashoffset}
+              transform={`rotate(${g.rotasi} ${d / 2} ${d / 2})`}
             />
           </svg>
         </div>
@@ -702,8 +734,7 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
     const abu = Math.round(255 * (1 - nilai));
     const uk = ukuranLandolt(1.0, jarak, pxPerMm);
     const d = uk.diameterPx;
-    const tebal = uk.tebalPx;
-    const keliling = Math.PI * Math.max(0.01, d - tebal);
+    const g = geometriCincin(d, uk.tebalPx, uk.celahPx, arahKontras);
     const kotak = Math.max(56, Math.ceil(d + 32));
     return (
       <div class="flex flex-col items-center rounded-card border border-line bg-surface p-4 sm:p-6">
@@ -726,12 +757,13 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
             <circle
               cx={d / 2}
               cy={d / 2}
-              r={Math.max(0.2, (d - tebal) / 2)}
+              r={g.r}
               fill="none"
               stroke={`rgb(${abu},${abu},${abu})`}
-              stroke-width={tebal}
-              stroke-dasharray={`${Math.max(0.1, keliling - uk.celahPx)} ${uk.celahPx}`}
-              transform={`rotate(${ROTASI[arahKontras]} ${d / 2} ${d / 2})`}
+              stroke-width={g.tebal}
+              stroke-dasharray={g.dasharray}
+              stroke-dashoffset={g.dashoffset}
+              transform={`rotate(${g.rotasi} ${d / 2} ${d / 2})`}
             />
           </svg>
         </div>

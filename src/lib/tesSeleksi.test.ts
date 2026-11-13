@@ -19,11 +19,15 @@ import {
   PLATE_ISHIHARA,
   PROFIL_MBTI,
   SOAL_MBTI,
+  SUDUT_ARAH,
   TINGKAT_VISUS,
   evaluasiIshihara,
+  geometriCincin,
   hitungMbti,
+  pilihanPlate,
   simpulkanVisus,
   ukuranLandolt,
+  type ArahLandolt,
 } from './tesSeleksi';
 
 describe('bank soal MBTI', () => {
@@ -221,6 +225,109 @@ describe('ukuran Landolt', () => {
   it('level 1,2 di layar HP ditandai terlalu kecil', () => {
     expect(ukuranLandolt(TINGKAT_VISUS[6], 0.5, 3.4).terlaluKecil).toBe(true);
     expect(ukuranLandolt(0.1, 0.5, 3.4).terlaluKecil).toBe(false);
+  });
+});
+
+describe('pilihan jawaban plate (pilihan ganda)', () => {
+  it('setiap plate memberi 4 pilihan, semuanya unik, dan jawabannya ada di dalamnya', () => {
+    for (const p of PLATE_ISHIHARA) {
+      const opsi = pilihanPlate(p);
+      expect(opsi.length, `plate #${p.no}`).toBe(4);
+      expect(new Set(opsi).size).toBe(4);
+      expect(opsi).toContain(p.normal);
+    }
+  });
+
+  it('pengecoh menyerupai jawaban: panjang sama, dan berbagi digit', () => {
+    /* Pengecoh yang jauh berbeda (`29` vs `74`) membuat pilihan ganda terlalu
+       mudah — tesnya lalu mengukur keberanian menebak, bukan penglihatan. */
+    for (const p of PLATE_ISHIHARA) {
+      const opsi = pilihanPlate(p).filter((o) => o !== p.normal);
+      for (const o of opsi) {
+        expect(o.length, `plate #${p.no}: ${o}`).toBe(p.normal.length);
+        /* Untuk satu digit, "berbagi digit" hanya bisa berarti sama persis —
+           kemiripannya datang dari tabel MIRIP, bukan dari posisi. */
+        if (p.normal.length < 2) continue;
+        const sama = [...o].filter((ch, i) => ch === p.normal[i]).length;
+        const dipakai = [...o].filter((ch) => p.normal.includes(ch)).length;
+        expect(Math.max(sama, dipakai), `plate #${p.no}: ${o}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('deterministik: plate yang sama selalu menampilkan urutan yang sama', () => {
+    for (const p of PLATE_ISHIHARA) {
+      expect(pilihanPlate(p)).toEqual(pilihanPlate(p));
+    }
+  });
+
+  it('tidak pernah menawarkan "TIDAK ADA" sebagai angka', () => {
+    for (const p of PLATE_ISHIHARA) {
+      expect(pilihanPlate(p).every((o) => /^\d+$/.test(o))).toBe(true);
+    }
+  });
+});
+
+describe('geometri cincin Landolt — arah celah', () => {
+  /** Pusat celah dalam derajat, dihitung ULANG dari dasharray/offset. */
+  function pusatCelah(g: { keliling: number; celah: number; dashoffset: number }): number {
+    const awal = (((-g.dashoffset + (g.keliling - g.celah)) % g.keliling) + g.keliling) % g.keliling;
+    const tengah = (awal + g.celah / 2) % g.keliling;
+    return (tengah / g.keliling) * 360;
+  }
+  const uk = ukuranLandolt(0.5, 0.5, 3.4);
+
+  it('setiap arah menaruh pusat celah TEPAT di sudut yang diminta', () => {
+    /* Inilah yang diukur tes ini. Sebelum 2026-11-13 pola dash mulai di jam 3
+       dan celah jatuh di UJUNG pola, jadi pusatnya meleset `celah/2` —
+       terukur 14° untuk level 0,5, yaitu sepertiga jarak antar pilihan. */
+    for (const arah of Object.keys(SUDUT_ARAH) as ArahLandolt[]) {
+      const g = geometriCincin(uk.diameterPx, uk.tebalPx, uk.celahPx, arah);
+      /* Arah akhir = posisi celah di kerangka cincin (selalu 0 setelah offset)
+         DITAMBAH rotasi SVG. Menguji salah satunya saja tidak menguji apa pun:
+         rotasi tanpa offset menghasilkan celah 14° meleset. */
+      const derajat = (pusatCelah(g) + g.rotasi) % 360;
+      const selisih = ((derajat - SUDUT_ARAH[arah]) % 360 + 360) % 360;
+      expect(Math.min(selisih, 360 - selisih), `arah ${arah}`).toBeLessThan(0.001);
+    }
+  });
+
+  it('tanpa dashoffset, celah meleset setengah lebarnya — bug yang dijaga', () => {
+    const g = geometriCincin(uk.diameterPx, uk.tebalPx, uk.celahPx, 'KANAN');
+    const tanpaOffset = pusatCelah({ ...g, dashoffset: 0 });
+    // 360 - (celah/2)/keliling*360 = beberapa derajat SEBELUM kanan.
+    expect(tanpaOffset).toBeGreaterThan(340);
+    expect(360 - tanpaOffset).toBeGreaterThan(5);
+  });
+
+  it('sudut mengikuti arah jarum jam pada sumbu y-ke-bawah (BAWAH = +90)', () => {
+    expect(SUDUT_ARAH.KANAN).toBe(0);
+    expect(SUDUT_ARAH.BAWAH).toBe(90);
+    expect(SUDUT_ARAH.KIRI).toBe(180);
+    expect(SUDUT_ARAH.ATAS).toBe(270);
+    expect(SUDUT_ARAH.BAWAH_KANAN).toBe(45);
+    expect(SUDUT_ARAH.ATAS_KANAN).toBe(315);
+  });
+
+  it('celah selebar garis — perbandingan baku optotipe Landolt', () => {
+    const g = geometriCincin(uk.diameterPx, uk.tebalPx, uk.celahPx, 'ATAS');
+    expect(g.celah).toBeCloseTo(g.tebal, 6);
+  });
+
+  it('celah tidak pernah melebihi keliling (dasharray negatif = cincin hilang)', () => {
+    const g = geometriCincin(10, 2, 999, 'ATAS');
+    expect(g.celah).toBeLessThan(g.keliling);
+    const [dash] = g.dasharray.split(' ').map(Number);
+    expect(dash).toBeGreaterThan(0);
+  });
+
+  it('diameter mustahil tidak menghasilkan NaN/negatif', () => {
+    for (const [d, t, c] of [[0, 0, 0], [-5, -5, -5], [Number.NaN, Number.NaN, Number.NaN]]) {
+      const g = geometriCincin(d, t, c, 'KANAN');
+      expect(Number.isFinite(g.r)).toBe(true);
+      expect(g.r).toBeGreaterThan(0);
+      expect(Number.isFinite(g.keliling)).toBe(true);
+    }
   });
 });
 
