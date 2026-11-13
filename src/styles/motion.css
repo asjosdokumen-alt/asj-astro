@@ -827,6 +827,31 @@ html.js-reveal [data-reveal-stagger] > [data-reveal]:nth-child(n + 7) { --reveal
       Do NOT re-add a clip here. */
 html.js-reveal [data-enter]:not(.is-entered) { opacity: 0; }
 
+/* ── `is-armed`: DIPUTAR ULANG TANPA DISEMBUNYIKAN (2026-11-14) ─────────
+   Untuk memutar ulang animasi CSS, `animation-name` harus dilepas lalu
+   dipasang lagi — dan melepasnya berarti aturan pra-keadaan di atas
+   (`opacity: 0`) kembali berlaku. Kalau itu terjadi pada elemen yang jauh
+   di luar layar, tidak apa-apa secara visual, TAPI halaman lalu punya
+   bagian yang benar-benar tak terlihat: `e2e/test-landing.mjs` menolaknya
+   (terukur: "every section the spec lists is visible" gagal di 390px dan
+   1280px), dan itu penolakan yang benar — konten yang tidak terlihat
+   adalah cacat, bukan keadaan.
+
+   Jadi saat rearm, penanda masuk diganti `is-armed`: animasinya dilepas
+   (siap diputar lagi) tetapi elemennya TETAP tergambar. Yang menyembunyikan
+   elemen di layar hanyalah GEOMETRI — ia jauh di luar viewport — bukan
+   opacity. Saat masuk lagi, `is-armed` dilepas dan `.is-entered` dipasang,
+   animasi mulai dari frame `from`-nya sendiri.
+
+   Spesifisitas: (0,3,1) — sama dengan aturan pra-keadaan di atas, dan
+   ditulis SESUDAHNYA, jadi menang lewat urutan tanpa `!important`. Aturan
+   transform per-jenis (0,4,1) tetap menang; itu disengaja — pergeseran
+   24 px pada elemen yang jauh di luar layar tidak terlihat siapa pun. */
+html.js-reveal [data-enter].is-armed {
+  animation: none;
+  opacity: 1;
+}
+
 html.js-reveal [data-enter="rise"]:not(.is-entered)         { transform: translate3d(0, var(--enter-shift), 0); }
 html.js-reveal [data-enter="slide-left"]:not(.is-entered)  { transform: translate3d(calc(var(--enter-shift) * -2), 0, 0); }
 html.js-reveal [data-enter="slide-right"]:not(.is-entered) { transform: translate3d(calc(var(--enter-shift) * 2), 0, 0); }
@@ -2451,7 +2476,19 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
   contain: layout style;
 }
 
-html.has-cursor .u-cursor {
+/* ── HANYA MUNCUL SETELAH POINTER BENAR-BENAR BERGERAK (2026-11-14) ──────
+   Sebelumnya `html.has-cursor .u-cursor` membuat lapis ini terlihat sejak
+   load, sementara posisinya masih di tengah viewport. TERUKUR: halaman
+   dibuka, mouse belum disentuh, dan ada cincin + titik mengambang di
+   (720, 450) — bukan kursor, tapi artefak. Lebih buruk lagi, `has-cursor`
+   sudah menyembunyikan kursor asli sejak detik pertama, jadi pengunjung
+   yang mouse-nya sudah berada di dalam jendela dan tidak menggerakkannya
+   tidak punya penunjuk sama sekali.
+
+   Sekarang `is-live` dipasang pada pointermove PERTAMA, bersamaan dengan
+   `has-cursor`. Sebelum itu: kursor asli terlihat, lapis ini tak terlihat.
+   Tidak ada keadaan di mana pengunjung kehilangan penunjuk. */
+.u-cursor.is-live {
   opacity: 1;
 }
 
@@ -2519,7 +2556,8 @@ html.has-cursor .u-cursor {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html.has-cursor .u-cursor {
+  .u-cursor,
+  .u-cursor.is-live {
     opacity: 0;
   }
 
@@ -2584,6 +2622,47 @@ html.has-cursor .u-cursor {
       berubah di tengah sesi, kata yang sedang di 0.18 harus langsung
       kembali terbaca — skrip tidak mendengarkan perubahan itu. ── */
 @media (prefers-reduced-motion: reduce) {
+  .u-scrub-w {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   13. CETAK — jangan pernah mencetak halaman yang setengah tersembunyi
+   ══════════════════════════════════════════════════════════════════
+
+   Sejak §9b/§10 bisa DIPUTAR ULANG (BaseLayout, 2026-11-14), elemen yang
+   jauh di luar layar kehilangan penandanya dan kembali ke keadaan awal:
+   `opacity: 0`. Di layar itu benar — elemennya memang tidak terlihat. Di
+   ATAS KERTAS itu bencana: `Ctrl+P` dari posisi mana pun akan mencetak
+   section-section yang sedang jauh di atas/bawah sebagai halaman KOSONG,
+   karena tata letak cetak tidak memicu IntersectionObserver.
+
+   Blok ini mengembalikan keadaan terlihat untuk ketiga jenis. Ia duduk di
+   akhir berkas dengan spesifisitas yang sama seperti aturan penyembunyi
+   (`html.js-reveal [data-enter]:not(.is-entered)`, 0,3,1), jadi ia menang
+   lewat urutan — tanpa satu pun `!important` baru.
+
+   `transform` sengaja TIDAK dipaksa nol untuk §9b: aturan pra-keadaan
+   per-jenis (`[data-enter="slide-left"]:not(.is-entered)`, 0,4,1) lebih
+   spesifik, dan mengalahkannya butuh `!important`. Pergeseran 24-48 px
+   pada kertas adalah cacat kosmetik; halaman kosong bukan. */
+@media print {
+  html.js-reveal [data-enter],
+  html.js-reveal [data-enter].is-entered,
+  html.js-reveal [data-enter]:not(.is-entered) {
+    animation: none;
+    opacity: 1;
+  }
+
+  html.js-reveal .u-words .u-word,
+  html.js-reveal .u-words:not(.is-visible) .u-word {
+    transform: none;
+    transition: none;
+  }
+
   .u-scrub-w {
     opacity: 1;
     transform: none;

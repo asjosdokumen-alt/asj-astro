@@ -2989,11 +2989,22 @@ import { GALLERY } from '../lib/gallery';
         tx = e.clientX;
         ty = e.clientY;
         /* Lompatan pertama tidak boleh dianimasikan: tanpa ini, kursor
-           meluncur dari tengah layar ke tempat pointer muncul. */
+           meluncur dari tengah layar ke tempat pointer muncul.
+
+           DAN baru di sinilah lapis ini boleh terlihat, bersamaan dengan
+           disembunyikannya kursor asli. Sebelum pointer bergerak, posisi
+           cincin masih di tengah viewport — menampilkannya sejak load berarti
+           pengunjung melihat lingkaran mengambang di tengah hero, bukan
+           kursor. Lihat catatan di motion.css §11. */
         if (!moved) {
           moved = true;
           rx = tx;
           ry = ty;
+          layer.classList.add('is-live');
+          document.documentElement.classList.add('has-cursor');
+          // Loop baru dijalankan sekarang: tidak ada gunanya menulis
+          // transform tiap frame untuk lapis yang belum terlihat.
+          cursorRaf = requestAnimationFrame(loop);
         }
       };
 
@@ -3046,9 +3057,7 @@ import { GALLERY } from '../lib/gallery';
       window.addEventListener('pointermove', onMove, { passive: true });
       document.addEventListener('pointerover', onOver, { passive: true });
       document.body.appendChild(layer);
-      document.documentElement.classList.add('has-cursor');
       cursorLayer = layer;
-      cursorRaf = requestAnimationFrame(loop);
     }
 
     function stopCursor() {

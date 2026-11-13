@@ -84,7 +84,25 @@ try {
       total: els.length,
       inView: inView.length,
       unmarked: inView.filter(
-        (el) => !el.classList.contains('is-revealed') && !el.classList.contains('is-entered'),
+        (el) =>
+          !el.classList.contains('is-revealed') &&
+          !el.classList.contains('is-entered') &&
+          !el.classList.contains('is-armed'),
+      ).length,
+      /* ── `is-armed` BUKAN PENANDA, DAN GERBANG INI TIDAK BOLEH BUTA ────
+         Sejak 2026-11-14 entrance band bisa DIPUTAR ULANG: elemen yang jauh
+         di luar layar melepas `is-entered` supaya animasinya bisa mulai lagi.
+         Supaya halaman tidak punya bagian yang tak terlihat, ia masuk keadaan
+         `is-armed` yang SENGAJA mempertahankan opacity 1 (motion.css §9b).
+
+         Konsekuensinya "tanpa penanda" berhenti menjadi proksi yang cukup
+         untuk "kosong": `#alur` setinggi 6071 px bisa berada di layar
+         sementara puncaknya 5900 px di atas viewport, jadi ia armed tanpa
+         penanda. Karena itu armed diperiksa TERPISAH di bawah — kalau keadaan
+         itu suatu hari dipakai untuk menyembunyikan konten, ia akan lolos dari
+         `unmarked` dan tertangkap di sini. */
+      armedBlank: inView.filter(
+        (el) => el.classList.contains('is-armed') && Number(getComputedStyle(el).opacity) < 0.99,
       ).length,
       minOpacity: inView.length
         ? Math.min(...inView.map((el) => Number(getComputedStyle(el).opacity)))
@@ -95,13 +113,20 @@ try {
   console.log(
     `load ditahan: requestsDelayed=${delayed} (${DELAY_MS}ms) · loadFired=${loadFired} · ` +
       `elemen reveal=${res.total} · di layar=${res.inView} · TANPA penanda=${res.unmarked} · ` +
-      `opacity terendah=${res.minOpacity}`,
+      `armed-tapi-kosong=${res.armedBlank} · opacity terendah=${res.minOpacity}`,
   );
 
   if (res.total === 0) {
     toolingError = 'tidak ada elemen [data-reveal] di halaman — gerbang ini tidak mengukur apa pun';
   } else if (res.inView === 0) {
     toolingError = 'tidak ada elemen reveal yang masuk layar setelah digulir — pengukuran tidak sah';
+  } else if (res.armedBlank > 0) {
+    failures.push(
+      `${res.armedBlank} elemen ber-` +
+        '`is-armed` yang ADA DI LAYAR ternyata opacity < 0.99 — keadaan rearm dipakai untuk ' +
+        'menyembunyikan konten, bukan untuk mempertahankannya tergambar. Itu persis kebocoran ' +
+        'yang `is-armed` ada untuk mencegah (motion.css §9b).',
+    );
   } else if (res.unmarked > 0) {
     failures.push(
       `${res.unmarked} dari ${res.inView} elemen reveal yang ada di layar TIDAK punya penanda ` +

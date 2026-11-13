@@ -407,6 +407,28 @@ const orgJsonLd = jsonLdScript(
       }
 
       /**
+       * ── APA YANG BOLEH DIPUTAR ULANG SAAT DIGULIR KE ATAS ──────────────
+       * `data-enter` (band section) dan `data-motion-words` (kata) boleh.
+       * `data-reveal` (kartu, baris, tile) TIDAK: ada 277 di halaman ini, dan
+       * mengulang stagger-nya setiap kali pengunjung menggulir naik membuat
+       * halaman terasa sibuk, bukan hidup. Band membawa kartunya ikut bergerak
+       * saat band itu sendiri masuk lagi — itu cukup.
+       *
+       * BAND §9f DIKECUALIKAN, dan bukan karena gerbangnya marah. Empat band
+       * (`layanan`, `penempatan`, `galeri`, `tim`) membawa `data-scroll`, dan
+       * selector §9f `html.js-reveal [data-scroll][data-enter]` (0,4,1)
+       * mengalahkan `.is-entered` §9b (0,3,1) — jadi entrance §9b di sana
+       * TIDAK PERNAH berjalan; yang berjalan drift yang memang sudah
+       * position-derived dan sudah bisa mundur sendiri. Mencabut penandanya
+       * hanya akan memudarkan band itu tanpa memutar apa pun, sekaligus
+       * mematahkan premis `e2e/test-scroll-motion.mjs` (terukur: 24/25).
+       */
+      function replayable(el){
+        if (el.hasAttribute("data-scroll") && el.hasAttribute("data-enter")) return false;
+        return el.hasAttribute("data-enter") || el.hasAttribute("data-motion-words");
+      }
+
+      /**
        * ── WORD MASKS (2026-11-13, motion.css §10) ────────────────────────
        * Wraps every word of `[data-motion-words]` in an overflow mask so it
        * can rise into place one word at a time. Done HERE, next to the other
@@ -574,6 +596,56 @@ const orgJsonLd = jsonLdScript(
           if (box.top < (window.innerHeight || 0) && box.bottom > 0) el.classList.add(mark);
           else pending.push(el);
         }
+        /* ── PEMUTAR ULANG: MUNDUR SAAT DIGULIR KE ATAS (2026-11-14) ─────
+           Pemilik, dua kali: "interaktifnya gak sekali pakai tapi selama user
+           masih di scroll atas bawah animasi cssnya jalan terus" (2026-09-27)
+           dan "kalau sudah mentok keknya jadi statis semua" (2026-11-14).
+
+           TERUKUR di dasar halaman sebelum ini: revealed 19/19, entered 18/18
+           — semua entrance sudah habis dipakai, jadi menggulir balik tidak
+           memutar apa pun.
+
+           MENGAPA OBSERVER KEDUA, BUKAN `toggle` DI OBSERVER PERTAMA.
+           Observer masuk memakai `rootMargin: 0px 0px -12% 0px`, artinya ia
+           menyatakan "tidak terlihat" saat puncak elemen baru melewati 88%
+           viewport — padahal 12% badannya MASIH terlihat di tepi bawah.
+           Mencabut penanda di titik itu akan memunculkan lompatan opacity
+           tepat di tepi layar. Observer ini memakai margin SATU viewport
+           penuh: penanda baru dicabut setelah elemen benar-benar jauh di luar
+           layar, sehingga transisi balik ke keadaan tersembunyi terjadi
+           seluruhnya di luar pandangan — dan sudah selesai sebelum elemen itu
+           mungkin terlihat lagi.
+
+           Yang bisa diputar ulang hanya BAND (`data-enter`) dan KATA
+           (`data-motion-words`) — lihat `replayable()`. */
+        var rearm = new IntersectionObserver(function(entries){
+          for (var j = 0; j < entries.length; j++) {
+            var t = entries[j].target;
+            if (entries[j].isIntersecting) continue;
+            if (!replayable(t)) continue;
+            /* `is-armed` untuk BAND, bukan untuk kata. Band harus tetap
+               tergambar (lihat motion.css §9b) supaya halaman tidak punya
+               bagian yang tak terlihat; kata justru SEBALIKNYA — keadaan
+               tersembunyinya (`translateY 110%`) adalah frame awal
+               transisinya, jadi menahannya tetap tergambar akan menghapus
+               animasinya sendiri. */
+            if (t.hasAttribute("data-enter")) t.classList.add("is-armed");
+            t.classList.remove(markFor(t));
+          }
+        }, {
+          rootMargin: "100% 0px 100% 0px",
+          threshold: 0,
+        });
+        /* Semua target yang bisa diputar ulang, BUKAN hanya `pending`: elemen
+           yang sudah di layar saat first paint mendapat penandanya langsung di
+           atas dan tidak pernah masuk `pending`, jadi kalau hanya `pending`
+           yang diamati di sini, band pertama tidak akan pernah bisa diputar
+           ulang. */
+        for (var r = 0; r < targets.length; r++) {
+          if (replayable(targets[r])) rearm.observe(targets[r]);
+        }
+        seen.push(rearm);
+
         if (!pending.length) return;
         var observer = new IntersectionObserver(function(entries){
           for (var j = 0; j < entries.length; j++) {
@@ -588,10 +660,12 @@ const orgJsonLd = jsonLdScript(
                teksnya ada di DOM — persis kelas kegagalan yang §10 dan §9
                peringatkan. Sekarang keduanya memanggil `markFor`. */
             t.classList.add(markFor(t));
-            // Unobserve: these animations run once. Leaving it attached would
-            // re-fire them every time the element scrolled back into view,
-            // which reads as a flicker rather than an entrance.
-            observer.unobserve(t);
+            /* Lepas `is-armed` SEBELUM menandai: keadaan itu hanya ada untuk
+               menjaga elemen tetap tergambar selama animasinya dilepas. */
+            t.classList.remove("is-armed");
+            /* KARTU dilepas setelah tampil; BAND dan KATA tetap diamati.
+               Lihat `replayable()` di bawah untuk alasannya. */
+            if (!replayable(t)) observer.unobserve(t);
           }
         }, {
           // Start the animation slightly BEFORE the element is fully visible,
@@ -602,6 +676,7 @@ const orgJsonLd = jsonLdScript(
           threshold: 0,
         });
         for (var k = 0; k < pending.length; k++) observer.observe(pending[k]);
+
         seen.push(observer);
       }
 
