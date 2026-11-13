@@ -451,9 +451,93 @@ const orgJsonLd = jsonLdScript(
         el.classList.add("u-words");
       }
 
+      /**
+       * ── KATA YANG MENGIKUTI SCROLL (motion.css §12) ────────────────────
+       * Skill `scroll-scrubbed-word-reveal`, dipakai pada satu paragraf di
+       * `#visi-misi`. Beda dengan `splitWords` di atas: itu entrance sekali
+       * jalan lewat topeng, ini fungsi dari POSISI scroll — menggulir ke
+       * atas memundurkannya.
+       *
+       * Skrip menulis SATU properti (`--p`) pada elemen induk per frame;
+       * tiap kata menghitung porsinya sendiri di CSS lewat `--i`/`--n`.
+       * Menulis satu var per kata akan berarti 40 penulisan style per frame
+       * di halaman yang sudah punya band film ber-rAF.
+       */
+      var scrubEls = [];
+      var scrubQueued = 0;
+      var scrubWired = false;
+
+      function splitScrub(el){
+        if (el.querySelector(".u-scrub-w")) return;
+        var text = el.textContent || "";
+        if (!text.trim()) return;
+        var parts = text.split(/(\s+)/);
+        var frag = document.createDocumentFragment();
+        var n = 0;
+        for (var i = 0; i < parts.length; i++) {
+          var part = parts[i];
+          if (!part || !part.trim()) {
+            frag.appendChild(document.createTextNode(part));
+            continue;
+          }
+          var w = document.createElement("span");
+          w.className = "u-scrub-w";
+          w.style.setProperty("--i", String(n++));
+          w.textContent = part;
+          frag.appendChild(w);
+        }
+        el.textContent = "";
+        el.appendChild(frag);
+        el.style.setProperty("--n", String(n));
+        /* Lebar jendela transisi, dalam satuan kata: ~15% jumlah kata, dijepit
+           3..12. Diukur: dengan jendela 1 kata, hanya satu kata yang memudar
+           pada satu waktu dan batasnya terbaca sebagai garis keras. */
+        el.style.setProperty("--w", String(Math.min(12, Math.max(3, Math.round(n * 0.15)))));
+        el.classList.add("u-scrub");
+      }
+
+      function paintScrub(){
+        scrubQueued = 0;
+        var vh = window.innerHeight || 0;
+        for (var i = 0; i < scrubEls.length; i++) {
+          var box = scrubEls[i].getBoundingClientRect();
+          /* 0 saat puncak paragraf berada di 80% viewport, 1 setelah 0.9
+             viewport gulir berikutnya. Rentang ~0,9vh untuk satu kalimat:
+             cukup panjang untuk terbaca sebagai gerakan, cukup pendek untuk
+             selesai sebelum paragrafnya sampai tengah layar. */
+          var p = (vh * 0.8 - box.top) / (vh * 0.9);
+          if (p < 0) p = 0;
+          else if (p > 1) p = 1;
+          scrubEls[i].style.setProperty("--p", p.toFixed(3));
+        }
+      }
+
+      function kickScrub(){
+        if (scrubQueued) return;
+        scrubQueued = window.requestAnimationFrame(paintScrub);
+      }
+
+      function initScrub(){
+        scrubEls = [];
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        var els = document.querySelectorAll("[data-scrub-words]");
+        for (var i = 0; i < els.length; i++) {
+          try { splitScrub(els[i]); } catch (e) { continue; }
+          scrubEls.push(els[i]);
+        }
+        if (!scrubEls.length) return;
+        if (!scrubWired) {
+          scrubWired = true;
+          window.addEventListener("scroll", kickScrub, { passive: true });
+          window.addEventListener("resize", kickScrub, { passive: true });
+        }
+        // Sinkron, bukan lewat rAF: `--p` harus benar SEBELUM frame pertama,
+        // atau kata-katanya sempat tampil penuh lalu meredup.
+        paintScrub();
+      }
+
       function pass(){
-        // ── TWO ATTRIBUTES, TWO SCALES, ONE OBSERVER ─────────────────────
-        // `[data-reveal]` marks an ITEM inside a section (a card, a tile, a
+        // ── TWO ATTRIBUTES, TWO SCALES, ONE OBSERVER ─────────────────────        // `[data-reveal]` marks an ITEM inside a section (a card, a tile, a
         // row) and is staggered — see motion.css §9. `[data-enter]` marks a
         // whole SECTION BAND and runs once, un-staggered — see §9b. They are
         // separate attributes rather than one because the vocabulary differs
@@ -548,6 +632,11 @@ const orgJsonLd = jsonLdScript(
             els[i].classList.add("is-visible");
           }
         }
+        /* Paragraf §12 juga kehilangan span-nya oleh penulisan `textContent`
+           yang sama. `initScrub` memecah ulang HANYA yang belum punya
+           `.u-scrub-w`, dan `paintScrub` langsung menulis `--p` supaya kata
+           yang sedang di layar tidak sempat redup. */
+        initScrub();
       }, { passive: true });
       // ── JANGAN PERNAH MENUNGGU TANPA BATAS (diperbaiki 2026-10-14) ────────
       // Dulu hanya `window.load` yang memanggil `pass()`. Itu KELIRU, dan
@@ -573,15 +662,22 @@ const orgJsonLd = jsonLdScript(
       // (jumlah lowongan, pengumuman) mengganti sebagian DOM, dan node
       // pengganti itu perlu diambil oleh pass berikutnya. Timer 2,5 detik
       // adalah jaring terakhir untuk `load` yang tidak pernah menyala.
-      if (document.readyState === "complete") pass();
+      /* `pass` tetap dipakai apa adanya oleh `window.__asjReveal` dan oleh
+         gerbang e2e; `boot` hanya menambahkan pemecah §12 di belakangnya.
+         Urutannya penting: `pass()` lebih dulu, karena ia yang memasang
+         `js-reveal` dan observer — kalau §12 dijalankan lebih dulu, kata
+         yang dipecahnya belum punya apa pun yang mengembalikannya. */
+      function boot(){ pass(); initScrub(); }
+
+      if (document.readyState === "complete") boot();
       else {
         if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", pass, { passive: true, once: true });
+          document.addEventListener("DOMContentLoaded", boot, { passive: true, once: true });
         } else {
-          pass();
+          boot();
         }
-        window.addEventListener("load", pass, { passive: true });
-        setTimeout(pass, 2500);
+        window.addEventListener("load", boot, { passive: true });
+        setTimeout(boot, 2500);
       }
 
     })();

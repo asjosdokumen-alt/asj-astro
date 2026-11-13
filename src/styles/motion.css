@@ -2529,3 +2529,64 @@ html.has-cursor .u-cursor {
   }
 }
 
+
+/* ══════════════════════════════════════════════════════════════════
+   12. KATA YANG MENGIKUTI SCROLL
+   ══════════════════════════════════════════════════════════════════
+
+   Skill `scroll-scrubbed-word-reveal`, dipakai pada SATU elemen saja:
+   paragraf Visi di `#visi-misi`. Itu satu kalimat panjang yang memang
+   dibaca sebagai pernyataan, bukan daftar — dan satu-satunya tempat di
+   halaman ini di mana "kata muncul seiring gulir" menambah arti, bukan
+   menambah hiasan. Misi di sebelahnya sengaja TIDAK diberi efek ini:
+   empat poin pendek yang dibaca sekilas tidak butuh dipacing.
+
+   BEDA DENGAN §10. §10 adalah entrance sekali jalan (topeng, naik, lalu
+   selesai). Ini adalah fungsi dari posisi scroll — menggulir ke atas
+   memundurkannya, dan itu yang membuatnya terasa "ikut", bukan "muncul".
+
+   ── SATU TULISAN PER FRAME, BUKAN SATU PER KATA ─────────────────────
+   Skrip menulis `--p` (0..1) pada ELEMEN INDUK saja. Setiap kata
+   menghitung porsinya sendiri lewat `--i` dan `--n`, jadi 40 kata tidak
+   berarti 40 penulisan style per frame. Ini yang membuat efek ini murah
+   di halaman yang sudah punya band film ber-rAF.
+
+   `--p` DEFAULT 1, bukan 0. Kalau skrip mati setelah kelasnya terpasang,
+   teks harus tetap terbaca — arah kegagalan yang benar untuk teks adalah
+   "terlihat", bukan "redup". Skrip menimpanya dengan nilai sebenarnya
+   sebelum frame pertama. */
+
+.u-scrub {
+  --p: 1;
+}
+
+.u-scrub-w {
+  display: inline-block;
+  /* Porsi kata ini terhadap progres.
+     `--w` adalah lebar jendela transisi DALAM SATUAN KATA. Tanpa itu,
+     tiap kata selesai dalam 1/(n+1) progres, jadi hanya SATU kata yang
+     sedang bertransisi pada satu waktu — terukur, dan hasilnya terbaca
+     sebagai batas keras antar-baris, bukan sebagai gelombang. Dengan
+     jendela ~15% jumlah kata (band "word overlap 10-30%" di skill),
+     enam kata ikut memudar bersamaan dan batasnya hilang. */
+  --local: clamp(
+    0,
+    calc((var(--p, 1) * (var(--n, 1) + var(--w, 6)) - var(--i, 0)) / var(--w, 6)),
+    1
+  );
+  /* 0.18 -> 1. Di bawah 0.15 kata yang belum sampai terbaca sebagai teks
+     rusak/kosong, bukan sebagai teks yang belum sampai. */
+  opacity: calc(0.18 + 0.82 * var(--local));
+  transform: translate3d(0, calc((1 - var(--local)) * 0.14em), 0);
+}
+
+/* ── Reduced motion: jangan pernah meredupkan teks. Kalau preferensi
+      berubah di tengah sesi, kata yang sedang di 0.18 harus langsung
+      kembali terbaca — skrip tidak mendengarkan perubahan itu. ── */
+@media (prefers-reduced-motion: reduce) {
+  .u-scrub-w {
+    opacity: 1;
+    transform: none;
+  }
+}
+
