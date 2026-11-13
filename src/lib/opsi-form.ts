@@ -587,47 +587,245 @@ export const PROVINSI: Opsi[] = [
   ['PAPUA BARAT DAYA', 'PAPUA BARAT DAYA (南西パプア)'],
 ];
 
-/** Major cities, for tempat lahir / kota paspor / kota domisili. */
+/**
+ * KOTA — dipakai TIGA tempat: kota penerbit paspor, kota sekolah,
+ * dan kota tempat kerja. Dulu hanya yang pertama yang punya daftar; dua yang
+ * lain kotak teks bebas, jadi satu kota ditulis "PONOROGO", "Ponorogo", dan
+ * "ponorogo, jatim" oleh tiga kandidat — dan renderer mencetak ketiganya apa
+ * adanya ke 地域 (KINKI `K20`/`K27`).
+ *
+ * Nilai yang disimpan tetap nama Indonesia (kolom `kota_terbit_pasport`,
+ * `pendidikan_N_kota`, `pekerjaan_N_kota`); katakana hanya petunjuk di label.
+ *
+ * `ComboSelect` memakai daftar ini sebagai SARAN, bukan pagar — kota yang tidak
+ * ada di sini tetap bisa diketik bebas, dan itu disengaja: ada 514 kabupaten/kota
+ * dan tidak ada gunanya memaksakan daftar setengah lengkap.
+ *
+ * 203 kota/kabupaten (2026-11-13). Pemilik: *"pilihan kota ponorogo malah gak
+ * ada XD padahal kan tempat amanah"* — jadi Jawa Timur didahulukan dan Ponorogo
+ * ada di baris pertama. Katakana hanya untuk kota yang ejaannya lazim dipakai
+ * di form Jepang; sisanya `kota('NAMA')` — labelnya sama dengan nilainya, dan
+ * `pairDisplay` tidak mengulanginya (`PONOROGO`, bukan `PONOROGO（PONOROGO）`).
+ * Label tetap diisi (bukan string kosong) supaya penjaga "label kembar" di
+ * `opsi-form.test.ts` tetap bisa membedakan satu kota dari kota lain.
+ */
+const kota = (v: string, jp?: string): Opsi => [v, jp ? `${v} (${jp})` : v];
+
 export const KOTA: Opsi[] = [
-  ['JAKARTA', 'JAKARTA (ジャカルタ)'],
-  ['SURABAYA', 'SURABAYA (スラバヤ)'],
-  ['BANDUNG', 'BANDUNG (バンドン)'],
-  ['MEDAN', 'MEDAN (メダン)'],
-  ['SEMARANG', 'SEMARANG (スマラン)'],
-  ['MAKASSAR', 'MAKASSAR (マカッサル)'],
-  ['PALEMBANG', 'PALEMBANG (パレンバン)'],
-  ['TANGERANG', 'TANGERANG (タンゲラン)'],
-  ['DEPOK', 'DEPOK (デポック)'],
-  ['BEKASI', 'BEKASI (ブカシ)'],
-  ['BOGOR', 'BOGOR (ボゴール)'],
-  ['BATAM', 'BATAM (バタム)'],
-  ['PEKANBARU', 'PEKANBARU (プカンバル)'],
-  ['PADANG', 'PADANG (パダン)'],
-  ['BANDAR LAMPUNG', 'BANDAR LAMPUNG (バンダルランプン)'],
-  ['YOGYAKARTA', 'YOGYAKARTA (ジョグジャカルタ)'],
-  ['SOLO / SURAKARTA', 'SOLO / SURAKARTA (スラカルタ)'],
-  ['MALANG', 'MALANG (マラン)'],
-  ['KEDIRI', 'KEDIRI (クディリ)'],
-  ['DENPASAR', 'DENPASAR (デンパサール)'],
-  ['MATARAM', 'MATARAM (マタラム)'],
-  ['BANJARMASIN', 'BANJARMASIN (バンジャルマシン)'],
-  ['BALIKPAPAN', 'BALIKPAPAN (バリクパパン)'],
-  ['SAMARINDA', 'SAMARINDA (サマリンダ)'],
-  ['PONTIANAK', 'PONTIANAK (ポンティアナック)'],
-  ['MANADO', 'MANADO (マナド)'],
-  ['MAKASSAR / UJUNG PANDANG', 'MAKASSAR / UJUNG PANDANG (ウジュンパンダン)'],
-  ['KENDARI', 'KENDARI (ケンダリ)'],
-  ['AMBON', 'AMBON (アンボン)'],
-  ['JAYAPURA', 'JAYAPURA (ジャヤプラ)'],
-  ['CIREBON', 'CIREBON (チルボン)'],
-  ['TASIKMALAYA', 'TASIKMALAYA (タシクマラヤ)'],
-  ['SERANG', 'SERANG (スラン)'],
-  ['JEMBER', 'JEMBER (ジュンベル)'],
-  ['MADIUN', 'MADIUN (マディウン)'],
-  ['BLITAR', 'BLITAR (ブリタール)'],
-  ['SUKABUMI', 'SUKABUMI (スカブミ)'],
-  ['KARAWANG', 'KARAWANG (カラワン)'],
+  // ── Jawa Timur (basis ASJ — Ponorogo lebih dulu) ─────────────────────────
+  kota('PONOROGO', 'ポノロゴ'),
+  kota('MADIUN', 'マディウン'),
+  kota('MAGETAN'),
+  kota('NGAWI'),
+  kota('PACITAN'),
+  kota('TRENGGALEK'),
+  kota('TULUNGAGUNG'),
+  kota('BLITAR', 'ブリタル'),
+  kota('KEDIRI', 'クディリ'),
+  kota('NGANJUK'),
+  kota('JOMBANG'),
+  kota('MOJOKERTO'),
+  kota('SIDOARJO', 'シドアルジョ'),
+  kota('GRESIK'),
+  kota('LAMONGAN'),
+  kota('TUBAN'),
+  kota('BOJONEGORO'),
+  kota('SURABAYA', 'スラバヤ'),
+  kota('MALANG', 'マラン'),
+  kota('BATU'),
+  kota('PASURUAN'),
+  kota('PROBOLINGGO', 'プロボリンゴ'),
+  kota('LUMAJANG'),
+  kota('JEMBER', 'ジュンベル'),
+  kota('BANYUWANGI'),
+  kota('SITUBONDO'),
+  kota('BONDOWOSO'),
+  kota('BANGKALAN'),
+  kota('SAMPANG'),
+  kota('PAMEKASAN'),
+  kota('SUMENEP'),
+  // ── Jawa Tengah & DI Yogyakarta ──────────────────────────────────────────
+  kota('SEMARANG', 'スマラン'),
+  kota('SALATIGA'),
+  kota('MAGELANG'),
+  kota('SURAKARTA / SOLO', 'スラカルタ'),
+  kota('KLATEN'),
+  kota('BOYOLALI'),
+  kota('SUKOHARJO'),
+  kota('WONOGIRI'),
+  kota('KARANGANYAR'),
+  kota('SRAGEN'),
+  kota('GROBOGAN'),
+  kota('BLORA'),
+  kota('REMBANG'),
+  kota('PATI'),
+  kota('KUDUS'),
+  kota('JEPARA'),
+  kota('DEMAK'),
+  kota('KENDAL'),
+  kota('BATANG'),
+  kota('PEKALONGAN'),
+  kota('PEMALANG'),
+  kota('TEGAL', 'トゥガル'),
+  kota('BREBES'),
+  kota('PURWOKERTO', 'プルウォケルト'),
+  kota('CILACAP'),
+  kota('PURBALINGGA'),
+  kota('BANJARNEGARA'),
+  kota('KEBUMEN'),
+  kota('WONOSOBO'),
+  kota('TEMANGGUNG'),
+  kota('YOGYAKARTA', 'ジョグジャカルタ'),
+  kota('SLEMAN'),
+  kota('BANTUL'),
+  kota('GUNUNGKIDUL'),
+  kota('KULON PROGO'),
+  // ── Jawa Barat & Banten ──────────────────────────────────────────────────
+  kota('BANDUNG', 'バンドゥン'),
+  kota('CIMAHI'),
+  kota('BANDUNG BARAT'),
+  kota('BOGOR', 'ボゴール'),
+  kota('DEPOK', 'デポック'),
+  kota('BEKASI', 'ブカシ'),
+  kota('TANGERANG', 'タンゲラン'),
+  kota('TANGERANG SELATAN'),
+  kota('SUKABUMI'),
+  kota('CIANJUR'),
+  kota('GARUT'),
+  kota('TASIKMALAYA'),
+  kota('CIAMIS'),
+  kota('PANGANDARAN'),
+  kota('KUNINGAN'),
+  kota('MAJALENGKA'),
+  kota('INDRAMAYU'),
+  kota('SUBANG'),
+  kota('PURWAKARTA'),
+  kota('KARAWANG'),
+  kota('SUMEDANG'),
+  kota('CIREBON', 'チレボン'),
+  kota('SERANG', 'スラン'),
+  kota('CILEGON', 'チレゴン'),
+  kota('PANDEGLANG'),
+  kota('LEBAK'),
+  // ── DKI Jakarta ──────────────────────────────────────────────────────────
+  kota('JAKARTA', 'ジャカルタ'),
+  kota('JAKARTA PUSAT'),
+  kota('JAKARTA UTARA'),
+  kota('JAKARTA BARAT'),
+  kota('JAKARTA TIMUR'),
+  kota('JAKARTA SELATAN'),
+  // ── Bali & Nusa Tenggara ─────────────────────────────────────────────────
+  kota('DENPASAR', 'デンパサール'),
+  kota('BADUNG'),
+  kota('GIANYAR'),
+  kota('TABANAN'),
+  kota('BANGLI'),
+  kota('KLUNGKUNG'),
+  kota('KARANGASEM'),
+  kota('BULELENG / SINGARAJA'),
+  kota('JEMBRANA'),
+  kota('MATARAM', 'マタラム'),
+  kota('BIMA'),
+  kota('SUMBAWA'),
+  kota('KUPANG', 'クパン'),
+  kota('ENDE'),
+  kota('MAUMERE'),
+  kota('LABUAN BAJO'),
+  // ── Sumatra ──────────────────────────────────────────────────────────────
+  kota('BANDA ACEH', 'バンダアチェ'),
+  kota('LHOKSEUMAWE'),
+  kota('LANGSA'),
+  kota('MEULABOH'),
+  kota('MEDAN', 'メダン'),
+  kota('BINJAI'),
+  kota('PEMATANG SIANTAR'),
+  kota('TEBING TINGGI'),
+  kota('TANJUNG BALAI'),
+  kota('PADANG SIDEMPUAN'),
+  kota('SIBOLGA'),
+  kota('GUNUNG SITOLI'),
+  kota('PADANG', 'パダン'),
+  kota('BUKITTINGGI'),
+  kota('PAYAKUMBUH'),
+  kota('SOLOK'),
+  kota('PARIAMAN'),
+  kota('PEKANBARU', 'プカンバル'),
+  kota('DUMAI'),
+  kota('BENGKALIS'),
+  kota('RENGAT'),
+  kota('JAMBI', 'ジャンビ'),
+  kota('SUNGAI PENUH'),
+  kota('PALEMBANG', 'パレンバン'),
+  kota('LUBUKLINGGAU'),
+  kota('PRABUMULIH'),
+  kota('PAGAR ALAM'),
+  kota('BATURAJA'),
+  kota('BENGKULU', 'ブンクル'),
+  kota('BANDAR LAMPUNG', 'バンダールランプン'),
+  kota('METRO'),
+  kota('LIWA'),
+  kota('BATAM', 'バタム'),
+  kota('TANJUNG PINANG'),
+  kota('PANGKAL PINANG'),
+  // ── Kalimantan ───────────────────────────────────────────────────────────
+  kota('PONTIANAK', 'ポンティアナック'),
+  kota('SINGKAWANG'),
+  kota('SAMBAS'),
+  kota('SINTANG'),
+  kota('KETAPANG'),
+  kota('BANJARMASIN', 'バンジャルマシン'),
+  kota('BANJARBARU'),
+  kota('MARTAPURA'),
+  kota('PALANGKARAYA'),
+  kota('SAMPIT'),
+  kota('PANGKALAN BUN'),
+  kota('MUARA TEWEH'),
+  kota('SAMARINDA', 'サマリンダ'),
+  kota('BALIKPAPAN', 'バリクパパン'),
+  kota('BONTANG'),
+  kota('TENGGARONG'),
+  kota('TANJUNG SELOR'),
+  kota('TARAKAN', 'タラカン'),
+  kota('NUNUKAN'),
+  // ── Sulawesi ─────────────────────────────────────────────────────────────
+  kota('MAKASSAR', 'マカッサル'),
+  kota('PAREPARE'),
+  kota('PALOPO'),
+  kota('BONE'),
+  kota('GOWA'),
+  kota('TAKALAR'),
+  kota('MAROS'),
+  kota('BULUKUMBA'),
+  kota('PALU', 'パル'),
+  kota('POSO'),
+  kota('LUWUK'),
+  kota('BANGGAI'),
+  kota('KENDARI', 'ケンダリ'),
+  kota('BAU-BAU'),
+  kota('KOLAKA'),
+  kota('MANADO', 'マナド'),
+  kota('BITUNG'),
+  kota('TOMOHON'),
+  kota('KOTAMOBAGU'),
+  kota('GORONTALO', 'ゴロンタロ'),
+  // ── Maluku & Papua ───────────────────────────────────────────────────────
+  kota('AMBON', 'アンボン'),
+  kota('TUAL'),
+  kota('MASOHI'),
+  kota('TERNATE', 'テルナテ'),
+  kota('TIDORE'),
+  kota('JAYAPURA', 'ジャヤプラ'),
+  kota('SORONG', 'ソロン'),
+  kota('MANOKWARI', 'マノクワリ'),
+  kota('MERAUKE'),
+  kota('TIMIKA', 'ティミカ'),
+  kota('NABIRE'),
+  kota('WAMENA'),
+  kota('BIAK'),
+  kota('FAKFAK'),
+  kota('KAIMANA'),
 ];
+
 
 /** jenis SIM — a closed set, so it should never be free text. */
 export const SIM: Opsi[] = [
@@ -1184,67 +1382,7 @@ export const VISUS_MATA: Opsi[] = [
   ['0.1', '視力'],
 ];
 
-/**
- * KOTA INDONESIA — dipakai TIGA tempat: kota penerbit paspor, kota sekolah,
- * dan kota tempat kerja. Dulu hanya yang pertama yang punya daftar; dua yang
- * lain kotak teks bebas, jadi satu kota ditulis "PONOROGO", "Ponorogo", dan
- * "ponorogo, jatim" oleh tiga kandidat — dan renderer mencetak ketiganya apa
- * adanya ke 地域 (KINKI `K20`/`K27`).
- *
- * Nilai yang disimpan tetap nama Indonesia (kolom `kota_terbit_pasport`,
- * `pendidikan_N_kota`, `pekerjaan_N_kota`); katakana hanya petunjuk di label.
- *
- * `ComboSelect` memakai daftar ini sebagai SARAN, bukan pagar — kota yang tidak
- * ada di sini tetap bisa diketik bebas, dan itu disengaja: ada 514 kabupaten/kota
- * dan tidak ada gunanya memaksakan daftar setengah lengkap.
- */
-export const KOTA_INDONESIA: Opsi[] = [
-  ['JAKARTA', 'JAKARTA (ジャカルタ)'],
-  ['SURABAYA', 'SURABAYA (スラバヤ)'],
-  ['BANDUNG', 'BANDUNG (バンドゥン)'],
-  ['MEDAN', 'MEDAN (メダン)'],
-  ['SEMARANG', 'SEMARANG (スマラン)'],
-  ['MAKASSAR', 'MAKASSAR (マカッサル)'],
-  ['PALEMBANG', 'PALEMBANG (パレンバン)'],
-  ['DENPASAR', 'DENPASAR (デンパサール)'],
-  ['YOGYAKARTA', 'YOGYAKARTA (ジョグジャカルタ)'],
-  ['SURAKARTA', 'SURAKARTA (スラカルタ)'],
-  ['MALANG', 'MALANG (マラン)'],
-  ['PADANG', 'PADANG (パダン)'],
-  ['PEKANBARU', 'PEKANBARU (プカンバル)'],
-  ['BANJARMASIN', 'BANJARMASIN (バンジャルマシン)'],
-  ['BANDAR LAMPUNG', 'BANDAR LAMPUNG (バンダールランプン)'],
-  ['SAMARINDA', 'SAMARINDA (サマリンダ)'],
-  ['PONTIANAK', 'PONTIANAK (ポンティアナック)'],
-  ['MANADO', 'MANADO (マナド)'],
-  ['MATARAM', 'MATARAM (マタラム)'],
-  ['KUPANG', 'KUPANG (クパン)'],
-  ['JAYAPURA', 'JAYAPURA (ジャヤプラ)'],
-  ['AMBON', 'AMBON (アンボン)'],
-  ['KENDARI', 'KENDARI (ケンダリ)'],
-  ['PALU', 'PALU (パル)'],
-  ['GORONTALO', 'GORONTALO (ゴロンタロ)'],
-  ['BENGKULU', 'BENGKULU (ブンクル)'],
-  ['JAMBI', 'JAMBI (ジャンビ)'],
-  ['BATAM', 'BATAM (バタム)'],
-  ['BALIKPAPAN', 'BALIKPAPAN (バリクパパン)'],
-  ['TARAKAN', 'TARAKAN (タラカン)'],
-  ['BEKASI', 'BEKASI (ブカシ)'],
-  ['DEPOK', 'DEPOK (デポック)'],
-  ['TANGERANG', 'TANGERANG (タンゲラン)'],
-  ['BOGOR', 'BOGOR (ボゴール)'],
-  ['SERANG', 'SERANG (スラン)'],
-  ['CILEGON', 'CILEGON (チレゴン)'],
-  ['CIREBON', 'CIREBON (チレボン)'],
-  ['TEGAL', 'TEGAL (トゥガル)'],
-  ['PURWOKERTO', 'PURWOKERTO (プルウォケルト)'],
-  ['KEDIRI', 'KEDIRI (クディリ)'],
-  ['MADIUN', 'MADIUN (マディウン)'],
-  ['JEMBER', 'JEMBER (ジュンベル)'],
-  ['SIDOARJO', 'SIDOARJO (シドアルジョ)'],
-  ['PROBOLINGGO', 'PROBOLINGGO (プロボリンゴ)'],
-  ['BLITAR', 'BLITAR (ブリタル)'],
-];
+
 
 /**
  * 業種 — BIDANG INDUSTRI tempat kandidat bekerja (KINKI `AA`/備考, Firma, JIPA).
@@ -1399,7 +1537,10 @@ export function pairDisplay(value: string, label: string): string {
   const v = String(value ?? '').trim();
   const jp = labelJp(label);
   if (!v) return jp;
-  if (!jp) return v;
+  /* Sisi Jepang yang SAMA dengan nilainya tidak diulang: `PONOROGO（PONOROGO）`
+     hanya menambah panjang tanpa memberi tahu apa pun. Daftar kota memakai
+     bentuk ini untuk kota yang tidak punya katakana lazim. */
+  if (!jp || jp === v) return v;
   return `${v}（${jp}）`;
 }
 

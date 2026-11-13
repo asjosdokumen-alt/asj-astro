@@ -463,3 +463,32 @@ describe('opsi-form — bidang SSW & ujian', () => {
     }
   });
 });
+
+describe('KOTA — daftar kota Indonesia (dipakai paspor, sekolah, kerja)', () => {
+  const values = KOTA.map(([v]) => v);
+
+  it('memuat Ponorogo — kota kantor ASJ', () => {
+    // Pemilik 2026-11-13: *"pilihan kota ponorogo malah gak ada XD padahal kan
+    // tempat amanah"*. Daftar lama hanya 45 kota besar dan melewatkan hampir
+    // seluruh Jawa Timur bagian barat-daya, tempat sebagian besar kandidat
+    // berasal.
+    expect(values).toContain('PONOROGO');
+  });
+
+  it('memuat kota/kabupaten Jawa Timur di sekitar Ponorogo', () => {
+    for (const k of ['MADIUN', 'MAGETAN', 'NGAWI', 'PACITAN', 'TRENGGALEK', 'TULUNGAGUNG', 'BLITAR', 'KEDIRI']) {
+      expect(values, `Jawa Timur kehilangan ${k}`).toContain(k);
+    }
+  });
+
+  it('cukup luas untuk tiga tempat sekaligus', () => {
+    // Ambang, bukan angka pasti: yang dijaga adalah "daftarnya tidak menyusut
+    // kembali jadi 45 kota besar". 203 entri saat ditulis.
+    expect(values.length).toBeGreaterThan(150);
+  });
+
+  it('tidak ada nilai kembar', () => {
+    const dupes = [...new Set(values.filter((v, i) => values.indexOf(v) !== i))];
+    expect(dupes).toEqual([]);
+  });
+});

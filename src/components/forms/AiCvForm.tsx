@@ -31,7 +31,7 @@ import {
   SSW_BIDANG, UJIAN_JP, UJIAN_BAHASA,
   /* Angka & ukuran berlabel Jepang (2026-11-13): nilai tetap angka, label
      yang berbahasa Jepang — lihat catatan di `opsi-form.ts` §3f. */
-  LAMA_ASRAMA, LAMA_KERJA_JP, VISUS_MATA, KOTA_INDONESIA, BIDANG_KERJA,
+  LAMA_ASRAMA, LAMA_KERJA_JP, VISUS_MATA, KOTA, BIDANG_KERJA,
   labelJp, pairDisplay, type Opsi,
 } from '../../lib/opsi-form';
 import { levelOptions, sortEduRows, tingkatLabel } from '../../lib/cvRows';
@@ -1892,7 +1892,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               {/* Kota penerbit — ketik-untuk-menyarig dari daftar kota yang
                   sering muncul di paspor, dan tetap boleh diketik bebas: kota
                   penerbit mengikuti kantor imigrasi, bukan daftar kita. */}
-              <ComboSelect label={t("form.mf_kota_paspor")} id="kota_paspor" value={cv.kota_paspor} pairs={KOTA_INDONESIA}
+              <ComboSelect label={t("form.mf_kota_paspor")} id="kota_paspor" value={cv.kota_paspor} pairs={KOTA}
                 placeholder="ketik kota, mis. SURABAYA"
                 onInput={(v) => handleManualEdit('kota_paspor', v)} onPick={(v) => handleManualEdit('kota_paspor', v)} />
 
@@ -2256,7 +2256,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                         di atas hanya berisi PROVINSI (keluhan pemilik 2026-11-12:
                         *"dropdownnya provinsi semua yg alamat kota sekolah"*), jadi
                         kota ditanyakan PER BARIS di sini dan dicetak ke K20. */}
-                    <ComboSelect label={t('ai_cv.row_kota')} id={`edu-kota-${i}`} value={edu.kota} pairs={KOTA_INDONESIA}
+                    <ComboSelect label={t('ai_cv.row_kota')} id={`edu-kota-${i}`} value={edu.kota} pairs={KOTA}
                       placeholder="ketik atau pilih kota"
                       onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))}
                       onPick={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))} />
@@ -2323,7 +2323,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                     <Field label={t('ai_cv.row_perusahaan_jp')} id={`job-perusahaan-jp-${i}`} value={job.perusahaan_jp} jp
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, perusahaan_jp: v } : r))} />
                     {/* 地域 — kota tempat kerja (migrasi 056), dicetak ke K27/K29/K31. */}
-                    <ComboSelect label={t('ai_cv.row_kota')} id={`job-kota-${i}`} value={job.kota} pairs={KOTA_INDONESIA}
+                    <ComboSelect label={t('ai_cv.row_kota')} id={`job-kota-${i}`} value={job.kota} pairs={KOTA}
                       placeholder="ketik atau pilih kota"
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))}
                       onPick={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, kota: v } : r))} />
