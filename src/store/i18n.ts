@@ -2202,6 +2202,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "tes.mata_pilih_angka": "Pilih angka yang terlihat",
     "tes.mata_ulang": "Tes Ulang",
     "tes.mata_ulang_ket": "Hasil baru akan MENGGANTI hasil yang tersimpan sekarang.",
+    "tes.mata_ulang_server_lama": "Hasil ulang belum bisa disimpan — server masih memakai versi lama. Coba lagi setelah pembaruan.",
     "tes.mata_tidak_ada": "Tidak ada angka",
     "tes.mata_jawab": "Jawab & lanjut",
     "tes.mata_kalibrasi_judul": "Kalibrasi ukuran layar",
@@ -3164,6 +3165,18 @@ export function translateDataLang() {
       if (text !== key) el.setAttribute("aria-label", text);
     }
   });
+
+  /* ── KABARKAN BAHWA TEKS SUDAH DIGANTI (2026-11-13) ─────────────────────
+     `el.textContent = text` di atas MENGHAPUS seluruh isi elemen, termasuk
+     span kata yang dipasang pemecah `[data-motion-words]` (motion.css §10).
+     Tanpa pemberitahuan, judul section kembali menjadi teks biasa setelah
+     bahasa dibaca — terukur: 16 judul punya `data-words-split="true"` tapi
+     0 anak, dan halaman tetap benar karena teksnya memang kembali utuh.
+
+     Yang mendengarkan adalah skrip reveal di BaseLayout, dan ia memecah
+     ulang. Event, bukan panggilan langsung: `i18n.ts` tidak boleh tahu
+     bahwa ada pemecah kata di halaman. */
+  document.dispatchEvent(new CustomEvent("asj:lang-applied"));
 }
 
 export function t(key: string): string {

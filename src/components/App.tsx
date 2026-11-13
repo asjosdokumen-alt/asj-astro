@@ -108,6 +108,33 @@ const HERO_STATS: ReadonlyArray<{ value?: string; valueKey?: string; labelKey: s
   { valueKey: 'profile.stat_prefectures_value', labelKey: 'profile.stat_prefectures' },
 ];
 
+/**
+ * Split a headline into per-word spans wrapped in an overflow mask, so each
+ * word can rise out of nothing (motion.css §10). Whitespace is preserved as
+ * TEXT nodes, not as spans, because the browser must stay free to wrap the
+ * line — the mask spans are `inline-block` and a space between two of them
+ * is a legal break point, exactly as between two words in plain text.
+ *
+ * `--word-i` counts WORDS only. Using the array index would count the spaces
+ * too (split with a capture group alternates word, space, word …), which
+ * would double every delay and make a six-word headline take 456ms to
+ * finish instead of 228ms.
+ */
+function splitHeadline(text: string) {
+  let wordIndex = 0;
+  return text.split(/(\s+)/).map((part, i) => {
+    if (!part.trim()) return part;
+    const index = wordIndex++;
+    return (
+      <span key={`w${i}`} class="u-word-mask">
+        <span class="u-word" style={{ '--word-i': index }}>
+          {part}
+        </span>
+      </span>
+    );
+  });
+}
+
 export default function App(
   { showHeader = true, hero = false }: { showHeader?: boolean; hero?: boolean } = {},
 ) {
@@ -137,6 +164,35 @@ export default function App(
   const banner = useStore(bannerStore);
   const bannerSrc = banner === 'SAKURA' ? BANNER_ART.SAKURA : BANNER_ART.TOKYO;
   const bannerImgRef = useRef<HTMLImageElement | null>(null);
+  /**
+   * ── THE HEADLINE ARRIVES WORD BY WORD (2026-11-13) ──────────────────────
+   * Owner's note: "font interactif cursornya belum maksimal ... transisinya
+   * kurang". The hero h1 was the last element on the page still appearing as
+   * one block: it is server-rendered, so by the time anything else animated
+   * the headline had already been painted in full.
+   *
+   * The words are split at RENDER time rather than by a DOM splitter, for
+   * two reasons measured in this file's own history:
+   *   1. The h1 exists in the server HTML (`grep -c '<h1' dist/index.html`
+   *      is 1), so a post-hydration splitter would flash the finished
+   *      headline and then hide it again.
+   *   2. The text comes from `t("profile.hero_title")`, which re-renders on
+   *      a language change. A DOM splitter's spans would be destroyed by
+   *      that re-render; JSX spans are simply rebuilt.
+   *
+   * `is-visible` is added one frame after mount so the transition has a
+   * frame to start from — adding it in the same commit would paint the final
+   * state with no animation. Without JS the class is never added, but the
+   * hidden state lives behind `html.js-reveal` (motion.css §10), which is
+   * also absent — so the headline is simply visible.
+   */
+  const [heroIn, setHeroIn] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setHeroIn(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const heroTitle = t('profile.hero_title');
+
   useLayoutEffect(() => {
     const el = bannerImgRef.current;
     if (el && el.getAttribute('src') !== bannerStore.get()) {
@@ -1054,7 +1110,7 @@ export default function App(
                   The `text-white` note below still applies unchanged — the
                   band is dark in BOTH themes, so the colour must not come
                   from the theme. */}
-              <h1 class="text-display font-display font-normal text-white drop-shadow-lg mt-2">{t("profile.hero_title")}</h1>
+              <h1 class={`text-display font-display font-normal text-white drop-shadow-lg mt-2 u-words${heroIn ? ' is-visible' : ''}`}>{splitHeadline(heroTitle)}</h1>
               <p class="text-body text-slate-200 mt-4 max-w-[52ch] leading-relaxed">{t("profile.hero_sub")}</p>
               {/* NO "Lihat Lowongan" CTA HERE. Owner ruling 2026-09-24: `/` is a
                   company profile for MoU/business partners, not a job board, so

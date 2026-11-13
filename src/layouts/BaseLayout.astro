@@ -386,6 +386,71 @@ const orgJsonLd = jsonLdScript(
 
       function reveal(el){ el.classList.add(MARK); }
 
+      /**
+       * ── WHICH STATE CLASS AN ELEMENT GETS ──────────────────────────────
+       * Three attributes, three scales, three markers. This is a FUNCTION
+       * rather than an inline ternary because it is asked in two places —
+       * the first pass and the observer callback — and on 2026-11-13 those
+       * two answers disagreed, which silently hid every section title.
+       *
+       *   [data-enter]        a whole band   -> is-entered   (§9b)
+       *   [data-motion-words] the text in it -> is-visible   (§10)
+       *   [data-reveal]       an item inside -> is-revealed  (§9)
+       *
+       * `data-enter` wins when an element carries both, because that is the
+       * animation actually running on the element itself.
+       */
+      function markFor(el){
+        if (el.hasAttribute("data-enter")) return "is-entered";
+        if (el.hasAttribute("data-motion-words")) return "is-visible";
+        return MARK;
+      }
+
+      /**
+       * ── WORD MASKS (2026-11-13, motion.css §10) ────────────────────────
+       * Wraps every word of `[data-motion-words]` in an overflow mask so it
+       * can rise into place one word at a time. Done HERE, next to the other
+       * reveal machinery, for the same reason §9b is: one owner for one
+       * flag, and the same "already on screen → show now" rule.
+       *
+       * Text nodes for the spaces are preserved deliberately. A split that
+       * emits only `inline-block` spans with no whitespace between them
+       * cannot wrap at all — the headline would become one unbreakable line.
+       *
+       * ES5 style (var, no arrows) because this block is `is:inline` and is
+       * NOT transpiled: an arrow function here ships to the browser as-is.
+       */
+      function splitWords(el){
+        // Guard on the RESULT, not on a flag: `translateDataLang()` replaces
+        // `textContent` wholesale, which deletes the masks but would leave a
+        // `data-words-split="true"` behind — so a flag would report "done"
+        // for an element that is plain text again. Measured exactly that.
+        if (el.querySelector(".u-word")) return;
+        var text = el.textContent || "";
+        if (!text.trim()) return;
+        var parts = text.split(/(\s+)/);
+        var frag = document.createDocumentFragment();
+        var n = 0;
+        for (var i = 0; i < parts.length; i++) {
+          var part = parts[i];
+          if (!part || !part.trim()) {
+            frag.appendChild(document.createTextNode(part));
+            continue;
+          }
+          var mask = document.createElement("span");
+          mask.className = "u-word-mask";
+          var word = document.createElement("span");
+          word.className = "u-word";
+          word.style.setProperty("--word-i", String(n++));
+          word.textContent = part;
+          mask.appendChild(word);
+          frag.appendChild(mask);
+        }
+        el.textContent = "";
+        el.appendChild(frag);
+        el.classList.add("u-words");
+      }
+
       function pass(){
         // ── TWO ATTRIBUTES, TWO SCALES, ONE OBSERVER ─────────────────────
         // `[data-reveal]` marks an ITEM inside a section (a card, a tile, a
@@ -394,17 +459,28 @@ const orgJsonLd = jsonLdScript(
         // separate attributes rather than one because the vocabulary differs
         // (a band has an entrance KIND, an item does not) and because an
         // element carrying both would run two animations on itself.
-        var targets = document.querySelectorAll("[data-reveal], [data-enter]");
+        //
+        // `[data-motion-words]` is the third scale: the TEXT inside a heading
+        // (motion.css §10). It is split here, before the box is measured, so
+        // the measurement describes the element the visitor will see.
+        var targets = document.querySelectorAll("[data-reveal], [data-enter], [data-motion-words]");
         if (!targets.length) return;
         var pending = [];
         for (var i = 0; i < targets.length; i++) {
           var el = targets[i];
-          // `data-reveal` uses `is-revealed`; `data-enter` uses `is-entered`.
-          // Two markers because the CSS state selectors are different shapes
+          if (el.hasAttribute("data-motion-words")) {
+            // A splitter that throws must not leave words at 110% (invisible).
+            // `is-visible` is therefore added even if the split failed: plain
+            // text is the correct fallback, and it is what the visitor sees.
+            try { splitWords(el); } catch (e) { el.classList.add("is-visible"); }
+          }
+          // `data-reveal` uses `is-revealed`; `data-enter` uses `is-entered`;
+          // `data-motion-words` uses `is-visible`. Three markers because the
+          // CSS state selectors are different shapes
           // (`html.js-reveal [data-enter="rise"].is-entered`), and collapsing
           // them into one class would make a band that carried both attributes
           // mark itself revealed while its entrance had not run.
-          var mark = el.hasAttribute("data-enter") ? "is-entered" : MARK;
+          var mark = markFor(el);
           if (el.classList.contains(mark)) continue;
           // Anything already on screen at first paint is revealed IMMEDIATELY
           // rather than observed. Observing it would make above-the-fold
@@ -419,7 +495,15 @@ const orgJsonLd = jsonLdScript(
           for (var j = 0; j < entries.length; j++) {
             if (!entries[j].isIntersecting) continue;
             var t = entries[j].target;
-            t.classList.add(t.hasAttribute("data-enter") ? "is-entered" : MARK);
+            /* SATU PENENTU, DUA PEMANGGIL (diperbaiki 2026-11-13). Baris ini
+               dulu menulis `hasAttribute("data-enter") ? "is-entered" : MARK`,
+               yaitu penentu yang SAMA SEKALI LAIN dari yang dipakai di atas —
+               jadi judul `[data-motion-words]` yang masuk layar lewat observer
+               mendapat `is-revealed`, bukan `is-visible`. Terukur: 16 dari 16
+               judul section TIDAK PERNAH tampil (`revealed: 0/16`) sementara
+               teksnya ada di DOM — persis kelas kegagalan yang §10 dan §9
+               peringatkan. Sekarang keduanya memanggil `markFor`. */
+            t.classList.add(markFor(t));
             // Unobserve: these animations run once. Leaving it attached would
             // re-fire them every time the element scrolled back into view,
             // which reads as a flicker rather than an entrance.
@@ -438,6 +522,33 @@ const orgJsonLd = jsonLdScript(
       }
 
       window.__asjReveal = pass;
+
+      /* ── i18n MENGHAPUS MASKERNYA, JADI DIPASANG ULANG ──────────────────
+         `translateDataLang()` (store/i18n.ts) menulis `el.textContent = …`
+         pada SETIAP `[data-lang]`, dan judul section membawa atribut itu.
+         Akibatnya terukur: 16 judul punya penanda "sudah dipecah" tapi nol
+         anak — teksnya utuh, animasinya hilang. Itu terjadi di setiap muat
+         halaman, bukan hanya saat bahasa diganti, karena pass i18n berjalan
+         setelah hidrasi.
+
+         Hanya PEMECAHAN yang diulang di sini, bukan `pass()`: pass membuat
+         IntersectionObserver baru, dan memanggilnya per toggle bahasa akan
+         menumpuk observer yang tidak pernah dibuang. */
+      document.addEventListener("asj:lang-applied", function(){
+        var els = document.querySelectorAll("[data-motion-words]");
+        for (var i = 0; i < els.length; i++) {
+          try { splitWords(els[i]); } catch (e) { els[i].classList.add("is-visible"); }
+          /* Yang SEDANG di layar langsung ditandai. Alasannya bukan
+             kehati-hatian berlebih: IntersectionObserver hanya memanggil
+             ulang saat status persilangan BERUBAH, dan judul yang sudah
+             terlihat saat bahasa diganti tidak berubah statusnya — kata-kata
+             hasil pemecahan baru akan duduk di 110% selamanya. */
+          var box = els[i].getBoundingClientRect();
+          if (box.top < (window.innerHeight || 0) && box.bottom > 0) {
+            els[i].classList.add("is-visible");
+          }
+        }
+      }, { passive: true });
       // ── JANGAN PERNAH MENUNGGU TANPA BATAS (diperbaiki 2026-10-14) ────────
       // Dulu hanya `window.load` yang memanggil `pass()`. Itu KELIRU, dan
       // salahnya terukur: `js-reveal` sudah dipasang di atas (baris ini), jadi

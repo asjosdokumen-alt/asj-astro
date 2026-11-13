@@ -600,7 +600,13 @@
      cannot be mistaken for a card flying in from off-screen, and it is the
      same order as the section shift below so the two scales agree. */
   --reveal-shift: 16px;
-  --reveal-dur: 480ms;
+  /* 480ms -> 680ms (2026-11-13). The owner's note was "transisinya kurang":
+     the cards arrived and were finished before the eye caught them. The
+     `cinematic-gsap-lenis-motion-system` skill puts the reveal band at
+     0.75-1.1s; 680ms sits at the fast end of that band and still finishes
+     before the next scroll notch, so it does not feel like waiting. The
+     step (90ms) is unchanged — it was already inside the 0.06-0.1s band. */
+  --reveal-dur: 680ms;
 }
 
 @keyframes reveal-rise {
@@ -731,7 +737,11 @@ html.js-reveal [data-reveal-stagger] > [data-reveal]:nth-child(n + 7) { --reveal
      Kept modest because a section is big — a large displacement on a
      full-width element looks like the page is sliding apart. */
   --enter-shift: 24px;
-  --enter-dur: 620ms;
+  /* 620ms -> 860ms (2026-11-13), same reason as --reveal-dur above: a band
+     that lands in 620ms reads as a cut rather than as an arrival. 860ms is
+     inside the skill's 0.75-1.1s band and still shorter than the ~1s a
+     visitor spends on a band before scrolling again. */
+  --enter-dur: 860ms;
   /* Slightly longer and softer than §9's curve. A section is a big object;
      the same easing that flatters a card makes a band feel abrupt. */
   --enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -2301,3 +2311,218 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
     animation: none;
   }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   10. KATA YANG NAIK DARI BALIK TOPENG
+   ══════════════════════════════════════════════════════════════════
+
+   OWNER'S REQUEST, 2026-11-13: "tulisannya ikut interactif ... kek spawn
+   menghilang muncul tenggelam". That is a WORD-level reveal, not a
+   block-level fade — the §9/§9b entrances move whole cards and whole bands,
+   which is why a headline still read as "a paragraph appearing".
+
+   Tokens below are the `masked-reveal` skill's, not invented here:
+     yPercent 110 -> 0 · 0.7-0.9s · stagger 0.025-0.045s per word
+     ease power3.out (the CSS cubic-bezier(0.16,1,0.3,1) is the same curve)
+   The skill drives it with GSAP; this file does it with a CSS transition so
+   the page does not grow a 50 KB animation engine for one effect. The
+   MARKUP contract is the same: a mask that clips, and an inner span that
+   moves.
+
+   ── WHY THE MASK NEEDS PADDING, AND WHY THAT IS NOT A HACK ──────────────
+   `overflow: hidden` clips at the LINE BOX. With `--text-display`'s
+   line-height of 1.02 the box is SHORTER than the glyphs, so the descenders
+   of "Jepang", "dimulai", "sini" would be sliced off flat — measured on
+   this page: the `g` in "Jepang" lost its tail at 72px. The padding
+   extends the clip box 0.16em below the baseline and the equal negative
+   margin pulls the layout back, so the line rhythm is untouched. The masks
+   are transparent, so the enlarged clip boxes may overlap the next line
+   without hiding anything of it.
+
+   ── WHY THE HIDDEN STATE IS GATED ON `html.js-reveal` ───────────────────
+   Same rule as §9 and §9b, and it is the one that must not be broken: a
+   visitor without JavaScript never gets the class, so no rule here matches
+   and every word is simply present. `is-visible` is the ONLY thing that
+   moves them back to 0 — so a splitter that dies mid-way would leave words
+   at 110%, i.e. invisible. The splitter in `index.astro` therefore adds
+   `is-visible` in the same tick as it observes, and has a catch-all that
+   reveals everything if anything throws. */
+
+:root {
+  /* 110% of the word's own height — the word starts fully below the clip
+     edge, not 90% of the way down, or a hairline of the glyph shows. */
+  --word-shift: 110%;
+  /* 900ms is the top of the skill's 0.7-0.9s band. A headline is read, not
+     glanced at; the long end is what makes it feel like it arrives. */
+  --word-dur: 900ms;
+  /* 38ms is mid-band (0.025-0.045s). At 72px a word is ~250px wide, and a
+     longer step than this leaves the headline visibly assembling itself. */
+  --word-stagger: 38ms;
+}
+
+/* `balance` is what removes the widow. MEASURED at 1440x900 before this:
+   "Karier ke Jepang, dimulai dari" / "sini." — a one-word last line, which
+   is the single thing that made the display face look unset. The property
+   is progressive: engines without it keep the old wrap. */
+.u-words {
+  text-wrap: balance;
+}
+
+.u-word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  /* Descender room; see the note above. `padding` and `margin` must stay
+     equal and opposite or the line box grows. */
+  padding-bottom: 0.16em;
+  margin-bottom: -0.16em;
+}
+
+.u-word {
+  display: inline-block;
+  transform: none;
+  transition: transform var(--word-dur) var(--ease-out-expo);
+  /* `--word-i` is written by the splitter (and by the hero's JSX) so the
+     cascade reads left-to-right. Missing var = 0 = no delay, which is the
+     right fallback for a single-word heading. */
+  transition-delay: calc(var(--word-i, 0) * var(--word-stagger));
+}
+
+html.js-reveal .u-words:not(.is-visible) .u-word {
+  transform: translate3d(0, var(--word-shift), 0);
+}
+
+/* ── Reduced motion: no shift at all. The words must not sit at 110%. ──
+   Dua aturan terpisah, bukan satu dengan dua selector: selector yang lebih
+   umum (0,1,0) ditulis SESUDAH yang lebih spesifik (0,4,1) akan dilaporkan
+   `noDescendingSpecificity` oleh biome, dan urutannya memang salah — deklarasi
+   di selector yang lebih umum tidak akan pernah menang. Urut dari umum ke
+   spesifik, sama seperti §9 dan §9b. */
+@media (prefers-reduced-motion: reduce) {
+  .u-word {
+    transform: none;
+    transition: none;
+  }
+
+  html.js-reveal .u-words:not(.is-visible) .u-word {
+    transform: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   11. CURSOR — satu titik, satu cincin yang tertinggal
+   ══════════════════════════════════════════════════════════════════
+
+   OWNER'S REQUEST, 2026-11-13: "interactif cursornya belum maksimal".
+
+   Two elements, deliberately not one:
+     · the DOT is pinned to the pointer exactly — it is the thing that says
+       "the page heard you";
+     · the RING lags ~120ms behind it — it is the thing that makes the
+       movement read as weight rather than as teleportation. The skill's
+       cursor-lag band is 0.25-0.45s; 0.2 lerp is at the fast end because
+       this page is long and a slow ring becomes a distraction while
+       scrolling.
+
+   `mix-blend-mode: difference` is what makes ONE cursor work on both
+   themes: white on the dark hero, black on the white canvas, and it needs
+   no theme switch because the page already flips `data-theme`.
+
+   NOTHING IS HIDDEN BY THIS FILE. The native cursor is hidden only when
+   `html.has-cursor` is present, and that class is added by the script AFTER
+   the layer exists — so a script that fails half-way leaves the visitor
+   with the pointer they started with. Form controls opt back out: an
+   I-beam is information, and replacing it with a dot over a textarea is a
+   usability loss dressed as polish. */
+
+.u-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms var(--ease-out-expo);
+  /* The whole layer is positioned by ONE transform, written per frame.
+     Children use their own transform for the hover scale, so the two never
+     fight over the same property. */
+  contain: layout style;
+}
+
+html.has-cursor .u-cursor {
+  opacity: 1;
+}
+
+.u-cursor-ring,
+.u-cursor-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 9999px;
+  mix-blend-mode: difference;
+}
+
+.u-cursor-ring {
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 1px solid #fff;
+  transition: transform 260ms var(--ease-out-expo);
+}
+
+.u-cursor-dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  background: #fff;
+  /* NO transform transition here, and no transform in the hover state: the
+     script writes this element's transform EVERY FRAME (it is the child that
+     closes the gap between the exact pointer and the lagging ring). A
+     transition on the same property would interpolate those writes and turn
+     the dot into a second, mushier ring. Opacity is the only thing CSS
+     animates on it. */
+  transition: opacity 180ms linear;
+}
+
+/* Over anything clickable the ring opens up and the dot steps aside — the
+   same gesture as a link growing an underline, in cursor form.
+
+   1.45, not the skill's 1.75. Measured against the hero's primary button
+   (238x50): at 1.75 the 34px ring becomes 60px and covers the label it is
+   supposed to frame. 1.45 gives 49px — the height of the button it sits on,
+   so it reads as a frame rather than as an overlay. */
+.u-cursor.is-hot .u-cursor-ring {
+  transform: scale(1.45);
+}
+
+.u-cursor.is-hot .u-cursor-dot {
+  opacity: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.has-cursor,
+  html.has-cursor * {
+    cursor: none;
+  }
+
+  /* `:where()` keeps this at the SAME specificity as the rule above, so it
+     wins on order alone and no `!important` is needed (see §9's note on
+     why this file avoids them). */
+  html.has-cursor :where(input, textarea, select, option, [contenteditable="true"]) {
+    cursor: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.has-cursor .u-cursor {
+    opacity: 0;
+  }
+
+  html.has-cursor,
+  html.has-cursor * {
+    cursor: auto;
+  }
+}
+

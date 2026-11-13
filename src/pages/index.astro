@@ -2874,5 +2874,172 @@ import { GALLERY } from '../lib/gallery';
   </script>
 
 
+  <!-- ═══════════════════════════════════════════════════════════════════
+       POLISH HALAMAN PROFIL — scroll, kursor, dan kata (2026-11-13)
+
+       TIGA HAL YANG DIKELUHKAN PEMILIK, dan masing-masing punya satu blok
+       di bawah:
+         1. "scroll mouse nya kek kaku"  -> Lenis (lerp 0.09)
+         2. "interactif cursornya belum maksimal" -> lapis kursor §11
+         3. "transisinya kurang"        -> kata bermasker §10 (dipasang di
+                                           BaseLayout, bukan di sini)
+
+       MENGAPA LENIS DAN BUKAN GSAP. Skill `cinematic-gsap-lenis-motion-system`
+       memakai keduanya, tapi GSAP+ScrollTrigger ~50 KB gz untuk pekerjaan
+       yang di repo ini SUDAH dikerjakan: `motion.css` §9/§9b punya sistem
+       reveal sendiri (IntersectionObserver + @keyframes) dan band film punya
+       penggerak rAF sendiri. Yang benar-benar hilang cuma PEREDAM SCROLL —
+       dan itu Lenis saja, ~3 KB gz.
+
+       TERUKUR SEBELUM: satu notch wheel = 2 posisi scroll (1200 -> 1320).
+       Tidak ada frame antara; halaman melompat 120 px per notch, dan
+       halaman ini 23.302 px di 1440x900 = ~194 lompatan.
+
+       GERBANG. Lenis hanya hidup kalau `prefers-reduced-motion` TIDAK aktif
+       dan penunjuknya presisi (mouse/trackpad). Di ponsel ia tidak pernah
+       dibuat: `smoothWheel` tidak menyentuh sentuhan, jadi menyalakannya
+       hanya menambah satu loop rAF yang tidak melakukan apa-apa.
+       ═══════════════════════════════════════════════════════════════════ -->
+  <script>
+    import Lenis from 'lenis';
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+    /* ── 1. SCROLL ──────────────────────────────────────────────────────
+       `lerp: 0.09` — jarak yang ditempuh per frame, bukan durasi. 0.08-0.1
+       adalah band yang dipakai skill; 0.09 di tengahnya. `wheelMultiplier`
+       0.9 memperlambat satu notch sedikit, karena 120 px per notch terasa
+       terlalu jauh begitu ia tidak lagi melompat.
+
+       `anchors: true` supaya tautan `#section` di nav ikut halus. Offset 0
+       (bawaan) memang yang diinginkan: header halaman ini `position:
+       relative`, bukan sticky, jadi tidak ada yang menutupi judul section —
+       dan `e2e/test-site-nav.mjs` menaruh section tepat di puncak viewport
+       saat memeriksa scroll-spy. */
+    let lenis: Lenis | null = null;
+    let raf = 0;
+
+    const tick = (time: number) => {
+      if (!lenis) return;
+      lenis.raf(time);
+      raf = requestAnimationFrame(tick);
+    };
+
+    function startSmooth() {
+      if (lenis || reduce.matches || !fine.matches) return;
+      lenis = new Lenis({
+        lerp: 0.09,
+        wheelMultiplier: 0.9,
+        smoothWheel: true,
+        anchors: true,
+      });
+      document.documentElement.classList.add('has-smooth');
+      raf = requestAnimationFrame(tick);
+    }
+
+    function stopSmooth() {
+      if (!lenis) return;
+      cancelAnimationFrame(raf);
+      lenis.destroy();
+      lenis = null;
+      document.documentElement.classList.remove('has-smooth');
+    }
+
+    /* ── 2. CURSOR ──────────────────────────────────────────────────────
+       Satu titik yang menempel persis, satu cincin yang tertinggal. Titik
+       memberi tahu "halaman mendengar"; cincin yang membuat gerakannya
+       terbaca punya berat.
+
+       `has-cursor` dipasang PALING AKHIR, setelah lapisnya ada di DOM.
+       Itulah satu-satunya saklar yang menyembunyikan kursor asli (motion.css
+       §11), jadi skrip yang gagal di tengah jalan meninggalkan pengunjung
+       dengan kursor yang memang sudah ia punya. */
+    let cursorLayer: HTMLElement | null = null;
+    let cursorRaf = 0;
+
+    function startCursor() {
+      if (cursorLayer || reduce.matches || !fine.matches) return;
+
+      const layer = document.createElement('div');
+      layer.className = 'u-cursor';
+      layer.setAttribute('aria-hidden', 'true');
+      layer.innerHTML = '<i class="u-cursor-ring"></i><i class="u-cursor-dot"></i>';
+      const dot = layer.lastElementChild as HTMLElement;
+
+      let tx = window.innerWidth / 2;
+      let ty = window.innerHeight / 2;
+      let rx = tx;
+      let ry = ty;
+      let dx = tx;
+      let dy = ty;
+      let moved = false;
+
+      const onMove = (e: PointerEvent) => {
+        tx = e.clientX;
+        ty = e.clientY;
+        if (!moved) {
+          moved = true;
+          rx = dx = tx;
+          ry = dy = ty;
+        }
+      };
+
+      /* Satu listener di dokumen, bukan satu per tautan: halaman ini punya
+         ratusan tautan dan tombol, dan memasang/mencabut listener saat
+         pointer masuk-keluar adalah pekerjaan yang tidak perlu. */
+      const HOT = 'a, button, [role="button"], summary, label, select, [data-cursor-hot]';
+      const onOver = (e: Event) => {
+        const el = e.target;
+        const hot = el instanceof Element && !!el.closest(HOT);
+        layer.classList.toggle('is-hot', hot);
+      };
+
+      const loop = () => {
+        if (!layer.isConnected) return;
+        // Cincin: 0.2 per frame (~120 ms untuk sampai). Titik: 0.55, hampir
+        // menempel, tapi masih menyisakan sedikit ekor saat pointer berhenti.
+        rx += (tx - rx) * 0.2;
+        ry += (ty - ry) * 0.2;
+        dx += (tx - dx) * 0.55;
+        dy += (ty - dy) * 0.55;
+        layer.style.transform = `translate3d(${rx.toFixed(2)}px, ${ry.toFixed(2)}px, 0)`;
+        // Titik adalah ANAK dari lapis yang sudah bergerak bersama cincin,
+        // jadi ia hanya perlu menutup selisihnya.
+        dot.style.transform = `translate3d(${(dx - rx).toFixed(2)}px, ${(dy - ry).toFixed(2)}px, 0)`;
+        cursorRaf = requestAnimationFrame(loop);
+      };
+
+      window.addEventListener('pointermove', onMove, { passive: true });
+      document.addEventListener('pointerover', onOver, { passive: true });
+      document.body.appendChild(layer);
+      document.documentElement.classList.add('has-cursor');
+      cursorLayer = layer;
+      cursorRaf = requestAnimationFrame(loop);
+    }
+
+    function stopCursor() {
+      if (!cursorLayer) return;
+      cancelAnimationFrame(cursorRaf);
+      cursorLayer.remove();
+      cursorLayer = null;
+      document.documentElement.classList.remove('has-cursor');
+    }
+
+    function sync() {
+      if (reduce.matches || !fine.matches) {
+        stopSmooth();
+        stopCursor();
+        return;
+      }
+      startSmooth();
+      startCursor();
+    }
+
+    sync();
+    reduce.addEventListener('change', sync);
+    fine.addEventListener('change', sync);
+  </script>
+
   <ClosingBand />
 </BaseLayout>
