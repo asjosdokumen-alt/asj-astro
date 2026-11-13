@@ -315,7 +315,9 @@ describe('real repo — 15 context barrels', () => {
     // the barrel for the delta-sync context (syncProbe/syncDelta/syncManifest).
     // It is a NEW context for the local-first store, so this counter and the
     // same assertion in resolve.test.ts both move by one.
-    expect(barrels).toHaveLength(16);
+    // MEASURED 2026-11-13: 16 -> 15 — `contexts/sync/index.ts` dihapus
+    // `7eeec83` (2026-11-12, "hapus lapisan local-first").
+    expect(barrels).toHaveLength(15);
 
     const failures: string[] = [];
     let checked = 0;

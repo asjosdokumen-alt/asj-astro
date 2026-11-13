@@ -67,7 +67,11 @@ describe('specifier resolution (full repo)', () => {
     // the delta-sync context for the local-first store. As with contact, a new
     // context moves every "how many context barrels exist" counter: here,
     // exportTables.test.ts's identical assertion, and the const-catalog counts.
-    expect(barrels).toHaveLength(16);
+    // MEASURED 2026-11-13: 16 -> 15. `7eeec83` (2026-11-12) menghapus
+    // `netlify/functions/contexts/sync/index.ts` — barrel ke-16 yang disebut
+    // komentar di atas. Barrels sekarang: 15, dan `ls -d
+    // netlify/functions/contexts/*/` juga 15.
+    expect(barrels).toHaveLength(15);
     for (const b of barrels) {
       const edges = r.graph.outgoing.get(b.idx) ?? [];
       expect(edges.length).toBeGreaterThan(0);
