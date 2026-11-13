@@ -193,7 +193,11 @@ function buildRingkasData(cur: any) {
           [
             p.perusahaan || p.nama_perusahaan,
             p.jabatan,
-            p.tahun_masuk ? p.tahun_masuk + '-' + (p.tahun_keluar || 'sekarang') : '',
+            /* `SEKARANG` = masih bekerja (sentinel `cvPeriod.ts`). Tanpa
+               cabang ini prompt berisi tanggal palsu `2025-12-SEKARANG`. */
+            p.tahun_masuk
+              ? p.tahun_masuk + '-' + (/^SEKARANG$/i.test(String(p.tahun_keluar ?? '')) ? 'sekarang' : p.tahun_keluar || 'sekarang')
+              : '',
           ]
             .filter(Boolean)
             .join(' - '),

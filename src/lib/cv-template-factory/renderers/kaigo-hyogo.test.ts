@@ -292,6 +292,13 @@ describe('kaigo-hyogo · pekerjaan (baris 23-26)', () => {
     expect(v.B23).toBe('在職中');
   });
 
+  it('sentinel SEKARANG (kotak "masih bekerja") juga 在職中, bukan teks mentah', () => {
+    const v = buildValues(
+      kandidat({ pekerjaan: [{ perusahaan: 'A', masuk: '2025-12', keluar: 'SEKARANG' }] }),
+    );
+    expect(v.B23).toBe('在職中');
+  });
+
   it('baris tanpa tanggal masuk tidak diberi 在職中', () => {
     expect(buildValues(kosong()).B23).toBe('');
   });

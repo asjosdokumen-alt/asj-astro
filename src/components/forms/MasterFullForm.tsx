@@ -13,6 +13,7 @@ import Icon from '../ui/Icon';
 import { uploadMany, UploadCollectionError } from '../../lib/cloudinary';
 import { MASTER_FILE_COLUMNS } from '../../lib/documentColumns';
 import { mapMasterNestedToForm } from '../../lib/masterPrefill';
+import { isCurrent, PERIODE_SEKARANG } from '../../lib/cvPeriod';
 import {
   PEKERJAAN, JURUSAN, KOTA, HUBUNGAN_KELUARGA, GOLONGAN_DARAH,
   GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
@@ -895,7 +896,22 @@ export default function MasterFullForm() {
                     <div class="mb-3"><label class="label" for={`mf-job-thn-awal-${i}`}>{t("master.edu_tahun_awal")}</label>
                       <input class="input" id={`mf-job-thn-awal-${i}`} type="number" value={job.thnAwal} onInput={(e) => { const v = [...jobList]; v[i].thnAwal = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
                     <div class="mb-3"><label class="label" for={`mf-job-thn-akhir-${i}`}>{t("master.edu_tahun_akhir")}</label>
-                      <input class="input" id={`mf-job-thn-akhir-${i}`} type="number" value={job.thnAkhir} onInput={(e) => { const v = [...jobList]; v[i].thnAkhir = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
+                      {/* Kotak tahun di sini `type="number"`, jadi sentinel
+                          `SEKARANG` tidak mungkin diketik — nilainya dikosongkan
+                          dan kotaknya dimatikan saat "masih bekerja" dicentang.
+                          Sentinel itu sudah dibaca renderer sejak awal
+                          (`cvPeriod.ts`); yang tidak ada hanyalah kontrol untuk
+                          MENULISNYA. Pemilik, 2026-11-13: "在職中 untuk riwayat
+                          kerja gak ada pilihannya ya". */}
+                      <input class="input" id={`mf-job-thn-akhir-${i}`} type="number"
+                        disabled={isCurrent(job.thnAkhir)}
+                        value={isCurrent(job.thnAkhir) ? '' : job.thnAkhir}
+                        onInput={(e) => { const v = [...jobList]; v[i].thnAkhir = (e.target as HTMLInputElement).value; setJobList(v); }} />
+                      <label class="mt-1 inline-flex items-center gap-2 min-h-11 text-xs">
+                        <input type="checkbox" class="h-4 w-4" checked={isCurrent(job.thnAkhir)}
+                          onChange={(e) => { const v = [...jobList]; v[i].thnAkhir = (e.target as HTMLInputElement).checked ? PERIODE_SEKARANG : ''; setJobList(v); }} />
+                        {t("master.kerja_masih_bekerja")}
+                      </label></div>
                     <div class="mb-3"><label class="label" for={`mf-job-gaji-${i}`}>Gaji</label>
                       <input class="input" id={`mf-job-gaji-${i}`} value={job.gaji} onInput={(e) => { const v = [...jobList]; v[i].gaji = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
                     <div class="mb-3"><label class="label" for={`mf-job-alasan-${i}`}>{t("master.kerja_alasan")}</label>

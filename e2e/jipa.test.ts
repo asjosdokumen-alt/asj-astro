@@ -268,6 +268,16 @@ describe('jipa · peta sel', () => {
     expect(c.K33).toBe('製造業(manufaktur)');
   });
 
+  it('pekerjaan yang MASIH BERJALAN: 退職年月 = 現在, bukan sel kosong', () => {
+    const d = kandidat();
+    d.pekerjaan[0].keluar = 'SEKARANG';
+    const c = buildValues(d);
+    expect(c.E27).toBe('現在');
+    expect(c.F27).toBe('');
+    // Tanda pemisah periode tetap ada supaya barisnya tidak terbaca kosong.
+    expect(c.D27).toBe('-');
+  });
+
   it('資格試験: SSW lalu JLPT, berurutan dari baris 47', () => {
     const c = buildValues(kandidat());
     expect(c.F47).toBe('特定技能(SSW)');

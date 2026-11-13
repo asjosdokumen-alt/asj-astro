@@ -255,6 +255,16 @@ describe('rirekisho-firma · kolom migrasi 022 benar-benar masuk ke sel', () => 
     expect(buildValues(kandidat()).D9).toBe('15万円／月');
   });
 
+  it('pekerjaan yang MASIH BERJALAN: 退職年月 = 現在', () => {
+    const d = denganKolom();
+    d.pekerjaan = [{ ...(d.pekerjaan[0] as Record<string, unknown>), keluar: 'SEKARANG' }];
+    const c = buildValues(d);
+    // JOB_START = 16: baris atas = masuk, baris bawah = keluar.
+    expect(c.D17).toBe('現在');
+    expect(c.E17).toBe('');
+    expect(c.D16).toBe('2024年');
+  });
+
   it('baris 31-33: 日本語能力 / 学習期間 / 渡航経験 / その他事項', () => {
     const c = buildValues(denganKolom());
     expect(c.D32).toBe('N4');

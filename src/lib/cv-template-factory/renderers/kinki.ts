@@ -58,6 +58,7 @@
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { KINKI_BASE64 } from '../templates/kinki.b64';
 import { isGood, isLpkTingkat, kouritsuSekolah, sortEdu } from '../../helpers_cv';
+import { isCurrent } from '../../cvPeriod';
 import { inferMbti, mbtiFromCode } from '../mbti';
 import { buildXlsxForm, cvFileName, durasiJp, excelSerial, kanaJp, negatif, s, yearMonth, type PhotoBox } from './xlsx-form';
 
@@ -189,6 +190,12 @@ function simJp(v: unknown): string {
   return 'あり';
 }
 
+/** `2026-11` — bulan berjalan, untuk pekerjaan yang masih berlangsung. */
+function bulanIni(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 /** `2021-08` → `2021年8月`, bentuk yang dicetak form. Tahun saja → `2019年`. */
 function ym(v: unknown): string {
   const raw = s(v).trim();
@@ -271,8 +278,12 @@ function ymd(v: unknown): string {
  * terbaca jauh lebih panjang daripada kenyataan.
  */
 function durasi(masuk: unknown, lulus: unknown): string {
+  /* `SEKARANG` (masih bekerja) dihitung sampai BULAN INI. Tanpa cabang ini
+     `^\d{4}` gagal pada sentinel dan kolom 期間 kosong untuk satu-satunya
+     pekerjaan yang paling relevan. */
+  const akhir = isCurrent(String(lulus ?? '')) ? bulanIni() : lulus;
   const a = /^(\d{4})[-/](\d{1,2})/.exec(s(masuk));
-  const b = /^(\d{4})[-/](\d{1,2})/.exec(s(lulus));
+  const b = /^(\d{4})[-/](\d{1,2})/.exec(s(akhir));
   if (a && b) {
     const bulan = (parseInt(b[1], 10) - parseInt(a[1], 10)) * 12 + (parseInt(b[2], 10) - parseInt(a[2], 10));
     if (bulan <= 0) return '';
@@ -282,7 +293,7 @@ function durasi(masuk: unknown, lulus: unknown): string {
   // Sebagian baris hanya menyimpan TAHUN (`2019`). Tanpa cabang ini kolom 期間
   // kosong padahal tahunnya lengkap — cukup selisih tahunnya.
   const ay = /^(\d{4})/.exec(s(masuk));
-  const by = /^(\d{4})/.exec(s(lulus));
+  const by = /^(\d{4})/.exec(s(akhir));
   if (!ay || !by) return '';
   const tahun = parseInt(by[1], 10) - parseInt(ay[1], 10);
   return tahun > 0 ? `${tahun}年` : '';
@@ -661,7 +672,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
       ? bersih(p.jenis_jp)
       : jenisKerjaJp(bersih(p.jenis_jp) || (p.jenis ?? p.status_kerja));
     cells[`E${top}`] = ym(masuk);
-    cells[`F${bottom}`] = ym(keluar);
+    /* 退職年月: `SEKARANG` bukan tanggal — mencetaknya lewat `ym()` menghasilkan
+       sel KOSONG, dan CV terbaca seperti riwayat kerja yang datanya hilang.
+       Bentuk baku formulir Jepang untuk pekerjaan berjalan: 現在. */
+    cells[`F${bottom}`] = isCurrent(String(keluar ?? '')) ? '現在' : ym(keluar);
     cells[`I${top}`] = durasi(masuk, keluar);
     // 業種 (N) — DIPAKAI UNTUK NAMA PERUSAHAAN. Bukti: 9 CV manual pemilik
     // (Drive, 2026-11-12) mengisi N27 dengan "PT VERONIQUE INDONESIA",

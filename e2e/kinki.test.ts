@@ -446,6 +446,20 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
     expect(c.AA27).toBe('Manufaktur');
   });
 
+  it('pekerjaan yang MASIH BERJALAN: 退職年月 = 現在, dan 期間 dihitung sampai bulan ini', () => {
+    /* Sentinel `SEKARANG` (pilihan "masih bekerja" di dua form) bukan tanggal.
+       Sebelum ini `ym('SEKARANG')` mengembalikan string kosong, jadi satu-satunya
+       pekerjaan yang paling relevan tercetak seperti riwayat yang datanya hilang. */
+    const d = denganKolom();
+    d.pekerjaan = [{ ...d.pekerjaan[0], keluar: 'SEKARANG' }];
+    const c = buildValues(d);
+    expect(c.F28).toBe('現在');
+    const mulai = /^(\d{4})-(\d{2})/.exec(String(d.pekerjaan[0].masuk));
+    const kini = new Date();
+    const bulan = (kini.getFullYear() - Number(mulai?.[1])) * 12 + (kini.getMonth() + 1 - Number(mulai?.[2]));
+    expect(c.I27).toBe(bulan < 12 ? `${bulan}ヶ月` : `${Math.round(bulan / 12)}年`);
+  });
+
   it('keluarga: 同居区分 mengikuti kolom, bukan `■` tetap', () => {
     const c = buildValues(denganKolom());
     // Baris keluarga pindah ke 38–42 di template baru; pasangan kolomnya

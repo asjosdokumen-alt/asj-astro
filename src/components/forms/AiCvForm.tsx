@@ -35,7 +35,7 @@ import {
   labelJp, pairDisplay, type Opsi,
 } from '../../lib/opsi-form';
 import { levelOptions, sortEduRows, tingkatLabel } from '../../lib/cvRows';
-import { joinPeriod, monthLabel, monthOptions, splitPeriod, yearOptions } from '../../lib/cvPeriod';
+import { isCurrent, joinPeriod, monthLabel, monthOptions, PERIODE_SEKARANG, splitPeriod, yearOptions } from '../../lib/cvPeriod';
 import { useOverlay } from '../ui/useOverlay';
 import DocumentPreviewModal from '../DocumentPreviewModal';
 import { thumbUrl } from '../../lib/thumbUrl';
@@ -2317,6 +2317,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                       onChange={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, masuk: v } : r))} />
                     <MonthYearField label={t('ai_cv.row_keluar')} id={`ai-job-keluar-${i}`} value={job.keluar}
                       yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
+                      currentLabel={t('ai_cv.row_masih_bekerja')}
                       onChange={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, keluar: v } : r))} />
                     <Field label={t('ai_cv.row_perusahaan')} id={`job-perusahaan-id-${i}`} value={job.perusahaan_id}
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, perusahaan_id: v } : r))} />
@@ -2637,12 +2638,29 @@ function RowSelect({ label, id, value, options, labelOf, onChange }: {
  * the CV's chronology, and free-text years were the original cause of a work
  * history that sorted into the wrong order (legacy `ai_form.ts:369-377`).
  */
-function MonthYearField({ label, id, value, yearLabel, monthLabelText, onChange }: {
+function MonthYearField({ label, id, value, yearLabel, monthLabelText, onChange, currentLabel }: {
   label: string; id: string; value: string;
   yearLabel: string; monthLabelText: string;
+  /**
+   * Label untuk pilihan "masih berjalan" (在職中). Kalau diberikan, kontrol ini
+   * mendapat kotak centang yang menulis sentinel `PERIODE_SEKARANG`.
+   *
+   * KENAPA ADA: sentinel-nya sudah ada sejak awal (`cvPeriod.ts`, warisan
+   * `job_now_N` legacy) dan sudah dibaca renderer, tetapi TIDAK ADA satu pun
+   * kontrol yang bisa menulisnya — jadi kandidat yang masih bekerja tidak punya
+   * cara menyatakannya, dan CV-nya mencetak tanggal keluar kosong. Pemilik,
+   * 2026-11-13: "在職中 untuk riwayat kerja gak ada pilihannya ya".
+   *
+   * Hanya diberikan pada tanggal KELUAR; tanggal masuk tidak pernah "sekarang".
+   */
+  currentLabel?: string;
   onChange: (stored: string) => void;
 }) {
-  const { year, month } = splitPeriod(value);
+  const { year: yearStored, month } = splitPeriod(value);
+  /* Sentinel dibaca sebagai "sekarang", bukan sebagai tahun: menampilkannya di
+     kotak tahun akan memunculkan opsi literal `SEKARANG` di dropdown. */
+  const current = isCurrent(value);
+  const year = current ? '' : yearStored;
   /**
    * A month the candidate picked while there is no usable year to attach it
    * to, and `joinPeriod('', '02')` is `''` — so without this the candidate's
@@ -2688,17 +2706,27 @@ function MonthYearField({ label, id, value, yearLabel, monthLabelText, onChange 
     <div>
       <span class="block text-[11px] text-[#e2e8f0] mb-0.5">{label}</span>
       <div class="flex gap-1">
-        <select id={`${id}-month`} aria-label={monthLabelText}
+        <select id={`${id}-month`} aria-label={monthLabelText} disabled={current}
           value={liveMonth} onChange={(e) => emitMonth((e.target as HTMLSelectElement).value)}
-          class="input-micro flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white">
+          class="input-micro flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white disabled:opacity-50">
           {monthOptions().map(m => <option key={m} value={m}>{m ? monthLabel(m) : '\u2014'}</option>)}
         </select>
-        <select id={`${id}-year`} aria-label={yearLabel}
+        <select id={`${id}-year`} aria-label={yearLabel} disabled={current}
           value={year} onChange={(e) => emitYear((e.target as HTMLSelectElement).value)}
-          class="input-micro flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white">
+          class="input-micro flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white disabled:opacity-50">
           {yearOptions(year).map(y => <option key={y} value={y}>{y || '\u2014'}</option>)}
         </select>
       </div>
+      {currentLabel && (
+        /* Lantai 44 px: DESIGN.md §5.1. `onChange` langsung menulis sentinel,
+           bukan lewat `joinPeriod` — sentinel bukan tanggal, dan `joinPeriod`
+           sengaja menolak menempelkan bulan padanya. */
+        <label class="mt-1 inline-flex items-center gap-2 min-h-11 text-[11px] text-[#e2e8f0]">
+          <input type="checkbox" checked={current} class="h-4 w-4 accent-sky-500"
+            onChange={(e) => { setHeld(null); onChange((e.target as HTMLInputElement).checked ? PERIODE_SEKARANG : ''); }} />
+          {currentLabel}
+        </label>
+      )}
     </div>
   );
 }

@@ -2535,6 +2535,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ai_cv.row_masuk": "Bulan/Thn Masuk",
     "ai_cv.row_lulus": "Bulan/Thn Lulus",
     "ai_cv.row_keluar": "Bulan/Thn Keluar",
+    "ai_cv.row_masih_bekerja": "Masih bekerja (在職中)",
     // aria-labels for the two halves of MonthYearField: the visible group label
     // covers "when", these say which control holds which half, so a screen
     // reader does not announce two identically-named dropdowns.
@@ -2810,6 +2811,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "master.kerja_jabatan": "Jabatan",
     "master.kerja_tahun_awal": "Tahun Awal",
     "master.kerja_tahun_akhir": "Tahun Akhir",
+    "master.kerja_masih_bekerja": "Masih bekerja (在職中)",
     "master.kerja_kota": "Kota Kerja (地域)",
     "master.kerja_alasan": "Alasan Berhenti",
     "master.kerja_tambah": "Tambah Pekerjaan",

@@ -32,6 +32,7 @@
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { JIPA_BASE64 } from '../templates/jipa.b64';
 import { isGood, kouritsuSekolah, tingkatSekolahJp, batasiRiwayatSekolah } from '../../helpers_cv';
+import { isCurrent } from '../../cvPeriod';
 import { buildXlsxForm, cvFileName, durasiJp, kanaJp, negatif, s } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
@@ -289,12 +290,17 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const row = JOB_START + i;
     const p = (data.pekerjaan[i] || {}) as Record<string, unknown>;
     const masuk = ym(p.masuk ?? p.tahun_masuk);
-    const keluar = ym(p.keluar ?? p.tahun_keluar);
+    const keluarRaw = p.keluar ?? p.tahun_keluar;
+    const keluar = ym(keluarRaw);
+    /* 退職年月 untuk pekerjaan yang masih berjalan: `SEKARANG` bukan tanggal,
+       jadi `ym()` mengembalikan kosong dan sel itu terbaca seperti data hilang.
+       Formulir Jepang menulis 現在 di kolom tahun. */
+    const masihKerja = isCurrent(String(keluarRaw ?? ''));
     cells[`B${row}`] = masuk.y;
     cells[`C${row}`] = masuk.m;
-    cells[`D${row}`] = masuk.y || keluar.y ? '-' : '';
-    cells[`E${row}`] = keluar.y;
-    cells[`F${row}`] = keluar.m;
+    cells[`D${row}`] = masuk.y || keluar.y || masihKerja ? '-' : '';
+    cells[`E${row}`] = masihKerja ? '現在' : keluar.y;
+    cells[`F${row}`] = masihKerja ? '' : keluar.m;
     cells[`G${row}`] = bersih(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
     cells[`L${row}`] = bersih(p.bidang ?? p.industri);
   }

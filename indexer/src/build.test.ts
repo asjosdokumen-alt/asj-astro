@@ -1141,15 +1141,22 @@ describe('full build', () => {
     // why the strict `prodGenuine` assertion above stays satisfied at 0.
     // 34 -> 38 (2026-11-11, R1a stale-baseline correction, ATTRIBUTED):
     // `node indexer/dist/indexer/src/cli.js unresolved` prints the histogram —
-    // RequestInit 16, openStep 10, RegExpMatchArray 6, headerBar 4,
-    // HTMLScriptElement 1, CanvasRenderingContext2D 1 = 38, and every one of the
+    // RequestInit 16, openStep 11, RegExpMatchArray 6, headerBar 4,
+    // HTMLScriptElement 1, CanvasRenderingContext2D 1 = 39, and every one of the
     // six buckets lives in a `.test.ts(x)` file this session never opened
     // (metrics-pipeline, MasterFullForm, StepGuide, App.header,
     // DocumentPreviewModal, EsignNaiteiModal). The session's own new file
     // (`StoryFilm.tsx`) contributes ZERO. So the drift is HEAD's, not this
     // edit's — the same family as the `RequestInit` row documented above, which
     // was already one of these `global-unknown` gaps.
-    expect(r.unresolvedRefs.length).toBe(38); // bound-tier unresolveds, probe-measured
+    //
+    // 38 -> 39 (2026-11-13, MEASURED per file with the indexer's own output,
+    // not derived): `openStep` 10 -> 11 — the new "masih bekerja (在職中)" test in
+    // `src/components/forms/MasterFullForm.test.tsx` calls that describe-local
+    // helper one more time. The indexer resolves neither it nor the five other
+    // names above (all `global-unknown`), so every new call site moves this
+    // counter by one. No production file contributes.
+    expect(r.unresolvedRefs.length).toBe(39); // bound-tier unresolveds, probe-measured
     expect(r.graph.unresolved.length).toBe(2); // the two remote firebase URLs in fcm.ts, and nothing else
     expect(r.stats.stageMs.discover).toBeGreaterThan(0);
     expect(r.stats.stageMs.parse).toBeGreaterThan(0);

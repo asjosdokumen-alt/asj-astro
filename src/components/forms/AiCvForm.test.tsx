@@ -307,14 +307,58 @@ describe('AiCvForm — status paspor/SIM (paritas ai_form.html:150-151)', () => 
     await waitFor(() => expect(screen.queryByText('Verifikasi Akun Kandidat')).toBeNull());
   }
 
-  const statusValues = (sel: HTMLSelectElement) => [...sel.options].map((o) => o.value);
-  /** Payload `submitDataAsj`. Dicari per-action: sejak login juga lewat
+  const statusValues = (sel: HTMLSelectElement) => [...sel.options].map((o) => o.value);  /** Payload `submitDataAsj`. Dicari per-action: sejak login juga lewat
    *  apiClient, `calls[0]` bukan lagi panggilan simpan. */
   const savedPayload = (): { identitas: Record<string, string> } => {
     const call = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'submitDataAsj');
     if (!call) throw new Error('submitDataAsj tidak dipanggil');
     return (call[1] as Array<{ identitas: Record<string, string> }>)[0];
   };
+
+  it('riwayat kerja: centang "masih bekerja" menulis sentinel SEKARANG, bukan tanggal palsu', async () => {
+    /* Pemilik 2026-11-13: "在職中 untuk riwayat kerja gak ada pilihannya ya".
+       Sentinel `SEKARANG` sudah ada di `cvPeriod.ts` dan sudah dibaca renderer,
+       tetapi tidak ada kontrol yang bisa menuliskannya — jadi kandidat yang masih
+       bekerja tidak punya cara menyatakannya. */
+    await loginViaGate();
+    // Baris pekerjaan hanya ikut terkirim kalau perusahaan/jabatannya terisi.
+    await fireEvent.input(screen.getByLabelText('ai_cv.row_perusahaan'), { target: { value: 'PT SAKURA' } });
+
+    const tahunKeluar = document.getElementById('ai-job-keluar-0-year') as HTMLSelectElement;
+    expect(tahunKeluar.disabled).toBe(false);
+
+    const cb = screen.getByLabelText('ai_cv.row_masih_bekerja') as HTMLInputElement;
+    expect(cb.checked).toBe(false);
+    await fireEvent.click(cb);
+    expect(cb.checked).toBe(true);
+    // Kedua select mati selama sentinel aktif — sentinel bukan tanggal.
+    expect(tahunKeluar.disabled).toBe(true);
+    expect((document.getElementById('ai-job-keluar-0-month') as HTMLSelectElement).disabled).toBe(true);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() =>
+      expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(true),
+    );
+    const pekerjaan = (savedPayload() as unknown as { pekerjaan: Array<Record<string, string>> }).pekerjaan;
+    expect(pekerjaan[0].tahun_keluar).toBe('SEKARANG');
+  });
+
+  it('riwayat kerja: hapus centang → sentinel hilang, tanggal keluar bisa diisi lagi', async () => {
+    await loginViaGate();
+    await fireEvent.input(screen.getByLabelText('ai_cv.row_perusahaan'), { target: { value: 'PT SAKURA' } });
+    const cb = screen.getByLabelText('ai_cv.row_masih_bekerja') as HTMLInputElement;
+    await fireEvent.click(cb);
+    await fireEvent.click(cb);
+    expect(cb.checked).toBe(false);
+    expect((document.getElementById('ai-job-keluar-0-year') as HTMLSelectElement).disabled).toBe(false);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() =>
+      expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(true),
+    );
+    const pekerjaan = (savedPayload() as unknown as { pekerjaan: Array<Record<string, string>> }).pekerjaan;
+    expect(pekerjaan[0].tahun_keluar).toBe('');
+  });
 
   it('merender select status paspor & SIM dengan 3 opsi (— / ADA / TIDAK ADA), label lewat t()', () => {
     render(<AiCvForm />);

@@ -540,6 +540,29 @@ describe("MasterFullForm — C09 dropdown (jurusan/pekerjaan/kota/hubungan)", ()
     await fireEvent.change(sel as unknown as HTMLElement, { target: { value } });
   }
 
+  it("step 3: centang 'masih bekerja' → tahun_keluar = SEKARANG, kotak tahun mati", async () => {
+    /* Pemilik 2026-11-13: "在職中 untuk riwayat kerja gak ada pilihannya ya".
+       Sentinel-nya sudah dibaca renderer sejak awal; yang tidak ada hanyalah
+       kontrol untuk MENULISNYA. Kotak tahun di sini `type="number"`, jadi
+       nilainya dikosongkan dan dimatikan selama sentinel aktif. */
+    const { container } = await openStep(2);
+    await fireEvent.input(container.querySelector("#mf-job-perusahaan-0") as HTMLInputElement, {
+      target: { value: "PT SAKURA" },
+    });
+    const thn = container.querySelector("#mf-job-thn-akhir-0") as HTMLInputElement;
+    expect(thn.disabled).toBe(false);
+
+    const cb = screen.getByLabelText("Masih bekerja (在職中)") as HTMLInputElement;
+    expect(cb.checked).toBe(false);
+    await fireEvent.click(cb);
+    expect(cb.checked).toBe(true);
+    expect(thn.disabled).toBe(true);
+    expect(thn.value).toBe("");
+
+    await submitFromStep5();
+    expect(submitPayload().pekerjaan[0].tahun_keluar).toBe("SEKARANG");
+  });
+
   it("step 3: jurusan pendidikan memakai daftar jurusan, bukan kotak teks bebas", async () => {
     const { container } = await openStep(2);
     // 'TKJ' ada di JURUSAN_SMK; 'IPA' di JURUSAN_SMA — keduanya harus muncul

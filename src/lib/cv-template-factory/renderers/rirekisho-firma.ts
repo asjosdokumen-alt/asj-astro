@@ -39,6 +39,7 @@
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { RIREKISHO_FIRMA_BASE64 } from '../templates/rirekisho-firma.b64';
 import { isGood, batasiRiwayatSekolah } from '../../helpers_cv';
+import { isCurrent } from '../../cvPeriod';
 import {
   buildXlsxForm,
   birthDate,
@@ -258,11 +259,16 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const bottom = top + 1;
     const p = (data.pekerjaan[i] || {}) as Record<string, unknown>;
     const masuk = yearMonth(p.masuk ?? p.tahun_masuk);
-    const keluar = yearMonth(p.keluar ?? p.tahun_keluar);
+    const keluarRaw = p.keluar ?? p.tahun_keluar;
+    const keluar = yearMonth(keluarRaw);
+    /* `SEKARANG` = masih bekerja. `yearMonth()` mengembalikan kosong untuk
+       sentinel itu, dan sel kosong di kolom 退職年月 terbaca seperti riwayat
+       yang belum lengkap — formulir Jepang menulis 現在. */
+    const masihKerja = isCurrent(String(keluarRaw ?? ''));
     cells[`D${top}`] = masuk.y;
     cells[`E${top}`] = masuk.m;
-    cells[`D${bottom}`] = keluar.y;
-    cells[`E${bottom}`] = keluar.m;
+    cells[`D${bottom}`] = masihKerja ? '現在' : keluar.y;
+    cells[`E${bottom}`] = masihKerja ? '' : keluar.m;
     cells[`F${top}`] = s(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
     cells[`J${top}`] = currency(p.gaji ?? p.penghasilan);
     cells[`L${top}`] = s(p.jabatan ?? p.jabatan_id);
