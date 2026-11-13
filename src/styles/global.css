@@ -1534,6 +1534,67 @@ select.input { appearance: none; }
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent-sky) 25%, transparent);
 }
 
+/* ─── 5f. Ukuran sentuh kolom isian AI-CV di layar telepon ───────────────
+   Dua cacat nyata pada layar telepon, keduanya SENYAP:
+
+   1. iOS SAFARI MEMBESARKAN SELURUH HALAMAN saat sebuah kontrol difokus
+      bila `font-size`-nya di bawah 16 px. Semua kontrol di sini memakai
+      `text-[12px]` (legacy `.input-micro`), jadi setiap kali kandidat
+      menyentuh satu kolom, halaman melompat ke ~1,33× dan TIDAK kembali
+      sendiri — sisa pengisian dilakukan dalam keadaan diperbesar, dan
+      tata letak dua kolom pecah. Android Chrome tidak melakukannya, jadi
+      cacat ini hanya terlihat di iPhone dan tidak pernah muncul di uji
+      desktop mana pun.
+   2. Kotak `p-1` + teks 12 px = tinggi ~24 px. DESIGN.md §5.1 menetapkan
+      lantai 44 px; 24 px berarti separuh ketukan meleset ke kolom sebelah,
+      dan kolom-kolom ini bersebelahan (grid 2–4 kolom).
+
+   RUANG LINGKUP: hanya di bawah `md`, dan hanya di dalam `.u-ai-cv` —
+   kelas yang dipasang pada panel form AI-CV saja. Form Master dan form
+   lamaran memakai `.input` (sudah 44 px / 13 px) dan tidak boleh ikut
+   berubah oleh aturan ini.
+
+   KENAPA BUKAN DI JSX: `text-[12px]` ada di 11 tempat dan `p-1` di
+   sebelas itu juga. Satu aturan di sini tidak bisa lupa pada satu call
+   site baru — persis alasan `.input` di atas dipusatkan.
+
+   `padding-block` / `padding-left`, BUKAN `padding`: kolom ber-`unit`
+   ("cm", "thn") memakai `pr-7` supaya angka tidak menabrak satuannya.
+   Shorthand `padding` akan menghapus `pr-7` itu (utility kalah oleh
+   aturan unlayered), dan satuannya menimpa nilai.                             */
+@media (max-width: 767.98px) {
+  .u-ai-cv .input-micro {
+    font-size: 16px;
+    min-height: 44px;
+    padding-block: 9px;
+    padding-left: 10px;
+  }
+  /* Placeholder 10 px hanya keterangan sekunder di desktop; di telepon ia
+     satu-satunya contoh isi yang dilihat kandidat ("16 digit", "08…"). */
+  .u-ai-cv .input-micro::placeholder {
+    font-size: 13px;
+  }
+  /* Kepala panel melekat setinggi ~45 px. Tanpa `scroll-padding-top`, kolom
+     yang difokuskan (ketukan ATAU Tab) digulir tepat ke tepi atas kotak gulir
+     dan berhenti DI BAWAH kepala panel — kotaknya sendiri tidak terlihat,
+     hanya labelnya. Ini yang membuat pengisian terasa "melompat". */
+  .u-ai-cv {
+    scroll-padding-top: 56px;
+  }
+  /* Label 11 px masih terbaca di desktop; di telepon ia jadi baris abu-abu
+     yang dilewati mata. 12 px + tinggi baris rapat menaikkan rasio teks
+     terhadap kotaknya tanpa memakan ruang vertikal tambahan. */
+  .u-ai-cv label {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  /* Judul seksi adalah satu-satunya penanda "kamu sedang di bagian mana"
+     pada gulungan 5.000 px; 13 px terlalu kecil untuk itu. */
+  .u-ai-cv .section-title-accent {
+    font-size: 14px;
+  }
+}
+
 /* Frosted modal panel. Legacy deliberately kept it SOLID (no backdrop
    blur) so text never sat on a glossy translucent surface. One call site
    also carries `bg-slate-950`; this rule is unlayered so it wins, which

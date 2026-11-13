@@ -1474,13 +1474,21 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       style={{ height: adminMode ? '100dvh' : 'calc(100dvh - var(--u-toolbar-h))' }}
     >
       {/* Mobile Tab — `aria-selected` supaya keadaan awal (form, bukan chat)
-          bisa dibaca pembaca layar DAN diuji; kelas saja tidak cukup. */}
+          bisa dibaca pembaca layar DAN diuji; kelas saja tidak cukup.
+
+          `text-[13px]` + `min-h-12`: dua tab ini adalah SATU-SATUNYA jalan
+          berpindah antara mengobrol dan mengisi, dan di 360 px label 12 px
+          terbaca sebagai keterangan kecil, bukan tombol. Titik `dirty` di
+          tab form menjawab pertanyaan yang paling sering muncul di layar
+          telepon — "yang tadi saya isi kesimpan belum?" — tanpa perlu
+          menggulir ke tombol Simpan. */}
       <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50" role="tablist">
-        <button type="button" role="tab" aria-selected={tab === 'chat'} onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
+        <button type="button" role="tab" aria-selected={tab === 'chat'} onClick={() => setTab('chat')} class={`flex-1 min-h-12 py-3 text-[13px] font-bold inline-flex items-center justify-center ${tab === 'chat' ? 'bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'text-slate-400'}`}>
           <Icon name="crown" class="mr-2" />{t('form.ai_cv_chat')}
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'form'} onClick={() => setTab('form')} class={tab === 'form' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
+        <button type="button" role="tab" aria-selected={tab === 'form'} onClick={() => setTab('form')} class={`flex-1 min-h-12 py-3 text-[13px] font-bold inline-flex items-center justify-center ${tab === 'form' ? 'bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'text-slate-400'}`}>
           <Icon name="file-alt" class="mr-2" />{t('form.preview_cv')}
+          {dirty && <span class="ml-1.5 w-2 h-2 rounded-full bg-amber-400" aria-hidden="true"></span>}
         </button>
       </div>
 
@@ -1589,21 +1597,27 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
         {jeklinMode === 'translate' ? (
           /* Satu tombol, satu tugas. Teksnya sama dengan yang dikirim suggestion
              pill lama, jadi server tidak perlu tahu mode ini ada. */
-          <div class="p-3 bg-slate-950 border-t border-slate-800">
+          <div class="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] bg-slate-950 border-t border-slate-800">
             <button type="button" onClick={() => void terjemahkanSemua()} disabled={sending}
               class="w-full min-h-11 bg-amber-600 hover:bg-amber-500 text-white rounded-xl py-2.5 text-xs font-bold disabled:opacity-50">
               <Icon spin={sending} name="language" class="mr-2" />{t('ai_cv.translate_all')}
             </button>
           </div>
         ) : (
-          <div class="p-3 bg-slate-950 border-t border-slate-800 flex gap-2">
+          /* Kolom obrolan 12 px → iOS Safari MEMBESARKAN HALAMAN saat disentuh
+             (ambangnya 16 px), dan karena kolom ini di dasar layar, lompatannya
+             mendorong bilah tab keluar dari pandangan. 16 px hanya di bawah
+             `md`; di layar lebar 12 px tetap, karena di sana tidak ada zoom.
+             `pb` memakai `safe-area-inset-bottom` supaya kolom tidak duduk di
+             bawah garis gestur iPhone. */
+          <div class="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] bg-slate-950 border-t border-slate-800 flex gap-2">
             <input ref={inputRef} type="text" value={input}
               onInput={(e) => setInput((e.target as HTMLInputElement).value)}
               onKeyDown={handleKeyDown}
-              class="flex-1 bg-slate-800 text-xs text-white px-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 transition-colors"
+              class="flex-1 min-w-0 min-h-11 bg-slate-800 text-[16px] md:text-xs text-white px-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 transition-colors"
               placeholder={t('form.placeholder_chat')} />
             <button type="button" onClick={() => handleSend()} disabled={sending}
-              class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50">
+              class="min-h-11 min-w-11 bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50">
               <Icon name="paper-plane" />
             </button>
           </div>
@@ -1616,17 +1630,46 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           one here was nested inside the first. Two `main` landmarks on one page
           is invalid; browsers do not merge them and a screen reader cannot tell
           them apart. The class string is unchanged — only the landmark role is. */}
-      <div class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[65%] h-full u-scroll-area bg-slate-950 p-3 md:p-6`}>
-        <div class="max-w-5xl mx-auto pb-20 w-full">
-          <div class="flex justify-between items-center mb-4 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
-            <div class="flex items-center gap-3">
-              <img src="/icons/logo-asj.webp" alt="ASJ" class="h-8 md:h-10 object-contain" />
-              <div>
+      {/* `items-start` BUKAN hiasan: panel ini `flex`, dan tanpa itu anak
+          tunggalnya direntangkan setinggi panel (~800 px) sementara isinya
+          ~12.000 px. Kotak acuan `position: sticky` adalah anak itu, jadi
+          kepala panel hanya bisa melekat selama 800 px pertama — sesudahnya ia
+          ikut tergulir dan tombol Simpan hilang lagi. TERUKUR: `top=-11795`
+          setelah digulir ke dasar. Dengan `items-start` tinggi anak mengikuti
+          isinya dan kepala panel benar-benar menempel.
+
+          TANPA `p-*` DI PONSEL, dan itu disengaja: kotak acuan sticky adalah
+          anak di dalamnya, jadi padding panel menjadi lantai yang tidak bisa
+          dilewati kepala panel. Terukur dengan `p-2.5`: kepala panel berhenti
+          31 px di bawah tepi atas kotak gulir, dan 31 px itu menjadi jalur
+          tempat baris-baris isian lewat DI ATAS judulnya. Padding ponsel
+          dipindahkan ke anaknya; `md:p-6` tetap karena di sana tidak melekat. */}
+      <div class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex items-start w-full md:w-[65%] h-full u-scroll-area bg-slate-950 md:p-6 u-ai-cv`}>
+        <div class="max-w-5xl mx-auto w-full px-2.5 pt-2.5 pb-20 md:px-0 md:pt-0">
+          {/* KEPALA PANEL — MELEKAT di ponsel.
+              Dulu baris ini ikut tergulir. Form ini ~100 kolom, jadi di layar
+              telepon tombol Simpan berada 5.000–6.000 px di ATAS kandidat yang
+              baru selesai mengisi bagian paling bawah: satu-satunya jalan
+              menyimpan adalah menggulir balik ke puncak, dan yang tidak tahu
+              akan mengira isiannya hilang. `sticky top-0` menahannya di tepi
+              atas kotak gulir — bukan `fixed`, karena kotak gulirnya sudah
+              dibatasi `100dvh - toolbar` sehingga elemen melekat berhenti
+              tepat di tempat yang sama tanpa menutupi bilah tab di atasnya.
+              Latar WAJIB pekat (`bg-slate-950/95` + blur): panel di belakangnya
+              bergulir, dan kepala panel semi-transparan akan membuat label
+              kolom terbaca menembus judulnya. */}
+          <div class="sticky top-0 z-30 -mx-2.5 px-2.5 mb-4 flex justify-between items-center gap-2 bg-slate-950/95 py-2 backdrop-blur border-b border-slate-800 md:static md:mx-0 md:px-3 md:py-2.5 md:rounded-xl md:border md:border-slate-800 md:bg-slate-900/50">
+            <div class="flex items-center gap-2 md:gap-3 min-w-0">
+              <img src="/icons/logo-asj.webp" alt="ASJ" class="h-7 md:h-10 object-contain shrink-0" />
+              <div class="min-w-0">
                 {/* h2, not h1: the page h1 is the FormToolbar title. /ai-cv had
                     NO h1 at all before this (§23) — this panel heading was it,
                     and it only appears once the CV preview panel is open. */}
-                <h2 class="text-sm md:text-base font-black text-white">{t("form.preview_cv")}</h2>
-                <p class="text-[11px] md:text-[11px] text-slate-400">{t('form.cv_edit_hint')}</p>
+                <h2 class="text-sm md:text-base font-black text-white truncate">{t("form.preview_cv")}</h2>
+                {/* Petunjuk ini 3 baris di 360 px dan membuat kepala panel yang
+                    melekat memakan ~90 px layar. Di ponsel ia disembunyikan;
+                    isinya sama dengan `ph` tiap kolom yang sudah terbaca. */}
+                <p class="hidden md:block text-[11px] text-slate-400">{t('form.cv_edit_hint')}</p>
               </div>
             </div>
             <div class="flex gap-2">
@@ -1645,7 +1688,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   prevents the duplicate write. */}
               <button type="button" onClick={saveToDatabase} disabled={savePhase !== 'idle' && savePhase !== 'done'}
                 aria-live="polite"
-                class={`${saveDone ? 'bg-sky-600' : 'bg-emerald-600 hover:bg-emerald-500'} ${savePhase !== 'idle' && savePhase !== 'done' ? 'opacity-60 cursor-not-allowed' : ''} text-white text-[11px] md:text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg flex items-center gap-2`}>
+                class={`${saveDone ? 'bg-sky-600' : 'bg-emerald-600 hover:bg-emerald-500'} ${savePhase !== 'idle' && savePhase !== 'done' ? 'opacity-60 cursor-not-allowed' : ''} min-h-11 text-white text-[11px] md:text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg flex items-center gap-2 shrink-0`}>
                 <Icon spin={savePhase === 'uploading' || savePhase === 'saving'}
                   name={saveDone ? SAVE_ICON_DONE : SAVE_ICON_BUSY} />
                 {savePhase === 'extCheck' ? t('ai_cv.btn_saving')
@@ -1654,7 +1697,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                       : saveDone ? t('ai_cv.btn_saved')
                         : t('button.save_db')}
               </button>
-              <button type="button" onClick={() => toggleLang()} class="bg-sky-600 hover:bg-sky-500 text-white text-[11px] md:text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg">
+              <button type="button" onClick={() => toggleLang()} class="min-h-11 min-w-11 bg-sky-600 hover:bg-sky-500 text-white text-[11px] md:text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg shrink-0">
                 <Icon name="language" class="mr-1" />{lang === 'id' ? 'ID' : 'JP'}
               </button>
             </div>
@@ -1708,7 +1751,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   show an age that contradicts its own birth date. */}
               <Field label={t("cv.field_tgl_lahir")} id="tgllahir" value={cv.tgllahir} type="date"
                 touched={touchedFields.has('tgllahir')} onInput={handleTglLahir} />
-              <Field label={t("form.mf_usia")} id="umur" value={cv.umur} center unit="thn"
+              <Field label={t("form.mf_usia")} id="umur" value={cv.umur} center unit="thn" mode="numeric"
                 touched={touchedFields.has('umur')} onInput={(v) => handleManualEdit('umur', v)} />
               <PairSelect label={t("form.mf_gender")} id="gender" value={cv.gender} pairs={GENDER_PAIRS}
                 touched={touchedFields.has('gender')} testId="ai-pair-gender"
@@ -1722,14 +1765,14 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               <PairSelect label={t("cv.field_status_nikah")} id="status" value={cv.status} pairs={STATUS_NIKAH_PAIRS}
                 touched={touchedFields.has('status')} testId="ai-pair-status"
                 onChange={(v) => handlePairEdit('status', v)} />
-              <Field label={t("form.mf_anak")} id="anak" value={cv.anak} center
+              <Field label={t("form.mf_anak")} id="anak" value={cv.anak} center mode="numeric"
                 touched={touchedFields.has('anak')} onInput={(v) => handleManualEdit('anak', v)} />
               {/* KTP pindah ke sini (2026-10-27): di baris lama ia menggantung
                   sendirian bersama kontak darurat, menyisakan 1 track kosong. */}
-              <Field label={t("form.mf_ktp")} id="ktp" value={cv.ktp}
+              <Field label={t("form.mf_ktp")} id="ktp" value={cv.ktp} mode="tel"
                 ph="16 digit" touched={touchedFields.has('ktp')} onInput={(v) => handleManualEdit('ktp', v)} />
 
-              <div class="col-span-full mt-2 mb-0.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-400/80">
+              <div class="col-span-full mt-2 mb-0.5 text-[11px] md:text-[10px] font-extrabold uppercase tracking-wider text-sky-400/80">
                 Alamat &amp; Kontak
               </div>
               <Field label={t("form.mf_email")} id="email" value={cv.email} span={2}
@@ -1744,15 +1787,15 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               {/* KINKI `O9` mencetak "ジャカルタから…㎞ / 飛行機で…時間…分" —
                   dua angka ini duduk di sebelah alamat karena sama-sama soal
                   lokasi asal, bukan soal perjalanan ke Jepang. */}
-              <Field label="Jarak ke Jakarta" id="jarak_jakarta" value={cv.jarak_jakarta} center unit="km"
+              <Field label="Jarak ke Jakarta" id="jarak_jakarta" value={cv.jarak_jakarta} center unit="km" mode="numeric"
                 ph="780" hint="Perkiraan dari kota asal."
                 touched={touchedFields.has('jarak_jakarta')} onInput={(v) => handleManualEdit('jarak_jakarta', v)} />
               <Field label="Lama penerbangan" id="lama_penerbangan" value={cv.lama_penerbangan}
                 ph="1 jam 40 menit"
                 touched={touchedFields.has('lama_penerbangan')} onInput={(v) => handleManualEdit('lama_penerbangan', v)} />
-              <Field label={t("form.mf_kontak")} id="hp" value={cv.hp}
+              <Field label={t("form.mf_kontak")} id="hp" value={cv.hp} mode="tel"
                 ph="08…" touched={touchedFields.has('hp')} onInput={(v) => handleManualEdit('hp', v)} />
-              <Field label={t("form.mf_darurat_wa")} id="hpdarurat" value={cv.hpdarurat}
+              <Field label={t("form.mf_darurat_wa")} id="hpdarurat" value={cv.hpdarurat} mode="tel"
                 ph="08…" touched={touchedFields.has('hpdarurat')} onInput={(v) => handleManualEdit('hpdarurat', v)} />
               {/* PARITAS (2026-10-25): Form Master menanyakan nama & hubungan
                   kontak darurat; CV AI hanya nomor WA-nya. Kolom
@@ -1762,7 +1805,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               <Field label={t("master.darurat_hubungan")} id="darurat_hubungan" value={cv.darurat_hubungan}
                 ph="IBU / KAKAK" touched={touchedFields.has('darurat_hubungan')} onInput={(v) => handleManualEdit('darurat_hubungan', v)} />
 
-              <div class="col-span-full mt-2 mb-0.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-400/80">
+              <div class="col-span-full mt-2 mb-0.5 text-[11px] md:text-[10px] font-extrabold uppercase tracking-wider text-sky-400/80">
                 Dokumen &amp; Perjalanan
               </div>
               {/* ── Kelompok PASPOR ─────────────────────────────────────────
@@ -1837,10 +1880,14 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
 
           <div class="u-grid-auto u-grid-auto--form gap-3 mb-3">
             <Section title={t("ai_cv.sec_fisik")} icon="fa-child" color="amber">
-              <div class="grid grid-cols-3 gap-2">
-                <Field label={t("form.mf_tb")} id="tb" value={cv.tb} center unit="cm"
+              {/* 2 kolom di ponsel, 3 dari `sm`. Kolom isian di sini kini 44 px
+                  dengan teks 16 px (aturan §5f global.css); pada 3 kolom di
+                  lebar 360 px sisa ruang per kotak hanya ~88 px, dan pilihan
+                  berpasangan seperti `YA（はい）` terpotong jadi `YA（は…`. */}
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <Field label={t("form.mf_tb")} id="tb" value={cv.tb} center unit="cm" mode="decimal"
                   touched={touchedFields.has('tb')} onInput={(v) => handleManualEdit('tb', v)} />
-                <Field label={t("form.mf_bb")} id="bb" value={cv.bb} center unit="kg"
+                <Field label={t("form.mf_bb")} id="bb" value={cv.bb} center unit="kg" mode="decimal"
                   touched={touchedFields.has('bb')} onInput={(v) => handleManualEdit('bb', v)} />
                 <PairSelect label={t("cv.field_tgn_dominan")} id="tangan" value={cv.tangan} pairs={TANGAN_PAIRS}
                   touched={touchedFields.has('tangan')} onChange={(v) => handlePairEdit('tangan', v)} />
@@ -1853,7 +1900,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   touched={touchedFields.has('baju')} onChange={(v) => handlePairEdit('baju', v)} />
                 <PairSelect label={t("form.mf_topi")} id="topi" value={cv.topi} pairs={TOPI_PAIRS}
                   touched={touchedFields.has('topi')} onChange={(v) => handlePairEdit('topi', v)} />
-                <div class="col-span-3">
+                <div class="col-span-2 sm:col-span-3">
                   <PairSelect label={t("cv.field_tahan_ac")} id="tahan_ac" value={cv.tahan_ac} pairs={YA_TIDAK_PAIRS}
                     touched={touchedFields.has('tahan_ac')} onChange={(v) => handlePairEdit('tahan_ac', v)} />
                 </div>
@@ -1862,7 +1909,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                     集団生活年数, スポーツ). Olahraga memakai dropdown karena
                     renderer memetakan nama cabang olahraga ke kanji — teks bebas
                     yang tidak dikenali berakhir sebagai sel kosong. */}
-                <div class="col-span-3">
+                <div class="col-span-2 sm:col-span-3">
                   <ComboSelect label="Olahraga (スポーツ)" id="olahraga" value={cv.olahraga} pairs={OLAHRAGA}
                     placeholder="ketik atau pilih"
                     onInput={(v) => handleManualEdit('olahraga', v)} onPick={(v) => handleManualEdit('olahraga', v)} />
@@ -1881,7 +1928,9 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               </div>
             </Section>
             <Section title={t("ai_cv.sec_medis")} icon="fa-notes-medical" color="red">
-              <div class="grid grid-cols-4 gap-2">
+              {/* 2 kolom di ponsel: `col-span-2` anak-anaknya berarti
+                  selebar baris, dan pilihan YA/TIDAK berpasangan tetap utuh. */}
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <Field label={t("cv.field_mata_kanan")} id="matakanan" value={cv.matakanan} center
                   touched={touchedFields.has('matakanan')} onInput={(v) => handleManualEdit('matakanan', v)} />
                 <Field label={t("cv.field_mata_kiri")} id="matakiri" value={cv.matakiri} center
@@ -1939,7 +1988,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 <div class="grid grid-cols-3 gap-2">
                   <Field label={t("cv.field_lama_jp")} id="lama" value={cv.lama} center unit="thn"
                     touched={touchedFields.has('lama')} onInput={(v) => handleManualEdit('lama', v)} />
-                  <Field label={t("cv.field_target_gaji")} id="gaji_yen" value={cv.gaji_yen} center jp unit="yen"
+                  <Field label={t("cv.field_target_gaji")} id="gaji_yen" value={cv.gaji_yen} center jp unit="yen" mode="numeric"
                     touched={touchedFields.has('gaji_yen')} onInput={(v) => handleManualEdit('gaji_yen', v)} />
                   <Field label={t("cv.field_target_nabung")} id="tabungan" value={cv.tabungan} center jp
                     touched={touchedFields.has('tabungan')} onInput={(v) => handleManualEdit('tabungan', v)} />
@@ -2206,7 +2255,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                         melihat 7 yang benar-benar penting dulu. ID tetap sama
                         (`job-jenis-*` dst.) supaya tidak ada yang putus. */}
                     <details class="sm:col-span-2 rounded border border-slate-700/70 bg-slate-900/30 px-2 py-1.5">
-                      <summary class="cursor-pointer text-[11px] font-bold text-fg-muted">
+                      <summary class="flex items-center min-h-11 cursor-pointer text-[11px] font-bold text-fg-muted">
                         Detail opsional — status kerja, bidang industri, catatan
                       </summary>
                       <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mt-2">
@@ -2383,7 +2432,7 @@ function Section({ title, icon, color, borderLeft, children }: {
   title: string; icon: string; color: string; borderLeft?: boolean; children: preact.ComponentChildren;
 }) {
   return (
-    <div class={`bg-slate-900/40 border border-slate-800 rounded-lg p-3 mb-3 shadow ${borderLeft ? 'border-l-2 border-l-purple-500' : ''}`}>
+    <div class={`bg-slate-900/40 border border-slate-800 rounded-lg p-2.5 md:p-3 mb-3 shadow ${borderLeft ? 'border-l-2 border-l-purple-500' : ''}`}>
       {/* Judul seksi memakai metrik `.section-title` yang sama dengan CV Master
           supaya kedua form terasa satu keluarga (legacy pun begitu:
           `class="section-title text-purple-400"`). Kelasnya dipisah karena
@@ -2417,7 +2466,10 @@ function RepeaterRow({ index, label, onRemove, removable, children }: {
         <span class="text-[11px] font-bold text-fg-muted">{label} #{index + 1}</span>
         {removable && (
           <button type="button" onClick={onRemove}
-            class="text-rose-400 text-[11px] font-bold hover:text-rose-300"
+            /* `-my-2` + `min-h-11`: sasaran sentuh 44 px tanpa menambah tinggi
+               baris. Sebelumnya tombol ini 70×18 px — lolos secara visual, gagal
+               di jari, dan yang salah tekan menghapus baris riwayat. */
+            class="inline-flex items-center justify-end min-h-11 min-w-11 -my-2 px-1 text-rose-400 text-[11px] font-bold hover:text-rose-300"
             aria-label={`${label} ${index + 1}: ${t('button.delete')}`}>
             <Icon name="trash" class="mr-1" />{t('button.delete')}
           </button>
@@ -2543,9 +2595,20 @@ function MonthYearField({ label, id, value, yearLabel, monthLabelText, onChange 
  * `border-sky-400`; the point is that a human correction must stay visibly
  * distinguishable from an AI guess when the two disagree.
  */
-function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, type, list, ph, hint, onInput, touched, action }: {
+function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, type, mode, list, ph, hint, onInput, touched, action }: {
   label: string; id: string; value: string; readonly?: boolean; center?: boolean;
   jp?: boolean; span?: number; spanMd?: number; unit?: Unit; type?: string; list?: string;
+  /**
+   * Papan ketik yang muncul di telepon (`inputmode`).
+   *
+   * Nomor WA dan KTP berisi 12–16 digit; dengan papan ketik huruf kandidat
+   * harus menekan tombol "123" dulu untuk SETIAP kolom, dan di Android
+   * tombol itu berpindah posisi antar papan ketik. `inputmode` mengubah
+   * papannya tanpa mengubah `type`, jadi peran aksesibilitasnya tetap
+   * `textbox` — `type="number"` akan mengubahnya jadi `spinbutton` dan
+   * mematahkan kueri `getByRole('textbox')` yang sudah ada.
+   */
+  mode?: 'tel' | 'numeric' | 'decimal';
   /** Petunjuk penulisan: contoh isi yang diharapkan (muncul di dalam kotak). */
   ph?: string;
   /** Petunjuk tambahan di bawah kotak — untuk aturan yang tidak muat di `ph`. */
@@ -2560,14 +2623,30 @@ function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, typ
   action?: { label: string; onClick: () => void; busy?: boolean };
   onInput?: (value: string) => void; touched?: boolean;
 }) {
-  const spanClass = span === 3 ? 'col-span-3' : span === 2 ? 'col-span-2' : '';
+  // `span` = porsi di grid `md` (5 track). Di ponsel grid-nya 2 track, jadi
+  // porsi 2 DAN 3 sama-sama berarti "selebar baris". `col-span-3` di grid 2
+  // track BUKAN no-op: ia membuat track implisit KETIGA yang lebarnya
+  // mengikuti isi, sehingga barisnya melewati tepi panel dan memunculkan
+  // gulir mendatar di dalam kotak form — terukur pada `alamat`/`alamat_jp`,
+  // yang satu-satunya kolom ber-`span={3}` di form ini.
+  const spanClass = span && span > 1 ? 'col-span-2' : '';
   const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : '';
   const domId = `ai_${id}`;
   return (
     <div class={`${spanClass} ${mdSpanClass}`}>
-      <label class="block text-[11px] text-[#e2e8f0] mb-0.5" for={domId}>{label}</label>
+      <label class="block text-[11px] text-[#e2e8f0] mb-0.5" for={domId}>
+        {label}
+        {/* Penanda sisi JEPANG. Sebelum ini dua kolom bersebelahan memakai
+            label yang SAMA — "Tempat Lahir" dan "Tempat Lahir" — dan yang kiri
+            Latin, yang kanan kanji. Di layar lebar bedanya terbaca dari warna
+            nilai; di telepon dua kotak identik bersebelahan hanya terlihat
+            seperti isian ganda. `aria-hidden` supaya nama aksesibel kolomnya
+            tidak berubah (label ini dipakai `getByLabelText`). */}
+        {jp && <span aria-hidden="true" class="ml-1 text-[10px] font-bold text-fg-subtle">·JP</span>}
+      </label>
       <div class="relative">
         <input id={domId} type={type || 'text'} value={value} readonly={readonly} list={list}
+          inputmode={mode}
           placeholder={ph || ''}
           onInput={onInput ? (e) => onInput((e.target as HTMLInputElement).value) : undefined}
           class={`input-micro w-full bg-slate-800 border ${touched ? 'border-sky-400' : 'border-slate-600'} rounded p-1 text-[12px] placeholder:text-slate-500 placeholder:text-[10px] ${center ? 'text-center' : ''} ${unit ? 'pr-7' : ''} ${jp ? 'text-pink-300 font-bold' : 'text-white'}`} />
@@ -2577,11 +2656,11 @@ function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, typ
       </div>
       {(hint || action) && (
         <div class="mt-0.5 flex items-start gap-2">
-          {hint && <p class="text-[10px] leading-tight text-slate-500">{hint}</p>}
+          {hint && <p class="text-[11px] md:text-[10px] leading-tight text-slate-500">{hint}</p>}
           {action && (
             <button type="button" onClick={action.onClick} disabled={action.busy}
               data-testid={`aksi-${id}`}
-              class="ml-auto shrink-0 whitespace-nowrap text-[10px] font-bold text-sky-400 hover:text-sky-300 disabled:opacity-50">
+              class="ml-auto shrink-0 whitespace-nowrap inline-flex items-center justify-center min-h-11 -my-2 text-[12px] md:text-[10px] font-bold text-sky-400 hover:text-sky-300 disabled:opacity-50">
               {action.busy ? 'Menyinkronkan…' : action.label}
             </button>
           )}
@@ -2608,7 +2687,13 @@ function PairSelect({ label, id, value, pairs, span, spanMd, onChange, touched, 
   label: string; id: string; value: string; pairs: Opsi[]; span?: number; spanMd?: number;
   onChange: (value: string) => void; touched?: boolean; testId?: string;
 }) {
-  const spanClass = span === 3 ? 'col-span-3' : span === 2 ? 'col-span-2' : '';
+  // `span` = porsi di grid `md` (5 track). Di ponsel grid-nya 2 track, jadi
+  // porsi 2 DAN 3 sama-sama berarti "selebar baris". `col-span-3` di grid 2
+  // track BUKAN no-op: ia membuat track implisit KETIGA yang lebarnya
+  // mengikuti isi, sehingga barisnya melewati tepi panel dan memunculkan
+  // gulir mendatar di dalam kotak form — terukur pada `alamat`/`alamat_jp`,
+  // yang satu-satunya kolom ber-`span={3}` di form ini.
+  const spanClass = span && span > 1 ? 'col-span-2' : '';
   const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : '';
   // A value the registry does not know (typed by an older AI, or free text from
   // a previous session) is kept as its own option rather than silently dropped.
@@ -2688,7 +2773,13 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
    * flashes in the wrong place.
    */
   const [flip, setFlip] = useState(false);
-  const spanClass = span === 3 ? 'col-span-3' : span === 2 ? 'col-span-2' : '';
+  // `span` = porsi di grid `md` (5 track). Di ponsel grid-nya 2 track, jadi
+  // porsi 2 DAN 3 sama-sama berarti "selebar baris". `col-span-3` di grid 2
+  // track BUKAN no-op: ia membuat track implisit KETIGA yang lebarnya
+  // mengikuti isi, sehingga barisnya melewati tepi panel dan memunculkan
+  // gulir mendatar di dalam kotak form — terukur pada `alamat`/`alamat_jp`,
+  // yang satu-satunya kolom ber-`span={3}` di form ini.
+  const spanClass = span && span > 1 ? 'col-span-2' : '';
   const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : '';
   const domId = `ai_${id}`;
   const listId = `${domId}-list`;
