@@ -19,12 +19,32 @@ export interface RenderResult {
   error?: string;
 }
 
-/** Normalized candidate data available to ALL templates */
+/**
+ * Normalized candidate data available to ALL templates
+ *
+ * ── FIELD YANG SUDAH SIAP TETAPI BELUM DICETAK ──────────────────────────────
+ * Sebagian jawaban sudah mengalir sampai objek ini padahal belum ada template
+ * yang mencetaknya. Kalau Anda menulis template BARU dan modelnya membutuhkan
+ * salah satu field di bawah, cukup baca field itu di `buildValues` — tidak ada
+ * migrasi, kolom, atau perubahan form yang perlu menyusul:
+ *
+ *   `pekerjaan[i].alasan` — "Alasan Berhenti" / 退職理由 (migrasi 057).
+ *     Form Master merender inputnya, CV AI mengumpulkannya, `buildMasterNested`
+ *     mengembalikannya. Kelima aset template yang ada TIDAK punya sel berlabel
+ *     退職理由 (terukur 2026-11-13: 0 kemunculan di kelima berkas), jadi
+ *     nilainya memang belum pernah tercetak — bukan karena datanya hilang.
+ *
+ * Penjaganya `e2e/form-column-parity.test.ts` (`PREPARED_NOT_PRINTED`): selama
+ * belum ada yang mencetak, tes memastikan kolomnya tetap bisa diisi form. Begitu
+ * satu renderer membacanya, tes itu MERAH dan entri tersebut wajib dipindah ke
+ * cakupan biasa — supaya daftar "siap pakai" tidak pernah jadi tempat sampah.
+ */
 export interface CandidateData {
   identitas: Record<string, unknown>;
   fisik: Record<string, unknown>;
   medis: Record<string, unknown>;
   pendidikan: Array<Record<string, unknown>>;
+  /** `alasan` (退職理由) sudah tersedia di tiap baris — lihat catatan di atas. */
   pekerjaan: Array<Record<string, unknown>>;
   keluarga: Array<Record<string, unknown>>;
   sertifikasi: Record<string, unknown>;

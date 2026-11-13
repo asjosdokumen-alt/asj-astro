@@ -115,10 +115,19 @@ Uji mutasi: menyuntikkan kembali `?? id.jft` ⇒ gerbang MERAH (`kinki: identita
 
 ---
 
-## 7. Keputusan 2026-11-13 — `alasan` (退職理由) TIDAK dicetak di lima form
+## 7. Keputusan 2026-11-13 — `alasan` (退職理由) belum dicetak, tetapi DISIAPKAN
 
 Pemilik 2026-11-12: *"Alasan Berhenti emang belum ada tapi bakal kepake, dulu ada
-CV model gitu."* Pertanyaannya: template mana yang mencetaknya?
+CV model gitu."* Ditegaskan lagi 2026-11-13: *"belum kepakai tapi akan kepakai
+kalau ada nantinya template CV baru yang membutuhkannya — banyak yang model
+gitu."*
+
+**Jadi ini BUKAN keputusan untuk tidak pernah mencetaknya.** Ini keputusan untuk
+tidak memaksakannya ke lima form yang tidak punya selnya, sambil menjaga datanya
+tetap siap dipakai template berikutnya. Kolom, form, dan jalur bacanya tidak
+disentuh — semuanya tetap hidup.
+
+Pertanyaannya waktu itu: template mana yang mencetaknya?
 
 **Diukur ulang, dan hasilnya nol.** Kelima aset template didekode (bukan dibaca
 sebagai teks sumber) lalu seluruh XML-nya dicari `退職理由`, `退職`, dan `理由`:
