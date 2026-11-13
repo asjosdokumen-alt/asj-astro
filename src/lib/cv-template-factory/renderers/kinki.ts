@@ -219,6 +219,22 @@ function ym(v: unknown): string {
  * bahasa Indonesia. Pemetaan ini sengaja KONSERVATIF: teks yang tidak
  * dikenali dikembalikan apa adanya, bukan dikarang.
  */
+/**
+ * 英語レベル — nilai dropdown (`PEMULA`/`MENENGAH`/`MAHIR`) dicetak sebagai
+ * 初級/中級/上級.
+ *
+ * Sebelum ini `level_bahasa_inggris` disalin apa adanya, jadi form Jepang
+ * mencetak kata INDONESIA di sel 英語レベル — cacat yang sama dengan
+ * 就業希望年数 ("Jangka Panjang") di bawah. Nilai yang sudah berbahasa Jepang
+ * (diketik admin, atau baris lama) dibiarkan lewat.
+ */
+function inggrisJp(v: unknown): string {
+  const raw = s(v).trim();
+  if (!raw) return '';
+  const map: Record<string, string> = { PEMULA: '初級', MENENGAH: '中級', MAHIR: '上級' };
+  return map[raw.toUpperCase()] || raw;
+}
+
 function masaKerjaJp(v: unknown): string {
   const raw = s(v).trim();
   if (!raw) return '';
@@ -753,7 +769,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
      7 dari 9 CV manual pemilik (2026-11-12) menulis `無` — bukan sel kosong.
      Bedanya penting di form resmi: sel kosong terbaca "belum diisi", `無`
      terbaca "memang tidak punya". */
-  cells.R42 = bersih(data.sertifikasi.level_bahasa_inggris) || '無';
+  cells.R42 = inggrisJp(data.sertifikasi.level_bahasa_inggris) || '無';
   cells.U42 = bersih(data.sertifikasi.bahasa_lain) || '無';
   cells.Y42 = masaTinggal(data.fisik.tinggal_kursus_tahun);
   /* 就業希望年数 — kolomnya berisi TEKS BEBAS berbahasa Indonesia

@@ -8,6 +8,8 @@
 // cakupan lengkap + pembacaan multi-path itu.
 // ==========================================
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   AI_CV_FLAT_KEYS,
   AI_CV_PATHS,
@@ -536,5 +538,57 @@ describe('patchAiDenganKonflik', () => {
     const r = patchAiDenganKonflik({ alamat: 'Jl. Lama' }, { alamat: '', nama_lengkap: '   ' });
     expect(r.hasil.alamat).toBe('Jl. Lama');
     expect(r.konflik).toEqual([]);
+  });
+});
+
+/**
+ * GERBANG "DATA HILANG SETELAH SIMPAN" (2026-11-13).
+ *
+ * Keluhan pemilik: *"kok data ini setelah di simpan sering hilang"*. Bukan
+ * replication lag — ada dua field yang kunci TULIS-nya berbeda dari kunci
+ * BACA-nya, dan tidak ada satu pun tes yang bisa melihatnya:
+ *
+ *   - `lamakerja_diharapkan` ditulis di TINGKAT ATAS payload (server hanya
+ *     menyimpan 8 seksi bernama), padahal pembacanya menunggu di
+ *     `wawancara.lamakerja_diharapkan`;
+ *   - `darurat_nama_jp` ditulis, padahal pembaca + kolom + penerjemah AI
+ *     memakai `kontak_darurat_nama_jp`.
+ *
+ * Keduanya lolos karena kuncinya hanya hidup di satu sisi. Tes ini membandingkan
+ * KEDUA sisi secara statis: setiap kunci daun di `AI_CV_PATHS` harus muncul
+ * sebagai kunci objek (`kunci:`) di `AiCvForm.tsx`, tempat payload disusun.
+ *
+ * Kenapa statis, bukan lewat render: payload dibangun di dalam `saveToDatabase`
+ * dan hanya terkirim saat sesi valid — memanggilnya di jsdom butuh menstub
+ * seluruh rantai unggah. Membaca sumber justru menguji hal yang tepat: NAMA
+ * KUNCINYA, yang selama ini jadi sumber bug.
+ *
+ * Batas yang jujur: tes ini memastikan kuncinya ADA, bukan bahwa ia berada di
+ * seksi yang benar. `wawancara.lamakerja_diharapkan` yang ditulis di tingkat
+ * atas tetap lolos kalau namanya sama — karena itu `form-column-parity` dan
+ * `ai-cv-column-coverage` tetap perlu dijalankan.
+ */
+describe('setiap path baca punya kunci tulis di AiCvForm', () => {
+  it('tidak ada kunci daun AI_CV_PATHS yang tak pernah ditulis form', () => {
+    const root = process.cwd();
+    const draftSrc = readFileSync(join(root, 'src/lib/aiCvDraft.ts'), 'utf8');
+    const formSrc = readFileSync(join(root, 'src/components/forms/AiCvForm.tsx'), 'utf8');
+    const start = draftSrc.indexOf('AI_CV_PATHS');
+    expect(start).toBeGreaterThan(0);
+    const block = draftSrc.slice(start, draftSrc.indexOf('\n};', start));
+    const rows = [...block.matchAll(/^\s{2}(\w+): \[([^\]]*)\]/gm)];
+    // Penjaga terhadap sapuan yang MATI: kalau blok tidak terbaca, `missing`
+    // akan kosong dan tesnya hijau tanpa mengukur apa pun.
+    expect(rows.length).toBeGreaterThan(100);
+
+    const missing = rows
+      .filter(([, , paths]) => {
+        const leaves = [...String(paths).matchAll(/'([^']+)'/g)].map((m) => m[1].split('.').pop());
+        // `kunci:` = bentuk KUNCI OBJEK di payload, bukan sekadar kata di komentar.
+        return !leaves.some((leaf) => formSrc.includes(`${leaf}:`));
+      })
+      .map(([, field]) => field);
+
+    expect(missing).toEqual([]);
   });
 });

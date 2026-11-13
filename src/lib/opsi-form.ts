@@ -1018,21 +1018,130 @@ export const STATUS_BELAJAR_JP: Opsi[] = [
   ['修了', '修了 (selesai kursus)'],
 ];
 
-/** 学習期間 — Firma `L31` / KINKI `T37`. Nilai berupa teks bebas yang ringkas. */
+/** 学習期間 — Firma `L31` / KINKI `T37`. Nilai tetap teks Indonesia; yang
+ *  berbahasa Jepang hanya LABEL-nya (`durasiJp()` yang mengubah saat cetak). */
 export const LAMA_BELAJAR_JP: Opsi[] = [
-  ['3 bulan', '3 bulan'],
-  ['6 bulan', '6 bulan'],
-  ['1 tahun', '1 tahun'],
-  ['1.5 tahun', '1,5 tahun'],
-  ['2 tahun', '2 tahun'],
-  ['3 tahun', '3 tahun'],
+  ['3 bulan', '3 bulan (3ヶ月)'],
+  ['6 bulan', '6 bulan (6ヶ月)'],
+  ['1 tahun', '1 tahun (1年)'],
+  ['1.5 tahun', '1,5 tahun (1年6ヶ月)'],
+  ['2 tahun', '2 tahun (2年)'],
+  ['3 tahun', '3 tahun (3年)'],
 ];
 
 /** 英語レベル — KINKI `Q41`. */
 export const LEVEL_INGGRIS: Opsi[] = [
-  ['PEMULA', 'Pemula (dasar)'],
-  ['MENENGAH', 'Menengah (bisa percakapan)'],
-  ['MAHIR', 'Mahir (aktif kerja)'],
+  ['PEMULA', 'PEMULA (初級)'],
+  ['MENENGAH', 'MENENGAH (中級)'],
+  ['MAHIR', 'MAHIR (上級)'],
+];
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3f. ANGKA & UKURAN — pilihan yang dicetak dalam bentuk Jepang
+   ══════════════════════════════════════════════════════════════════════════
+
+   KENAPA DROPDOWN, BUKAN KOTAK ANGKA (pemilik 2026-11-13: *"angka jepang
+   langsung bulannya … pilihan dropdown kayak di template kinki"*).
+
+   Nilai yang DISIMPAN tetap angka polos, karena renderer yang mengubahnya:
+   `masaTinggal()` membaca BULAN lalu mencetak `6ヶ月` / `1年6ヶ月`, dan
+   `masaKerjaJp()` membaca TAHUN lalu mencetak `５年間`. Kalau yang disimpan
+   adalah teks `6ヶ月`, `Number('6ヶ月')` = NaN dan selnya kosong — jadi label
+   dropdown ini yang berbahasa Jepang, nilainya tetap angka. */
+
+/**
+ * 集団生活年数 — LAMA TINGGAL DI ASRAMA, satuan BULAN (owner 2026-11-12:
+ * "hitungan tinggal di asrama bersama itu bulan bukan tahun").
+ *
+ * 1–23 bulan, lalu 2 tahun. Batas atas 24 bulan: program LPK terpanjang yang
+ * pernah dipakai agensi adalah 2 tahun, dan daftar 60 baris lebih sulit
+ * dipakai daripada 25.
+ */
+export const LAMA_ASRAMA: Opsi[] = [
+  ...Array.from({ length: 23 }, (_, i) => {
+    const n = i + 1;
+    return [String(n), `${n}ヶ月`] as [string, string];
+  }),
+  ['24', '2年 (24ヶ月)'],
+];
+
+/** 就業希望年数 — HARAPAN LAMA KERJA DI JEPANG, satuan TAHUN. */
+export const LAMA_KERJA_JP: Opsi[] = [
+  ['1', '1年'], ['2', '2年'], ['3', '3年'], ['4', '4年'], ['5', '5年'],
+  ['6', '6年'], ['7', '7年'], ['8', '8年'], ['9', '9年'], ['10', '10年'],
+  /* Di luar sepuluh tahun, form Jepang memakai frasa, bukan angka —
+     `masaKerjaJp()` memetakan keduanya ke `５年間以上` / `永住`. */
+  ['JANGKA PANJANG', 'Jangka panjang (５年間以上)'],
+  ['PERMANEN', 'Menetap (永住)'],
+];
+
+/**
+ * 視力 — VISUS MATA. Skala desimal yang dipakai form Jepang (0,1–2,0),
+ * bukan 6/6 atau 20/20. Nilainya dicetak apa adanya.
+ */
+export const VISUS_MATA: Opsi[] = [
+  ['2.0', '視力'], ['1.5', '視力'], ['1.2', '視力'], ['1.0', '視力'],
+  ['0.9', '視力'], ['0.8', '視力'], ['0.7', '視力'], ['0.6', '視力'],
+  ['0.5', '視力'], ['0.4', '視力'], ['0.3', '視力'], ['0.2', '視力'],
+  ['0.1', '視力'],
+];
+
+/**
+ * KOTA PENERBIT PASPOR — daftar kota yang paling sering muncul di paspor
+ * kandidat (kantor imigrasi), dengan katakana sebagai petunjuk cara menulisnya
+ * di form Jepang. Nilai yang disimpan tetap nama Indonesia: kolomnya
+ * `kota_terbit_pasport` dan itulah yang dicetak.
+ *
+ * `ComboSelect` memakai daftar ini sebagai SARAN, bukan pagar — kota yang tidak
+ * ada di sini tetap bisa diketik bebas, dan itu disengaja: pemegang paspor bisa
+ * menerbitkan di kota mana pun.
+ */
+export const KOTA_PASPOR: Opsi[] = [
+  ['JAKARTA', 'JAKARTA (ジャカルタ)'],
+  ['SURABAYA', 'SURABAYA (スラバヤ)'],
+  ['BANDUNG', 'BANDUNG (バンドゥン)'],
+  ['MEDAN', 'MEDAN (メダン)'],
+  ['SEMARANG', 'SEMARANG (スマラン)'],
+  ['MAKASSAR', 'MAKASSAR (マカッサル)'],
+  ['PALEMBANG', 'PALEMBANG (パレンバン)'],
+  ['DENPASAR', 'DENPASAR (デンパサール)'],
+  ['YOGYAKARTA', 'YOGYAKARTA (ジョグジャカルタ)'],
+  ['SURAKARTA', 'SURAKARTA (スラカルタ)'],
+  ['MALANG', 'MALANG (マラン)'],
+  ['PADANG', 'PADANG (パダン)'],
+  ['PEKANBARU', 'PEKANBARU (プカンバル)'],
+  ['BANJARMASIN', 'BANJARMASIN (バンジャルマシン)'],
+  ['BANDAR LAMPUNG', 'BANDAR LAMPUNG (バンダールランプン)'],
+  ['SAMARINDA', 'SAMARINDA (サマリンダ)'],
+  ['PONTIANAK', 'PONTIANAK (ポンティアナック)'],
+  ['MANADO', 'MANADO (マナド)'],
+  ['MATARAM', 'MATARAM (マタラム)'],
+  ['KUPANG', 'KUPANG (クパン)'],
+  ['JAYAPURA', 'JAYAPURA (ジャヤプラ)'],
+  ['AMBON', 'AMBON (アンボン)'],
+  ['KENDARI', 'KENDARI (ケンダリ)'],
+  ['PALU', 'PALU (パル)'],
+  ['GORONTALO', 'GORONTALO (ゴロンタロ)'],
+  ['BENGKULU', 'BENGKULU (ブンクル)'],
+  ['JAMBI', 'JAMBI (ジャンビ)'],
+  ['BATAM', 'BATAM (バタム)'],
+  ['BALIKPAPAN', 'BALIKPAPAN (バリクパパン)'],
+  ['TARAKAN', 'TARAKAN (タラカン)'],
+  ['BEKASI', 'BEKASI (ブカシ)'],
+  ['DEPOK', 'DEPOK (デポック)'],
+  ['TANGERANG', 'TANGERANG (タンゲラン)'],
+  ['BOGOR', 'BOGOR (ボゴール)'],
+  ['SERANG', 'SERANG (スラン)'],
+  ['CILEGON', 'CILEGON (チレゴン)'],
+  ['CIREBON', 'CIREBON (チレボン)'],
+  ['TEGAL', 'TEGAL (トゥガル)'],
+  ['PURWOKERTO', 'PURWOKERTO (プルウォケルト)'],
+  ['KEDIRI', 'KEDIRI (クディリ)'],
+  ['MADIUN', 'MADIUN (マディウン)'],
+  ['JEMBER', 'JEMBER (ジュンベル)'],
+  ['SIDOARJO', 'SIDOARJO (シドアルジョ)'],
+  ['PROBOLINGGO', 'PROBOLINGGO (プロボリンゴ)'],
+  ['BLITAR', 'BLITAR (ブリタル)'],
 ];
 
 /** スポーツ — KINKI `E16`. Nilai = istilah Jepang yang dicetak. */

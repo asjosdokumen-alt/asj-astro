@@ -29,6 +29,9 @@ import {
   VISA_JEPANG, STATUS_TINGGAL_JP, LEVEL_BAHASA_JEPANG, STATUS_BELAJAR_JP,
   LAMA_BELAJAR_JP, LEVEL_INGGRIS, OLAHRAGA, MBTI_TIPE, BULAN_SIM, PROVINSI,
   SSW_BIDANG, UJIAN_JP, UJIAN_BAHASA,
+  /* Angka & ukuran berlabel Jepang (2026-11-13): nilai tetap angka, label
+     yang berbahasa Jepang — lihat catatan di `opsi-form.ts` §3f. */
+  LAMA_ASRAMA, LAMA_KERJA_JP, VISUS_MATA, KOTA_PASPOR,
   labelJp, pairDisplay, type Opsi,
 } from '../../lib/opsi-form';
 import { levelOptions, sortEduRows } from '../../lib/cvRows';
@@ -1848,8 +1851,16 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   `kontak_darurat_nama`/`_hubungan` sudah ada dan kosong. */}
               <Field label={t("master.darurat_nama")} id="darurat_nama" value={cv.darurat_nama} span={2}
                 ph="Nama lengkap" touched={touchedFields.has('darurat_nama')} onInput={(v) => handleManualEdit('darurat_nama', v)} />
-              <Field label={t("master.darurat_hubungan")} id="darurat_hubungan" value={cv.darurat_hubungan}
-                ph="IBU / KAKAK" touched={touchedFields.has('darurat_hubungan')} onInput={(v) => handleManualEdit('darurat_hubungan', v)} />
+              {/* Hubungan kontak darurat — dropdown, bukan teks bebas.
+                  Sebelumnya kandidat mengetik "IBU" / "ibu" / "Ibu kandung" /
+                  "MAMA", dan yang tercetak di form Jepang adalah salah satu dari
+                  itu. Daftar yang sama dengan 続柄 keluarga dipakai di sini
+                  supaya satu orang tidak punya dua sebutan di satu CV. Nilai
+                  yang disimpan tetap sisi Indonesia ("IBU"); kanji hanya
+                  tampil di label dropdown. */}
+              <PairSelect label={t("master.darurat_hubungan")} id="darurat_hubungan" value={cv.darurat_hubungan}
+                pairs={HUBUNGAN_KELUARGA} touched={touchedFields.has('darurat_hubungan')}
+                onChange={(v) => handleManualEdit('darurat_hubungan', v)} />
 
               <div class="col-span-full mt-2 mb-0.5 text-[11px] md:text-[10px] font-extrabold uppercase tracking-wider text-sky-400/80">
                 Dokumen &amp; Perjalanan
@@ -1878,9 +1889,12 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 touched={touchedFields.has('tgl_terbit_paspor')} onInput={(v) => handleManualEdit('tgl_terbit_paspor', v)} />
               <Field label={t("form.mf_exp")} id="exp_paspor" value={cv.exp_paspor} type="date"
                 touched={touchedFields.has('exp_paspor')} onInput={(v) => handleManualEdit('exp_paspor', v)} />
-              <Field label={t("form.mf_kota_paspor")} id="kota_paspor" value={cv.kota_paspor}
-                ph="mis. SURABAYA"
-                touched={touchedFields.has('kota_paspor')} onInput={(v) => handleManualEdit('kota_paspor', v)} />
+              {/* Kota penerbit — ketik-untuk-menyarig dari daftar kota yang
+                  sering muncul di paspor, dan tetap boleh diketik bebas: kota
+                  penerbit mengikuti kantor imigrasi, bukan daftar kita. */}
+              <ComboSelect label={t("form.mf_kota_paspor")} id="kota_paspor" value={cv.kota_paspor} pairs={KOTA_PASPOR}
+                placeholder="ketik kota, mis. SURABAYA"
+                onInput={(v) => handleManualEdit('kota_paspor', v)} onPick={(v) => handleManualEdit('kota_paspor', v)} />
 
               {/* ── Kelompok SIM ────────────────────────────────────────────
                   Hanya status + nomor/kelas + rencana pengambilan. Tanggal
@@ -1967,20 +1981,29 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   ph="30" touched={touchedFields.has('tes_pushup')} onInput={(v) => handleManualEdit('tes_pushup', v)} />
                 <Field label="Squat (回)" id="tes_squat" value={cv.tes_squat} center type="number"
                   ph="40" touched={touchedFields.has('tes_squat')} onInput={(v) => handleManualEdit('tes_squat', v)} />
-                <Field label="Lama di asrama (bln)" id="tinggal_kursus" value={cv.tinggal_kursus} center unit="bln"
-                  ph="6" touched={touchedFields.has('tinggal_kursus')} onInput={(v) => handleManualEdit('tinggal_kursus', v)} />
-                <Field label="Harapan lama kerja di Jepang (年)" id="lamakerja" value={cv.lamakerja} center unit="thn"
-                  ph="5" touched={touchedFields.has('lamakerja')} onInput={(v) => handleManualEdit('lamakerja', v)} />
+                {/* 集団生活年数 & 就業希望年数 — DROPDOWN berlabel Jepang,
+                    nilai tetap angka. Renderer yang menerjemahkan: `masaTinggal()`
+                    membaca BULAN (6 -> 6ヶ月, 18 -> 1年6ヶ月) dan `masaKerjaJp()`
+                    membaca TAHUN (5 -> ５年間). Kotak angka bebas dulu menerima
+                    "6 bulan", "enam", atau "0,5" — ketiganya berakhir sebagai sel
+                    kosong karena `Number()` gagal. */}
+                <PairSelect label="Lama di asrama (集団生活年数)" id="tinggal_kursus" value={cv.tinggal_kursus} pairs={LAMA_ASRAMA}
+                  touched={touchedFields.has('tinggal_kursus')} onChange={(v) => handleManualEdit('tinggal_kursus', v)} />
+                <PairSelect label="Harapan lama kerja (就業希望年数)" id="lamakerja" value={cv.lamakerja} pairs={LAMA_KERJA_JP}
+                  touched={touchedFields.has('lamakerja')} onChange={(v) => handleManualEdit('lamakerja', v)} />
               </div>
             </Section>
             <Section title={t("ai_cv.sec_medis")} icon="fa-notes-medical" color="red">
               {/* 2 kolom di ponsel: `col-span-2` anak-anaknya berarti
                   selebar baris, dan pilihan YA/TIDAK berpasangan tetap utuh. */}
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <Field label={t("cv.field_mata_kanan")} id="matakanan" value={cv.matakanan} center
-                  touched={touchedFields.has('matakanan')} onInput={(v) => handleManualEdit('matakanan', v)} />
-                <Field label={t("cv.field_mata_kiri")} id="matakiri" value={cv.matakiri} center
-                  touched={touchedFields.has('matakiri')} onInput={(v) => handleManualEdit('matakiri', v)} />
+                {/* 視力 — skala desimal form Jepang (0,1–2,0), bukan 6/6.
+                    Dua kotak teks bebas dulu menerima "1", "1,0", "normal" —
+                    yang terakhir tidak bisa dicetak sama sekali. */}
+                <PairSelect label={t("cv.field_mata_kanan")} id="matakanan" value={cv.matakanan} pairs={VISUS_MATA}
+                  touched={touchedFields.has('matakanan')} onChange={(v) => handleManualEdit('matakanan', v)} />
+                <PairSelect label={t("cv.field_mata_kiri")} id="matakiri" value={cv.matakiri} pairs={VISUS_MATA}
+                  touched={touchedFields.has('matakiri')} onChange={(v) => handleManualEdit('matakiri', v)} />
                 <div class="col-span-2">
                   <PairSelect label={t("form.mf_kacamata")} id="kacamata" value={cv.kacamata} pairs={YA_TIDAK_PAIRS}
                     touched={touchedFields.has('kacamata')} onChange={(v) => handlePairEdit('kacamata', v)} />
@@ -2005,9 +2028,12 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   touched={touchedFields.has('alkohol')} onChange={(v) => handlePairEdit('alkohol', v)} />
               </div>
               <div class="col-span-4 space-y-1 mt-2 p-2 bg-slate-800/40 rounded border border-slate-700/50">
-                <TextAreaPair groupLabel={t("form.mf_alergi")} idId="alergi_id" idJp="alergi_jp" valueId={cv.alergi_id} valueJp={cv.alergi_jp} onChange={updateCv} />
-                <TextAreaPair groupLabel={t("form.mf_penyakit")} idId="medis_id" idJp="medis_jp" valueId={cv.medis_id} valueJp={cv.medis_jp} onChange={updateCv} />
-                <TextAreaPair groupLabel={t("cv.field_laka")} idId="laka_id" idJp="laka_jp" valueId={cv.laka_id} valueJp={cv.laka_jp} onChange={updateCv} />
+                <RiwayatYaTidak label="Riwayat alergi (アレルギー)" detailLabel={t("form.mf_alergi")} statusId="alergi_status"
+                  idId="alergi_id" idJp="alergi_jp" valueId={cv.alergi_id} valueJp={cv.alergi_jp} onChange={updateCv} />
+                <RiwayatYaTidak label="Riwayat penyakit berat (病気)" detailLabel={t("form.mf_penyakit")} statusId="medis_status"
+                  idId="medis_id" idJp="medis_jp" valueId={cv.medis_id} valueJp={cv.medis_jp} onChange={updateCv} />
+                <RiwayatYaTidak label="Riwayat kecelakaan (事故)" detailLabel={t("cv.field_laka")} statusId="laka_status"
+                  idId="laka_id" idJp="laka_jp" valueId={cv.laka_id} valueJp={cv.laka_jp} onChange={updateCv} />
               </div>
             </Section>
           </div>
@@ -2031,9 +2057,16 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 <TextAreaPair label={t("cv.field_rencana_pulang")} helper={t("form.ai_rencana_helper")} idId="pulang_id" idJp="pulang_jp" valueId={cv.pulang_id} valueJp={cv.pulang_jp} onChange={updateCv} />
                 <TextAreaPair label={t("cv.field_target_pribadi")} helper={t("form.ai_keinginan_helper")} idId="keinginan_id" idJp="keinginan_jp" valueId={cv.keinginan_id} valueJp={cv.keinginan_jp} onChange={updateCv} />
                 <TextAreaPair label={t("cv.field_tujuan_jepang")} helper={t("form.ai_tujuan_helper")} idId="tujuan_id" idJp="tujuan_jp" valueId={cv.tujuan_id} valueJp={cv.tujuan_jp} onChange={updateCv} />
-                <div class="grid grid-cols-3 gap-2">
-                  <Field label={t("cv.field_lama_jp")} id="lama" value={cv.lama} center unit="thn"
-                    touched={touchedFields.has('lama')} onInput={(v) => handleManualEdit('lama', v)} />
+                {/* "Lama di Jepang" DIHAPUS dari form (pemilik 2026-11-13:
+                    *"kek redundan sama pertanyaan harapan berapa lama kerja di
+                    Jepang"*). Yang paling sering diisi kandidat adalah HARAPAN
+                    lama kerja — itu yang tetap ada di seksi Fisik sebagai
+                    dropdown 就業希望年数. Kolom `lama_di_jepang` TIDAK dihapus:
+                    `cv.lama` tetap dimuat dari draf dan tetap ikut terkirim
+                    (payload `wawancara.lama_di_jepang`), jadi baris lama yang
+                    sudah berisi tidak kehilangan nilainya — hanya tidak ada lagi
+                    kotak yang meminta kandidat mengisinya dua kali. */}
+                <div class="grid grid-cols-2 gap-2">
                   <Field label={t("cv.field_target_gaji")} id="gaji_yen" value={cv.gaji_yen} center jp unit="yen" mode="numeric"
                     touched={touchedFields.has('gaji_yen')} onInput={(v) => handleManualEdit('gaji_yen', v)} />
                   <Field label={t("cv.field_target_nabung")} id="tabungan" value={cv.tabungan} center jp
@@ -3363,6 +3396,53 @@ function TextAreaPair({ label, groupLabel, helper, idId, idJp, valueId, valueJp,
       <legend class="block text-[11px] text-[#e2e8f0] mb-0.5 p-0">{groupLabel}</legend>
       {fields}
     </fieldset>
+  );
+}
+
+/**
+ * "Ya / tidak" + catatan, untuk ketiga riwayat medis (alergi, penyakit berat,
+ * kecelakaan).
+ *
+ * KENAPA SATU KOMPONEN. Sebelumnya ketiganya adalah dua textarea bebas, jadi
+ * jawaban yang paling sering — "tidak ada" — harus DIKETIK, dan yang mengetik
+ * "tidak" / "-" / "TIDAK ADA ALERG" menghasilkan tiga ejaan berbeda di form
+ * cetak. Pemilik 2026-11-13 menunjukkan kotak yang masih berisi "TIDAK ADA"
+ * dan "なし" dan meminta pola yang sama untuk penyakit & kecelakaan.
+ *
+ * NILAI YANG DISIMPAN (tanpa kolom baru, tanpa migrasi):
+ *   tidak → sisi Indonesia `TIDAK ADA`, sisi Jepang `なし`
+ *   ya    → sisi Jepang `有り` sebagai penanda, lalu ditimpa catatan kandidat
+ * Status DITURUNKAN dari nilai itu, bukan disimpan sebagai state — draf yang
+ * dimuat atau AI yang mengisi tidak boleh membuat dropdown bilang "ya"
+ * sementara catatannya kosong.
+ */
+function statusYaTidak(valueId: string, valueJp: string): '' | 'YA' | 'TIDAK' {
+  const jp = valueJp.trim();
+  if (valueId.trim().toUpperCase() === 'TIDAK ADA' || jp === 'なし') return 'TIDAK';
+  return jp === '有り' || valueId.trim() || jp ? 'YA' : '';
+}
+
+function RiwayatYaTidak({ label, detailLabel, statusId, idId, idJp, valueId, valueJp, onChange }: {
+  label: string; detailLabel: string; statusId: string; idId: string; idJp: string;
+  valueId: string; valueJp: string; onChange: (field: string, value: string) => void;
+}) {
+  const status = statusYaTidak(valueId, valueJp);
+  return (
+    <>
+      <PairSelect label={label} id={statusId} value={status} pairs={YA_TIDAK_PAIRS}
+        onChange={(v) => {
+          if (v === 'TIDAK') { onChange(idId, 'TIDAK ADA'); onChange(idJp, 'なし'); }
+          else if (v === 'YA') { onChange(idId, ''); onChange(idJp, '有り'); }
+          else { onChange(idId, ''); onChange(idJp, ''); }
+        }} />
+      {status === 'YA' && (
+        /* `有り` adalah penanda yang tersimpan, bukan isi kotak: menampilkannya
+           membuat kandidat mengira sudah menulis sesuatu. Kotak mulai kosong dan
+           apa pun yang diketik menggantikan penandanya. */
+        <TextAreaPair groupLabel={detailLabel} idId={idId} idJp={idJp}
+          valueId={valueId} valueJp={valueJp.trim() === '有り' ? '' : valueJp} onChange={onChange} />
+      )}
+    </>
   );
 }
 
