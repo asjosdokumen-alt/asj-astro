@@ -281,6 +281,39 @@ describe('migrasi 022 — form → kolom → nested', () => {
   });
 });
 
+// Migrasi 057. Kolom ini SENGAJA belum dicetak template mana pun (keputusan
+// 2026-11-13: kelima aset template tidak punya sel 退職理由), tetapi jalur
+// tulis–bacanya harus utuh SEKARANG — kalau tidak, "disiapkan" hanya janji.
+// Gerbang `e2e/form-column-parity.test.ts` menjaga pasangan lainnya: field ini
+// terdaftar sebagai "disiapkan, belum dicetak", dan entri itu harus dipindah
+// begitu ada renderer yang membacanya.
+describe('migrasi 057 — alasan berhenti: form → kolom → nested', () => {
+  it('tiga slot menulis kolomnya sendiri, tidak saling menimpa', () => {
+    const b = buildMasterBody({
+      pekerjaan: [
+        { nama_perusahaan: 'PT A', alasan: 'pindah kota' },
+        { nama_perusahaan: 'PT B', alasan: 'kontrak habis' },
+        { nama_perusahaan: 'PT C', alasan: 'ingin belajar' },
+      ],
+    });
+    expect(b.pekerjaan_1_alasan).toBe('pindah kota');
+    expect(b.pekerjaan_2_alasan).toBe('kontrak habis');
+    expect(b.pekerjaan_3_alasan).toBe('ingin belajar');
+  });
+
+  it('dibaca kembali ke baris pekerjaan yang dipakai renderer CV', () => {
+    const n = buildMasterNested(buildMasterBody({
+      pekerjaan: [{ nama_perusahaan: 'PT A', alasan: 'pindah kota' }],
+    }));
+    expect(n.pekerjaan[0].alasan).toBe('pindah kota');
+  });
+
+  it('baris tanpa alasan tidak mengarang nilai', () => {
+    const n = buildMasterNested(buildMasterBody({ pekerjaan: [{ nama_perusahaan: 'PT A' }] }));
+    expect(n.pekerjaan[0].alasan).toBe('');
+  });
+});
+
 // Form Master menulis KOLOM; CV AI dan rirekisho membaca `ai_data_json`.
 // Tanpa cermin ini, nilai yang baru diperbaiki lewat Form Master tetap tampil
 // LAMA di layar CV AI sampai ada yang menyimpan ulang lewat jalur AI.

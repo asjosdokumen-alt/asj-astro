@@ -63,9 +63,8 @@ kunci riwayat yang dibaca template tanpa slot.**
 
 ## 5. Yang belum dikerjakan (sengaja)
 
-1. **Tidak ada renderer yang mencetak `alasan`.** Pemilik: *"bakal kepake, dulu ada
-   CV model gitu"*. Kolomnya disiapkan; template yang membutuhkannya tinggal
-   membaca `data.pekerjaan[].alasan`.
+1. ~~Tidak ada renderer yang mencetak `alasan`~~ — **DIPUTUSKAN 2026-11-13**, lihat
+   §7: memang TIDAK dicetak, karena kelima aset template tidak punya selnya.
 2. ~~Belum ada gerbang otomatis~~ — **DITUTUP 2026-11-13**, lihat §6.
 3. ~~Tiga fallback mati di §3.3 belum dibersihkan~~ — **DITUTUP 2026-11-13**, dan
    ternyata ada ENAM, bukan tiga (§6.2).
@@ -106,11 +105,54 @@ Uji mutasi: menyuntikkan kembali `?? id.jft` ⇒ gerbang MERAH (`kinki: identita
 
 ### 6.3 Masih terbuka
 
-- **Tidak ada renderer yang mencetak `alasan`** (sama seperti §5.1) — butuh
-  keputusan template mana yang memakainya.
+- ~~Tidak ada renderer yang mencetak `alasan`~~ — diputuskan di §7.
 - Cakupan gerbang = lapisan **pemetaan nilai** (`buildValues`/`buildNumbers`),
   bukan `render()` (yang merakit zip dan memanggil `fetch`/`createImageBitmap`).
   Sisa bacaan di `render()` hanya `uploads.photo` dan nama sheet.
 - `uploads.*` dilewati dengan alasan tertulis (berkas unggahan, bukan pertanyaan
   form); `raw.*` diperiksa terhadap kunci yang benar-benar dikembalikan
   `handleGetDrafCvMaster`.
+
+---
+
+## 7. Keputusan 2026-11-13 — `alasan` (退職理由) TIDAK dicetak di lima form
+
+Pemilik 2026-11-12: *"Alasan Berhenti emang belum ada tapi bakal kepake, dulu ada
+CV model gitu."* Pertanyaannya: template mana yang mencetaknya?
+
+**Diukur ulang, dan hasilnya nol.** Kelima aset template didekode (bukan dibaca
+sebagai teks sumber) lalu seluruh XML-nya dicari `退職理由`, `退職`, dan `理由`:
+
+| Aset | XML | Kemunculan |
+|---|---|---|
+| `rirekisho-xlsx` | 13 | **0** |
+| `rirekisho-firma` | 14 | **0** |
+| `kinki` | 13 | **0** |
+| `jipa` | 13 | **0** |
+| `rirekisho-detail` | 14 | **0** |
+
+⚠️ Koreksi atas §3.1: `rirekisho-detail` **BISA** didekode. Audit 11-12 gagal
+karena base64-nya berbentuk konkatenasi (`'…' + '…'`), bukan array string seperti
+empat aset lain — bukan karena berkasnya rusak. Setelah didekode: 0 kemunculan.
+
+**Keputusan: tidak ditambahkan ke form mana pun.** Tiga dari lima template
+(KINKI, JIPA, Firma) adalah form resmi klien yang dicetak apa adanya; menaruh
+nilai di sel yang tidak didefinisikan form itu bukan perbaikan, melainkan
+penyimpangan dari template — persis kelas kesalahan yang audit ini kejar.
+`rirekisho-xlsx` dan `rirekisho-detail` pun bertabel tetap: menambah kolom berarti
+menggeser/menimpa sel yang sudah dipakai.
+
+**Yang tetap dikerjakan supaya "disiapkan" bukan janji kosong:**
+
+1. Jalur tulis–baca dibuktikan `netlify/functions/_lib/actions-master.test.ts`
+   (`migrasi 057 — alasan berhenti`): tiga slot menulis kolomnya sendiri,
+   `buildMasterNested` membacanya kembali, baris tanpa alasan tetap kosong.
+2. `e2e/form-column-parity.test.ts` mencatat `pekerjaan[].alasan` di
+   `PREPARED_NOT_PRINTED` dengan dua penjaga: kolomnya **harus** bisa diisi form,
+   dan **tidak boleh** ada template yang membacanya. Begitu suatu saat ada
+   renderer yang memakainya, tes merah dan entri itu wajib dipindah ke cakupan
+   biasa — jadi keputusan ini tidak bisa membusuk diam-diam.
+
+Template model lama yang dimaksud pemilik tidak ada di repo ini; kalau nanti
+asetnya masuk, yang perlu ditambah hanya satu baris di `buildValues` renderer
+tersebut (`data.pekerjaan[].alasan`) — datanya sudah mengalir sampai sana.

@@ -345,6 +345,28 @@ function writableColumns(): Set<string> {
  */
 const NO_FORM_FIELD_BY_DESIGN: Record<string, string> = {};
 
+/**
+ * Field yang SUDAH punya kolom + jalur tulis, tetapi BELUM dicetak template mana
+ * pun. Pemilik 2026-11-12: *"Alasan Berhenti emang belum ada tapi bakal kepake,
+ * dulu ada CV model gitu"*.
+ *
+ * KEPUTUSAN 2026-11-13 — sengaja TIDAK dicetak di lima form yang ada:
+ * kelima aset template diperiksa ulang (termasuk `rirekisho-detail`, yang pada
+ * audit 11-12 "gagal didekode" — ternyata hanya bentuk konkatenasi base64), dan
+ * TIDAK SATU pun memuat sel berlabel 退職理由/退職/理由. Menambahkannya berarti
+ * menaruh nilai di sel yang tidak didefinisikan form resmi klien — form KINKI,
+ * JIPA, dan Firma dicetak apa adanya untuk klien, jadi sel "ekstra" bukan
+ * perbaikan, melainkan penyimpangan dari template.
+ *
+ * Daftar ini menjaga janji itu tetap TERUKUR, bukan sekadar catatan: kolomnya
+ * harus benar-benar bisa diisi (tes berikut), dan begitu ada renderer yang
+ * membacanya, entri ini wajib dipindah ke cakupan biasa — tes "tidak basi"
+ * menuntutnya.
+ */
+const PREPARED_NOT_PRINTED: Record<string, string> = {
+  'pekerjaan[].alasan': 'Alasan Berhenti (migrasi 057) — belum ada sel 退職理由 di kelima aset template',
+};
+
 describe('paritas template → form (field yang dicetak ⊆ field yang bisa diisi)', () => {
   it('kontrol: perekam benar-benar melihat field (bukan himpunan kosong)', () => {
     for (const [id, paths] of templateReads()) {
@@ -396,5 +418,29 @@ describe('paritas template → form (field yang dicetak ⊆ field yang bisa diis
       [...(feeds.get(path) ?? [])].some((c) => writable.has(c)),
     );
     expect(stale).toEqual([]);
+  });
+
+  it('field yang disiapkan tetapi belum dicetak: kolomnya tetap bisa diisi', () => {
+    const writable = writableColumns();
+    const feeds = measuredFeeds();
+    const broken: string[] = [];
+    for (const path of Object.keys(PREPARED_NOT_PRINTED)) {
+      const sources = [...(feeds.get(path) ?? [])].filter((c) => writable.has(c));
+      if (sources.length === 0) broken.push(`${path} ← tidak ada kolom yang bisa ditulis form`);
+    }
+    // "Disiapkan" hanya sah kalau datanya benar-benar bisa masuk. Kalau tidak,
+    // yang kita punya bukan persiapan, melainkan janji kosong.
+    expect(broken).toEqual([]);
+  });
+
+  it('field yang disiapkan belum dicetak siapa pun (kalau sudah, pindahkan ke cakupan biasa)', () => {
+    const reads = templateReads();
+    const printed: string[] = [];
+    for (const path of Object.keys(PREPARED_NOT_PRINTED)) {
+      for (const [id, paths] of reads) {
+        if (paths.includes(path)) printed.push(`${id}: ${path}`);
+      }
+    }
+    expect(printed).toEqual([]);
   });
 });
