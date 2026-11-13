@@ -667,6 +667,20 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           previews[type] = { url, mime: mimeOfUrl(url), name: nameOfUrl(url) };
         }
         setDocPreview(prev => ({ ...previews, ...prev }));
+        /* SIM A dibaca dari `ai_data_json.berkas.sim_url`, bukan dari
+           `res.uploads` — ia satu-satunya berkas tanpa kolom master (lihat
+           catatan di `_lib/ai/cv.ts`). Tanpa baris ini slot SIM tampak kosong
+           setiap kali halaman dimuat ulang walaupun berkasnya tersimpan, yaitu
+           keluhan "sudah diunggah kok hilang" yang persis sedang dihindari. */
+        try {
+          const raw = (res as { AIDATAJSON?: unknown }).AIDATAJSON;
+          const parsed = typeof raw === 'string' && raw.trim() ? JSON.parse(raw) : null;
+          const simUrl = parsed?.berkas?.sim_url;
+          if (typeof simUrl === 'string' && /^https?:\/\//.test(simUrl)) {
+            setDocPreview(prev => ({ ...prev, sim: { url: simUrl, mime: mimeOfUrl(simUrl), name: nameOfUrl(simUrl) } }));
+            setDocStatus(prev => ({ sim: t('cv.doc_exists'), ...prev }));
+          }
+        } catch { /* JSON lama/rusak: biarkan slot kosong, jangan gagalkan draf */ }
         // hp = WA kandidat; kalau master belum punya no_wa, pakai target supaya
         // payload simpan tetap membawa nomor yang benar. NOTE: sengaja tetap
         // `waTarget`, bukan `draftWa` — pada jalur kandidat `cv.hp` sudah diisi
@@ -1102,6 +1116,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       foto: ['jpg', 'jpeg', 'png'],
       ktp: ['pdf', 'jpg', 'jpeg', 'png'],
       kk: ['pdf', 'jpg', 'jpeg', 'png'],
+      /* SIM A — foto/scan, sama kelasnya dengan KTP & KK. */
+      sim: ['pdf', 'jpg', 'jpeg', 'png'],
       ijazahSd: ['pdf', 'jpg', 'jpeg', 'png'],
       ijazahSmp: ['pdf', 'jpg', 'jpeg', 'png'],
       ijazahSma: ['pdf', 'jpg', 'jpeg', 'png'],
@@ -1210,7 +1226,6 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           /* Migrasi 022: tes & kebiasaan fisik (KINKI 計算テスト/体力試験/スポーツ). */
           tes_hitung: cv.tes_hitung, tes_pushup: cv.tes_pushup, tes_squat: cv.tes_squat,
           tinggal_kursus_tahun: cv.tinggal_kursus, olahraga: cv.olahraga },
-        lamakerja_diharapkan: cv.lamakerja,
         medis: {
           mata_kiri: cv.matakiri, mata_kanan: cv.matakanan, kacamata: cv.kacamata,
           buta_warna: cv.butawarna, tato: cv.tato, rokok: cv.rokok, alkohol: cv.alkohol,
@@ -1241,6 +1256,16 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
              terkirim — nilainya hilang setiap simpan. Sekarang dikirim dan
              mendarat di kolom `lama_di_jepang` (migrasi 022). */
           lama_di_jepang: cv.lama, mbti: cv.mbti,
+          /* 🔴 "Harapan lama kerja di Jepang (年)" HILANG SETIAP SIMPAN.
+             Baris ini dulu ditulis di TINGKAT ATAS payload
+             (`lamakerja_diharapkan: cv.lamakerja`, sejajar dengan `fisik` dan
+             `medis`), sedangkan server hanya menyimpan delapan seksi bernama —
+             `identitas/fisik/medis/pendidikan/pekerjaan/sertifikasi/keluarga/
+             wawancara`. Kunci di luar itu dibuang tanpa peringatan, jadi
+             angkanya terlihat terisi sampai halaman dimuat ulang, lalu kembali
+             kosong. Pembacanya (`AI_CV_PATHS.lamakerja`) memang menunggu di
+             `wawancara.lamakerja_diharapkan` — jadi tempatnya di sini. */
+          lamakerja_diharapkan: cv.lamakerja,
         },
         /* `no_coe` dan `ssw2` ikut di seksi `sertifikasi` supaya
            `AI_TO_MASTER_COLUMNS` memetakannya ke kolom `no_coe` / `bidangssw2`
@@ -2040,7 +2065,18 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
             </div>
           </Section>
 
-          <div class="u-grid-auto u-grid-auto--cards gap-3 mb-3">
+          {/* TIGA SEKSI BERAT — satu per baris sampai `xl`.
+              Dulu `u-grid-auto--cards` (min 15rem): di panel form yang hanya
+              65% lebar layar, 15rem berarti DUA kartu berdampingan mulai
+              ~500 px, jadi tiap kartu ~240 px — dan pada lebar itu label seperti
+              "Sertifikat Lisensi/SSW 2 (特定技能)" terpotong, dropdown berpasangan
+              kehilangan sisi kanjinya, dan informasi yang justru paling penting
+              untuk siswa hilang di balik tepi kotak. Pemilik 2026-11-13:
+              *"kalau di ponsel keknya sempit jadi informasi banyak yg kelewat"*.
+              Satu kolom penuh di bawah `xl` membuat kartu ~336 px di 360 px dan
+              ~780 px di 1024 — tidak ada yang terpotong. Di `xl` (1280+) ketiganya
+              kembali berdampingan seperti desktop yang sudah dipakai. */}
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
             <Section title={t("ai_cv.sec_pendidikan")} icon="fa-graduation-cap" color="emerald">
               {/* DULU seksi ini meminta hal yang SAMA dua kali: "Bhs Jepang" +
                   "Nilai" di sini, lalu "Jenis ujian" + "Nilai/skor" di repeater
@@ -2407,12 +2443,27 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 live element to it.) */}
           </Section>
 
-          <div class="u-grid-auto u-grid-auto--cards gap-3 mb-3">
+          {/* DUA kolom tetap, bukan `u-grid-auto--cards`.
+              Isinya 10 slot (4 di sini + 6 di blok berikutnya). Dengan auto-fit
+              15rem, panel form menghasilkan 2 kolom di jendela sempit dan 3 di
+              jendela lebar — dan 10 tidak habis dibagi 3, jadi selalu ada sel
+              kosong yang posisinya berpindah mengikuti lebar jendela (itulah
+              lubang di samping "Sertifikat SSW" yang dilaporkan pemilik).
+              Dua kolom: 4 slot = 2 baris penuh, 6 slot = 3 baris penuh, di
+              lebar berapa pun. Efek sampingnya juga lebih baik — di 3 kolom
+              kartu hanya ~253 px dan teks "No file chosen" terpotong. */}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             <UploadRow type="foto" label={t("cv.upload_foto")} icon="fa-camera" color="sky" accept="image/*" status={docStatus['foto']} preview={docPreview.foto} onPreview={() => setPreviewDoc({ type: 'foto', title: t('cv.upload_foto') })} onUpload={handleDocUpload} />
             <UploadRow type="jft" label={t("cv.upload_jft")} icon="fa-file-pdf" color="amber" accept=".pdf" status={docStatus['jft']} preview={docPreview.jft} onPreview={() => setPreviewDoc({ type: 'jft', title: t('cv.upload_jft') })} onUpload={handleDocUpload} />
             <UploadRow type="ssw" label={t("cv.upload_ssw")} icon="fa-file-signature" color="emerald" accept=".pdf" status={docStatus['ssw']} preview={docPreview.ssw} onPreview={() => setPreviewDoc({ type: 'ssw', title: t('cv.upload_ssw') })} onUpload={handleDocUpload} />
+            {/* SIM A — mengisi sel kosong di samping "Sertifikat SSW".
+                Kandidat sudah mengetik NOMOR SIM di seksi Identitas; yang belum
+                ada tempatnya adalah SCAN-nya, padahal agensi memintanya saat
+                pemberkasan. Diletakkan tepat setelah SSW supaya grid 2 kolom
+                genap (9 slot -> 10) dan tidak menyisakan lubang. */}
+            <UploadRow type="sim" label={t('cv.upload_sim')} icon="fa-id-card" color="amber" accept=".pdf,image/*" status={docStatus['sim']} preview={docPreview.sim} onPreview={() => setPreviewDoc({ type: 'sim', title: t('cv.upload_sim') })} onUpload={handleDocUpload} />
           </div>
-          <div class="u-grid-auto u-grid-auto--cards gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* PARITY ai_form.html:325-370 — enam dokumen ini (KTP, KK, dan
                 keempat ijazah) menerima `.pdf,image/*`; keempat baris ijazah
                 sempat di-port sebagai `.pdf` saja, jadi scan/foto ijazah tidak
@@ -2445,7 +2496,7 @@ function Section({ title, icon, color, borderLeft, children }: {
   title: string; icon: string; color: string; borderLeft?: boolean; children: preact.ComponentChildren;
 }) {
   return (
-    <div class={`bg-slate-900/40 border border-slate-800 rounded-lg p-2.5 md:p-3 mb-3 shadow ${borderLeft ? 'border-l-2 border-l-purple-500' : ''}`}>
+    <div class={`min-w-0 bg-slate-900/40 border border-slate-800 rounded-lg p-2.5 md:p-3 mb-3 shadow ${borderLeft ? 'border-l-2 border-l-purple-500' : ''}`}>
       {/* Judul seksi memakai metrik `.section-title` yang sama dengan CV Master
           supaya kedua form terasa satu keluarga (legacy pun begitu:
           `class="section-title text-purple-400"`). Kelasnya dipisah karena

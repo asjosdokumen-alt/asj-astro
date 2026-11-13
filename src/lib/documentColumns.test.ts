@@ -33,12 +33,16 @@ describe("MASTER_FILE_COLUMNS (C02 master-full)", () => {
 });
 
 describe("AI_FILE_COLUMNS (C03 ai-cv)", () => {
-  it("memetakan 9 dokumen state → payload key (fotoFile..univFile)", () => {
+  /* 10, bukan 9: SIM A ditambahkan 2026-11-13 (permintaan pemilik — sel kosong
+     di samping "Sertifikat SSW" diisi tempat unggah SIM). Ia satu-satunya yang
+     TIDAK punya kolom master; URL-nya hidup di `ai_data_json.berkas.sim_url`. */
+  it("memetakan 10 dokumen state → payload key (fotoFile..simFile)", () => {
     expect(AI_FILE_COLUMNS).toEqual({
       foto: "fotoFile", jft: "jftFile", ssw: "sswFile",
       ktp: "ktpFile", kk: "kkFile",
       ijazahSd: "ijazahSdFile", ijazahSmp: "ijazahSmpFile",
       ijazahSma: "ijazahSmaFile", univ: "univFile",
+      sim: "simFile",
     });
   });
 

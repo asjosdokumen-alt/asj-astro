@@ -2466,6 +2466,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "cv.upload_foto": "Pas Foto",
     "cv.upload_jft": "Sertifikat JFT",
     "cv.upload_ssw": "Sertifikat SSW",
+    "cv.upload_sim": "SIM A",
     "cv.field_laka": "Kecelakaan",
     "cv.field_riwayat_jp": "Pernah ke Jepang?",
     "cv.field_kelebihan": "Kelebihan / 長所",

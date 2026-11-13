@@ -1882,6 +1882,7 @@ export const jpTranslations: Record<string, string> = {
     "cv.upload_foto": "証明写真",
     "cv.upload_jft": "JFT証明書",
     "cv.upload_ssw": "SSW証明書",
+    "cv.upload_sim": "運転免許証",
     "cv.field_laka": "事故歴",
     "cv.field_riwayat_jp": "渡日歴",
     "cv.field_kelebihan": "長所",

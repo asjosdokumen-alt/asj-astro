@@ -22,6 +22,13 @@ export const AI_FILE_COLUMNS: Record<string, string> = {
   ktp: 'ktpFile', kk: 'kkFile',
   ijazahSd: 'ijazahSdFile', ijazahSmp: 'ijazahSmpFile',
   ijazahSma: 'ijazahSmaFile', univ: 'univFile',
+  /* SIM A — permintaan pemilik 2026-11-13: sel kosong di samping "Sertifikat
+     SSW" diisi tempat unggah SIM. Berbeda dari delapan berkas di atas, SIM
+     TIDAK punya kolom di `master_database_candidate` (kolom `driver_license`
+     hanya menyimpan NOMORNYA). Karena itu server menyimpannya di
+     `ai_data_json.berkas.sim_url`, bukan di kolom — supaya tidak perlu migrasi
+     dan tidak ada risiko PGRST204 pada deploy. */
+  sim: 'simFile',
 };
 
 /** Siswa-baru form (C04): identity map (state key == payload key). */

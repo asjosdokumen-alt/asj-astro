@@ -336,6 +336,8 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       { key: 'UNIVERSITAS', url: d.univFile },
       { key: 'JFT', url: d.jftFile },
       { key: 'SSW', url: d.sswFile },
+      /* SIM A (2026-11-13). Kelasnya sama dengan KTP/KK: foto atau PDF. */
+      { key: 'SIM', url: d.simFile },
     ];
     const bad = badDocumentUrls(docCheck);
     if (bad.length) {
@@ -485,6 +487,22 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
           if (text !== '') merged[k] = text;
         }
         aiOut.kenalan_jepang = merged;
+      }
+
+      /* ── SIM A: satu-satunya berkas yang TIDAK punya kolom sendiri ─────────
+         Delapan berkas lain mendarat di kolom (`ktp_url`, `kk_url`, …). SIM
+         tidak punya kolom — `driver_license` menyimpan NOMORNYA, bukan
+         berkasnya — dan menambah kolom berarti migrasi yang harus dijalankan
+         SEBELUM deploy (kalau tidak, PostgREST menolak seluruh simpan dengan
+         PGRST204 dan kandidat kehilangan SEMUA isian, bukan cuma SIM).
+         Jadi URL-nya hidup di `ai_data_json.berkas.sim_url`: jsonb yang sudah
+         ada, tanpa DDL. `berkas` sengaja TIDAK masuk `AI_MANAGED_KEYS` supaya
+         nilai lama tetap diwarisi saat kandidat tidak mengunggah ulang. */
+      if (d.simFile) {
+        const lama = (aiOut.berkas && typeof aiOut.berkas === 'object')
+          ? (aiOut.berkas as Record<string, unknown>)
+          : {};
+        aiOut.berkas = { ...lama, sim_url: String(d.simFile) };
       }
 
       const masterBody: any = {
