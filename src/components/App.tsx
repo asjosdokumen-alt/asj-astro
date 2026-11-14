@@ -1102,8 +1102,19 @@ export default function App(
             see the effect above. Same node, same state, only the containing
             block changes. `z-40` sits above page content (the old `z-30`) and
             still below the scrim (95) / drawer (100), so the layering against
-            the open menu is exactly what it was. */}
-        <div class={`${navFixed ? "fixed top-3 right-3 z-40" : "absolute top-4 right-4 z-30"} flex items-center gap-2`}>
+            the open menu is exactly what it was.
+
+            ── OFFSET DIPINDAH KE `.header-controls` (2026-11-14) ────────────
+            Sebelumnya `top-4 right-4` (16 px) / `top-3 right-3` (12 px) —
+            dan di iPhone itu BERARTI di bawah notch. `BaseLayout.astro` sudah
+            memakai `viewport-fit=cover`, jadi `env(safe-area-inset-*)` hidup
+            dan pojok kanan atas layar benar-benar tertutup sudut membulat +
+            area status. Terukur di 390×844: tombol 44×44 mulai 16 px dari
+            tepi. Owner: "terlalu pojok kanan atas jadi susah di pencet".
+            Offset sekarang `env(safe-area-inset-*) + 1rem` (lihat global.css),
+            jadi di perangkat ber-notch tombol turun ke bawah notch, bukan
+            menempel di sudut fisik layar. */}
+        <div class={`header-controls ${navFixed ? "fixed z-40" : "absolute z-30"} flex items-center gap-2`}>
           {/* ⚠ NO `text-white` HERE, AND THAT IS THE FIX (2026-11-10).
               `.hamburger-btn` already owns this chip's colours in both themes
               (`global.css` §hamburger: black 70% + white icon on the dark
@@ -1116,9 +1127,17 @@ export default function App(
               `rgba(255,255,255,0.65)` with icon `rgb(255,255,255)` — a white
               hamburger on a white chip. No gate could see it: `e2e:contrast`
               measures TEXT, and this control's label is an SVG glyph. Removing
-              the utility lets `.hamburger-btn` do the job it was written for. */}
-          <button type="button" ref={hamburgerRef} onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center bg-black/70 hover:bg-zinc-800 rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
-            <Icon name={menuOpen ? "times" : "bars"} class="text-lg" />
+              the utility lets `.hamburger-btn` do the job it was written for.
+
+              ── 44 → 48 px + HIT AREA 64 px (2026-11-14) ──────────────────
+              DESIGN.md:691 menulis ">=44 px, idealnya 48 px"; tombol ini
+              berhenti di angka minimum. `w-12 h-12` = 48 px, dan
+              `.hamburger-btn::after` (global.css) menambah 8 px transparan di
+              tiap sisi → area ketuk 64 px tanpa mengubah ukuran visual
+              lingkaran. Ikon naik `text-lg` → `text-xl` supaya sasaran
+              terbaca sebagai tombol, bukan titik. */}
+          <button type="button" ref={hamburgerRef} onClick={toggleMenu} class="w-12 h-12 flex items-center justify-center bg-black/70 hover:bg-zinc-800 rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
+            <Icon name={menuOpen ? "times" : "bars"} class="text-xl" />
           </button>
         </div>
 

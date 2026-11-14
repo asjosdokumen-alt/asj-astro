@@ -749,6 +749,41 @@ body {
    doesn't punch a black hole through the sakura image. */
 .hamburger-btn { background-color: rgba(0, 0, 0, 0.7); }
 .hamburger-btn:hover { background-color: #27272a; }   /* zinc-800 */
+
+/* ── AREA KETUK 64 px UNTUK TOMBOL 48 px (2026-11-14) ────────────────────────
+   Keluhan owner di Android/iOS: tombol menu "terlalu pojok kanan atas jadi
+   susah di pencet". Dua sebab, keduanya diperbaiki di sini dan di App.tsx:
+
+   1. OFFSET TIDAK MENGHORMATI SAFE AREA. `BaseLayout.astro` memakai
+      `viewport-fit=cover`, jadi di iPhone `env(safe-area-inset-top/right)`
+      bernilai > 0 dan pojok kanan atas layar tertutup sudut membulat + area
+      status. `top-4 right-4` menaruh tombol TEPAT di area itu. Offset sekarang
+      `inset + 1rem`, dihitung dari tepi yang AMAN.
+
+   2. TOMBOL BERHENTI DI ANGKA MINIMUM. 44 px adalah lantai DESIGN.md, bukan
+      sasaran; di sini visualnya 48 px (`w-12 h-12`) dan pseudo-elemen di bawah
+      menambah 8 px transparan di tiap sisi sehingga area ketuknya 64 px.
+      Pseudo-elemen ikut elemen induk saat hit-testing, jadi ini menambah
+      sasaran TANPA menggeser tata letak atau memperbesar lingkaran.
+
+   `position: relative` wajib supaya `inset: -8px` dihitung dari tombol, bukan
+   dari header. Jangan tambahkan `pointer-events: none` di `::after` — itu
+   mematikan seluruh gunanya. */
+.hamburger-btn { position: relative; }
+.hamburger-btn::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+}
+
+/* Offset bersama untuk kontrol header (hamburger). Satu tempat, dua state:
+   `absolute` selama header masih menempel di band, `fixed` setelah lewat.
+   `env()` = 0 di desktop, jadi angkanya tinggal 1rem. */
+.header-controls {
+  top: calc(env(safe-area-inset-top, 0px) + 1rem);
+  right: calc(env(safe-area-inset-right, 0px) + 1rem);
+}
 :where([data-theme="light"]) .hamburger-btn {
   background-color: rgba(255, 255, 255, 0.65);
   color: #1f1d1c;
