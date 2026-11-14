@@ -899,6 +899,31 @@ export const CONTACT_HOURS: Text = {
   text: 'Senin – Sabtu, 08.00 – 16.00 WIB',
 };
 
+/**
+ * ── JAM BUKA, BENTUK TERSTRUKTUR (2026-11-14) ───────────────────────────────
+ *
+ * `CONTACT_HOURS` di atas adalah PROSA untuk dibaca manusia; ini bentuk yang
+ * dibaca mesin (`openingHoursSpecification` di JSON-LD). Keduanya berasal dari
+ * SATU pernyataan owner yang sama ("senin -sabtu jam 8-jam 4 sore"), dan
+ * keduanya harus diubah bersamaan.
+ *
+ * KENAPA TIDAK DIPARSE DARI PROSA. "Senin – Sabtu, 08.00 – 16.00 WIB" adalah
+ * teks bebas berbahasa Indonesia; parser untuk itu akan jadi tebakan yang
+ * rapuh, dan kegagalannya diam (jam hilang dari hasil pencarian, bukan error).
+ *
+ * PENJAGANYA SEBUAH TES, bukan komentar: `siteMeta.test.ts` memastikan
+ * `dayOfWeek` berisi enam hari dan `opens`/`closes` sama dengan angka di
+ * prosa. Kalau owner mengubah jamnya, tes merah sampai keduanya ikut.
+ *
+ * `dayOfWeek` memakai nama Inggris karena itu yang dituntut schema.org —
+ * bukan pilihan gaya.
+ */
+export const CONTACT_HOURS_SPEC = {
+  dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+  opens: '08:00',
+  closes: '16:00',
+} as const;
+
 /** What to expect outside the window above — see CONTACT_HOURS. */
 export const CONTACT_HOURS_NOTE: Text = {
   key: 'profile.contact_hours_note',

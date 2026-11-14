@@ -1414,6 +1414,130 @@ async function run() {
       });
     }
 
+    // ── KONTRAS TEKS DI ATAS ARTWORK — YANG TIDAK DILIHAT GATE LAIN ────────
+    // ADDED 2026-11-14. `e2e/test-contrast.mjs` melewati 4.368 elemen teks
+    // karena latarnya gambar/gradien, dan itu PERSIS teks hero + band film —
+    // teks terpenting di halaman. Gate itu jujur menyebutnya "unmeasurable
+    // (skipped, NOT a pass)", tetapi tidak ada yang menutup lubangnya.
+    //
+    // Metodenya mengukur APA YANG DILUKIS, bukan apa yang dijanjikan CSS:
+    // teks disembunyikan sebentar (`visibility`, bukan `display`, supaya
+    // kotaknya tidak berubah), kotak itu dipotret, lalu diambil piksel
+    // TERANG-nya — kasus terburuk untuk teks putih — dan rasionya dihitung
+    // dengan rumus luminance WCAG.
+    //
+    // Ambangnya ambang WCAG yang sebenarnya, bukan angka yang dipilih supaya
+    // hijau: 3:1 untuk teks besar (h1/h3), 4,5:1 untuk teks normal.
+    // TERUKUR 2026-11-14 @1440: hero h1 5,91 · hero sub 12,41 ·
+    // film h3 12,96 · film body 18,23 — semuanya lulus dengan margin.
+    if (width >= 1024) {
+      await test(`${width}px /: teks di atas artwork tetap lolos kontras WCAG`, async () => {
+        const ctx = await browser.newContext({
+          viewport: { width, height: 900 },
+          deviceScaleFactor: 1,
+        });
+        const page = await ctx.newPage();
+
+        const lumOf = (r, g, b) => {
+          const f = (c) => {
+            const s = c / 255;
+            return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+          };
+          return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+        };
+        const WHITE = lumOf(255, 255, 255);
+
+        /** @returns {Promise<number>} rasio terburuk terhadap piksel terang. */
+        async function worstRatio(selector) {
+          const box = await page.evaluate((sel) => {
+            const el = document.querySelector(sel);
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
+          }, selector);
+          if (!box || box.w < 8 || box.h < 8) {
+            throw new Error(`"${selector}" tidak ditemukan atau kotaknya terlalu kecil (${JSON.stringify(box)})`);
+          }
+          await page.evaluate((sel) => {
+            const el = document.querySelector(sel);
+            if (el) el.style.visibility = 'hidden';
+          }, selector);
+          await page.waitForTimeout(120);
+          const shot = (
+            await page.screenshot({ clip: { x: box.x, y: box.y, width: box.w, height: box.h } })
+          ).toString('base64');
+          await page.evaluate((sel) => {
+            const el = document.querySelector(sel);
+            if (el) el.style.visibility = '';
+          }, selector);
+
+          const maxL = await page.evaluate(async (data) => {
+            const img = new Image();
+            img.src = `data:image/png;base64,${data}`;
+            await img.decode();
+            const c = document.createElement('canvas');
+            c.width = img.width;
+            c.height = img.height;
+            const g = c.getContext('2d');
+            g.drawImage(img, 0, 0);
+            const d = g.getImageData(0, 0, c.width, c.height).data;
+            const f = (v) => {
+              const s = v / 255;
+              return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+            };
+            let best = 0;
+            for (let i = 0; i < d.length; i += 4) {
+              const L = 0.2126 * f(d[i]) + 0.7152 * f(d[i + 1]) + 0.0722 * f(d[i + 2]);
+              if (L > best) best = L;
+            }
+            return best;
+          }, shot);
+          return (WHITE + 0.05) / (maxL + 0.05);
+        }
+
+        try {
+          await page.goto(`${BASE}/`, { waitUntil: 'networkidle', timeout: 45000 });
+          await page.waitForTimeout(600);
+
+          const problems = [];
+          const checks = [
+            ['header.hero-band h1', 3, 'hero h1 (teks besar)'],
+            ['header.hero-band p.text-body', 4.5, 'hero sub (teks normal)'],
+          ];
+          for (const [sel, floor, label] of checks) {
+            const r = await worstRatio(sel);
+            if (r < floor) problems.push(`${label}: ${r.toFixed(2)}:1 (lantai ${floor}:1)`);
+          }
+
+          // Band film: panggung harus terlihat supaya babak aktifnya ada.
+          const top = await page.evaluate(() => {
+            const t = document.querySelector('[data-film-track]');
+            return t ? t.getBoundingClientRect().top + window.scrollY : null;
+          });
+          if (top === null) throw new Error('no [data-film-track]');
+          await page.evaluate((y) => window.scrollTo(0, y), top + 40);
+          await page.waitForTimeout(1600);
+          for (const [sel, floor, label] of [
+            ['.film-ch.is-on .film-copy h3', 3, 'film h3 (teks besar)'],
+            ['.film-ch.is-on .film-body', 4.5, 'film body (teks normal)'],
+          ]) {
+            const r = await worstRatio(sel);
+            if (r < floor) problems.push(`${label}: ${r.toFixed(2)}:1 (lantai ${floor}:1)`);
+          }
+
+          if (problems.length) {
+            throw new Error(
+              `teks putih di atas artwork tidak lolos kontras:\n       · ${problems.join('\n       · ')}\n` +
+                `       Ini kelas yang tidak terlihat e2e:contrast — ia MELEWATI teks di atas gambar, ` +
+                `dan itu justru hero + band film. Perbaiki scrim-nya, jangan turunkan ambangnya.`,
+            );
+          }
+        } finally {
+          await ctx.close();
+        }
+      });
+    }
+
     // ── FAQ: one row per question in the data ──────────────────────────────
     // ADDED 2026-09-29 with the #faq section. Mirrors the testimonial gate's
     // shape deliberately, including its two anti-vacuity guards, because the

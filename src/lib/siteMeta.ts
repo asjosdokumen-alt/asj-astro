@@ -204,6 +204,15 @@ export function organizationJsonLd(input: {
   logo?: string | null;
   /** Profile URLs (Instagram, TikTok, Maps listing). */
   sameAs?: string[];
+  /**
+   * Jam buka terstruktur. Prosa jam buka sudah ada di halaman (#kontak), tapi
+   * mesin pencari tidak membacanya — `openingHoursSpecification` yang membuat
+   * jam itu muncul di panel lokal, dan itu niat pencarian dengan konversi
+   * tertinggi untuk sebuah LPK ("LPK Jepang Ponorogo buka jam berapa").
+   *
+   * Opsional: pemanggil yang tidak punya jam tidak mengarang jam.
+   */
+  openingHours?: { dayOfWeek: readonly string[]; opens: string; closes: string } | null;
   origin?: string | null;
 }): Record<string, unknown> | null {
   const origin = input.origin === undefined ? siteOrigin() : input.origin;
@@ -234,6 +243,18 @@ export function organizationJsonLd(input: {
     },
     ...(input.logo ? { logo: input.logo } : {}),
     ...(input.sameAs?.length ? { sameAs: input.sameAs } : {}),
+    ...(input.openingHours
+      ? {
+          openingHoursSpecification: [
+            {
+              '@type': 'OpeningHoursSpecification',
+              dayOfWeek: [...input.openingHours.dayOfWeek],
+              opens: input.openingHours.opens,
+              closes: input.openingHours.closes,
+            },
+          ],
+        }
+      : {}),
   };
 }
 

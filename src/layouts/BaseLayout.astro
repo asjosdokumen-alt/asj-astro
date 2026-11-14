@@ -8,6 +8,7 @@ import { hreflangAlternates, organizationJsonLd, jsonLdScript, absoluteUrl } fro
 import {
   CONTACT_ADDRESS,
   CONTACT_EMAIL,
+  CONTACT_HOURS_SPEC,
   CONTACT_PHONES,
   CONTACT_INSTAGRAM,
   CONTACT_TIKTOK,
@@ -155,6 +156,7 @@ const orgJsonLd = jsonLdScript(
     email: CONTACT_EMAIL,
     latitude: MAPS_LAT,
     longitude: MAPS_LNG,
+    openingHours: CONTACT_HOURS_SPEC,
     sameAs: [
       `https://www.instagram.com/${CONTACT_INSTAGRAM}`,
       `https://www.tiktok.com/@${CONTACT_TIKTOK}`,

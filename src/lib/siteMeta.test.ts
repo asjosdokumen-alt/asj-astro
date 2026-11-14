@@ -22,6 +22,7 @@ import {
   organizationJsonLd,
   jsonLdScript,
 } from './siteMeta';
+import { CONTACT_HOURS, CONTACT_HOURS_SPEC } from './companyProfile';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -160,6 +161,49 @@ describe('organizationJsonLd', () => {
     const ld = organizationJsonLd({ ...base, origin: 'https://e.com' });
     expect(ld?.['@type']).toBe('EducationalOrganization');
     expect(ld?.['@id']).toBe('https://e.com/#organization');
+  });
+
+  /**
+   * ── JAM BUKA: PROSA DAN STRUKTUR TIDAK BOLEH BERPISAH (2026-11-14) ────────
+   * Halaman mencetak jam buka sebagai kalimat (`CONTACT_HOURS.text`), dan
+   * JSON-LD mencetaknya sebagai `openingHoursSpecification`. Dua bentuk dari
+   * satu fakta — dan dua bentuk yang gampang menyimpang: owner mengubah jam di
+   * satu tempat, mesin pencari tetap menampilkan jam lama, tanpa satu pun
+   * halaman terlihat salah.
+   *
+   * Tes ini mengikat keduanya ke angka yang sama. Kalau owner mengubah jam,
+   * yang merah adalah tes ini — bukan panel Google enam bulan kemudian.
+   */
+  it('jam buka terstruktur memuat angka yang sama dengan prosa di halaman', () => {
+    const ld = organizationJsonLd({
+      ...base,
+      origin: 'https://e.com',
+      openingHours: CONTACT_HOURS_SPEC,
+    });
+    const spec = (
+      ld as {
+        openingHoursSpecification?: {
+          dayOfWeek: string[];
+          opens: string;
+          closes: string;
+        }[];
+      }
+    )?.openingHoursSpecification?.[0];
+    expect(spec, 'openingHoursSpecification hilang').toBeTruthy();
+    expect(spec?.dayOfWeek).toHaveLength(6);
+    expect(spec?.opens).toBe('08:00');
+    expect(spec?.closes).toBe('16:00');
+
+    // Prosa yang dibaca pengunjung harus menyebut angka yang sama.
+    expect(CONTACT_HOURS.text).toContain('08.00');
+    expect(CONTACT_HOURS.text).toContain('16.00');
+    expect(CONTACT_HOURS.text).toContain('Senin');
+    expect(CONTACT_HOURS.text).toContain('Sabtu');
+  });
+
+  it('tanpa `openingHours`, blok itu tidak muncul sama sekali', () => {
+    const ld = organizationJsonLd({ ...base, origin: 'https://e.com' });
+    expect(JSON.stringify(ld)).not.toContain('openingHoursSpecification');
   });
 
   it('carries NO counts — the anti-fabrication rule, enforced here', () => {
