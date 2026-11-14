@@ -2493,12 +2493,19 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
 }
 
 .u-cursor-ring,
-.u-cursor-dot {
+.u-cursor-dot,
+.u-cursor-bar {
   position: absolute;
   left: 0;
   top: 0;
-  border-radius: 9999px;
-  mix-blend-mode: difference;
+}
+
+/* Titik dan batang harus MENEMPEL PERSIS ke pointer; cincin sengaja
+   tertinggal. Satu pembungkus supaya offset-nya ditulis sekali per frame. */
+.u-cursor-exact {
+  position: absolute;
+  left: 0;
+  top: 0;
 }
 
 .u-cursor-ring {
@@ -2508,15 +2515,19 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
   width: 28px;
   height: 28px;
   margin: -14px 0 0 -14px;
+  border-radius: 9999px;
   border: 1px solid #fff;
-  transition: transform 260ms var(--ease-out-expo);
+  mix-blend-mode: difference;
+  transition: transform 260ms var(--ease-out-expo), opacity 160ms linear;
 }
 
 .u-cursor-dot {
   width: 6px;
   height: 6px;
   margin: -3px 0 0 -3px;
+  border-radius: 9999px;
   background: #fff;
+  mix-blend-mode: difference;
   /* NO transform transition here, and no transform in the hover state: the
      script writes this element's transform EVERY FRAME (it is the child that
      closes the gap between the exact pointer and the lagging ring). A
@@ -2524,6 +2535,24 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
      the dot into a second, mushier ring. Opacity is the only thing CSS
      animates on it. */
   transition: opacity 180ms linear;
+}
+
+/* ── I-BEAM: BENTUK YANG MENGEMBALIKAN INFORMASI (2026-11-14) ─────────
+   Kursor asli memberi tahu "teks ini bisa dipilih" lewat I-beam, dan
+   menyembunyikannya menghapus satu-satunya penanda itu — keluhan pemilik:
+   "kok kek gak cursor mouse biasa". Batang ini mengembalikannya. Ia elemen
+   SENDIRI, bukan `width`/`height` titik yang dianimasikan, karena transform
+   titik ditulis tiap frame oleh skrip dan transisi width/height akan
+   memicu layout. Dua elemen, dua properti — aturan yang sama dengan §9f. */
+.u-cursor-bar {
+  width: 2px;
+  height: 18px;
+  margin: -9px 0 0 -1px;
+  border-radius: 1px;
+  background: #fff;
+  mix-blend-mode: difference;
+  opacity: 0;
+  transition: opacity 140ms linear;
 }
 
 /* Over anything clickable the ring opens up and the dot steps aside — the
@@ -2538,6 +2567,32 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
 }
 
 .u-cursor.is-hot .u-cursor-dot {
+  opacity: 0;
+}
+
+/* Teks: cincin pergi, titik jadi I-beam. */
+.u-cursor.is-text .u-cursor-ring {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.u-cursor.is-text .u-cursor-dot {
+  opacity: 0;
+}
+
+.u-cursor.is-text .u-cursor-bar {
+  opacity: 1;
+}
+
+/* Gambar: cincin melebar jadi bingkai, titik pergi. Bingkai, bukan label —
+   galeri di halaman ini TIDAK punya lightbox (GalleryGrid.tsx), jadi label
+   "Lihat" akan menjanjikan sesuatu yang tidak terjadi saat diklik. */
+.u-cursor.is-media .u-cursor-ring {
+  transform: scale(1.6);
+  border-width: 1.5px;
+}
+
+.u-cursor.is-media .u-cursor-dot {
   opacity: 0;
 }
 

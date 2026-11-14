@@ -424,6 +424,17 @@ const orgJsonLd = jsonLdScript(
        * mematahkan premis `e2e/test-scroll-motion.mjs` (terukur: 24/25).
        */
       function replayable(el){
+        /* BAND YANG MENGELOLA GERAKNYA SENDIRI TIDAK DIPUTAR ULANG.
+           `#alur` adalah band film setinggi 6071 px dengan panggung
+           `position: sticky` di dalamnya, dan entrance-nya `curtain` — sebuah
+           wipe `clip-path` yang memotong SELURUH band ke nol lalu membukanya.
+           Memutarnya ulang berarti: begitu pengunjung menggulir balik ke
+           film, seluruh panggung ter-clip sekejap lalu terbuka 860 ms —
+           terlihat sebagai BLINK. Dilaporkan pemilik 2026-11-14: "kalau
+           scroll bawah ke atas kek nya eror ... ngeblink nge blink".
+           Section.astro menandainya `data-no-replay` dari prop yang sama
+           dengan `drift={false}`, jadi tidak ada call site yang bisa lupa. */
+        if (el.hasAttribute("data-no-replay")) return false;
         if (el.hasAttribute("data-scroll") && el.hasAttribute("data-enter")) return false;
         return el.hasAttribute("data-enter") || el.hasAttribute("data-motion-words");
       }

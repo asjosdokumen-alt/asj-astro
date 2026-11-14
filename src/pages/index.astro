@@ -2976,8 +2976,24 @@ import { GALLERY } from '../lib/gallery';
       const layer = document.createElement('div');
       layer.className = 'u-cursor';
       layer.setAttribute('aria-hidden', 'true');
-      layer.innerHTML = '<i class="u-cursor-ring"></i><i class="u-cursor-dot"></i>';
-      const dot = layer.lastElementChild as HTMLElement;
+      /* TIGA BENTUK, SATU PENUNJUK (2026-11-14).
+         Sebelum ini kursornya hanya titik + cincin, dan itu MENGHAPUS
+         informasi: kursor asli memberi tahu "ini teks, bisa dipilih" (I-beam)
+         dan "ini gambar" tanpa satu pun kata. Pemilik: "cursornya bulat ini
+         fungsinya apa kok kek gak cursor mouse biasa".
+
+         Sekarang bentuknya mengikuti apa yang ada di bawahnya:
+           teks    -> batang tipis (I-beam), cincin disembunyikan
+           gambar  -> cincin melebar jadi bingkai, titik disembunyikan
+           kontrol -> cincin membesar (sudah ada)
+
+         `u-cursor-exact` membungkus titik + batang karena keduanya harus
+         MENEMPEL PERSIS ke pointer, sedangkan cincin sengaja tertinggal.
+         Satu pembungkus = satu penulisan transform per frame, bukan dua. */
+      layer.innerHTML =
+        '<i class="u-cursor-ring"></i>' +
+        '<i class="u-cursor-exact"><i class="u-cursor-dot"></i><i class="u-cursor-bar"></i></i>';
+      const exact = layer.querySelector('.u-cursor-exact') as HTMLElement;
 
       let tx = window.innerWidth / 2;
       let ty = window.innerHeight / 2;
@@ -3011,11 +3027,21 @@ import { GALLERY } from '../lib/gallery';
       /* Satu listener di dokumen, bukan satu per tautan: halaman ini punya
          ratusan tautan dan tombol, dan memasang/mencabut listener saat
          pointer masuk-keluar adalah pekerjaan yang tidak perlu. */
+      /* Urutannya adalah prioritas, bukan kelengkapan: sebuah tautan yang
+         berisi <img> harus terbaca sebagai tautan, bukan sebagai gambar. */
       const HOT = 'a, button, [role="button"], summary, label, select, [data-cursor-hot]';
+      const MEDIA = 'img, picture, video, figure, [data-cursor-media]';
+      const TEXT =
+        'p, h1, h2, h3, h4, h5, h6, li, dt, dd, blockquote, td, th, figcaption, span, strong, em, small';
       const onOver = (e: Event) => {
         const el = e.target;
-        const hot = el instanceof Element && !!el.closest(HOT);
+        if (!(el instanceof Element)) return;
+        const hot = !!el.closest(HOT);
+        const media = !hot && !!el.closest(MEDIA);
+        const text = !hot && !media && !!el.closest(TEXT);
         layer.classList.toggle('is-hot', hot);
+        layer.classList.toggle('is-media', media);
+        layer.classList.toggle('is-text', text);
       };
 
       const loop = () => {
@@ -3050,7 +3076,7 @@ import { GALLERY } from '../lib/gallery';
         // Titik adalah ANAK dari lapis yang sudah bergerak bersama cincin,
         // jadi ia hanya perlu menutup selisihnya — dan selisih itu nol
         // begitu cincin sampai.
-        dot.style.transform = `translate3d(${(tx - rx).toFixed(2)}px, ${(ty - ry).toFixed(2)}px, 0)`;
+        exact.style.transform = `translate3d(${(tx - rx).toFixed(2)}px, ${(ty - ry).toFixed(2)}px, 0)`;
         cursorRaf = requestAnimationFrame(loop);
       };
 
