@@ -2451,9 +2451,13 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
        this page is long and a slow ring becomes a distraction while
        scrolling.
 
-   `mix-blend-mode: difference` is what makes ONE cursor work on both
-   themes: white on the dark hero, black on the white canvas, and it needs
-   no theme switch because the page already flips `data-theme`.
+   SATU KURSOR, DUA WARNA — bukan `mix-blend-mode: difference` (2026-11-14).
+   Gagasan "blend supaya satu kursor jalan di dua tema" TERDENGAR benar dan
+   TIDAK PERNAH BEKERJA: lapisan ini digerakkan `transform` tiap frame, dan
+   transform membuat stacking context yang mengisolasi blend anak-anaknya.
+   Terukur di atas lembar putih: spread 0.0, kursornya hilang sama sekali
+   (keluhan owner). Sekarang inti putih + halo gelap 1 px: di atas putih yang
+   terbaca halonya, di atas gelap yang terbaca intinya, tanpa blend.
 
    NOTHING IS HIDDEN BY THIS FILE. The native cursor is hidden only when
    `html.has-cursor` is present, and that class is added by the script AFTER
@@ -2472,8 +2476,36 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
   transition: opacity 240ms var(--ease-out-expo);
   /* The whole layer is positioned by ONE transform, written per frame.
      Children use their own transform for the hover scale, so the two never
-     fight over the same property. */
-  contain: layout style;
+     fight over the same property.
+
+     ── KENAPA `mix-blend-mode: difference` DILEPAS (2026-11-14) ────────────
+     Owner: "cursornya putih... ketika hover di tempat kosong putih jadi gak
+     kelihatan sama sekali."
+
+     `difference` seharusnya memetakan putih-di-atas-putih menjadi hitam, dan
+     itu tidak pernah terjadi. Sebabnya BUKAN `contain` (itu sudah dicurigai
+     lebih dulu dan salah): **`transform` yang ditulis tiap frame pada lapisan
+     ini membuat STACKING CONTEXT**, dan stacking context mengisolasi
+     `mix-blend-mode` milik anak-anaknya — cincin membaur dengan latar
+     transparan lapisan, bukan dengan halaman. Putih tetap putih.
+
+     TERUKUR, bukan dugaan. Lembar putih 1440x900 disuntik di bawah lapisan
+     kursor (z 9000 vs 9999), pointer digerakkan ke tengahnya, 52x52 px di
+     sekitar pointer disampel:
+       · `contain: layout style` + blend  → min 255 max 255 spread 0.0
+       · `contain` dilepas, blend tetap   → min 255 max 255 spread 0.0
+       · blend dilepas, dua warna (kini)  → cincin dan titik terbaca
+
+     Jadi masalahnya struktural: lapisan ini HARUS bergerak dengan transform,
+     dan transform selalu mengisolasi blend. Memindahkan blend ke lapisan
+     (opsi yang sempat dipertimbangkan) menuntut lapisan selebar viewport
+     yang di-composite ulang tiap frame — biaya yang tidak sepadan untuk
+     kursor.
+
+     GANTINYA: dua warna. Inti putih + halo gelap 1 px. Di atas putih yang
+     terbaca halonya, di atas gelap yang terbaca intinya. Tidak ada blend,
+     tidak ada isolasi, dan hasilnya sama di semua mesin — `difference` pada
+     elemen `position: fixed` + `transform` juga rapuh di Safari. */
 }
 
 /* ── HANYA MUNCUL SETELAH POINTER BENAR-BENAR BERGERAK (2026-11-14) ──────
@@ -2517,7 +2549,10 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
   margin: -14px 0 0 -14px;
   border-radius: 9999px;
   border: 1px solid #fff;
-  mix-blend-mode: difference;
+  /* Halo gelap 1 px di LUAR inti putih. Inilah yang membuat cincin tetap
+     terbaca di atas permukaan putih — lihat catatan `difference` di
+     `.u-cursor`. */
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.32);
   transition: transform 260ms var(--ease-out-expo), opacity 160ms linear;
 }
 
@@ -2527,7 +2562,7 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
   margin: -3px 0 0 -3px;
   border-radius: 9999px;
   background: #fff;
-  mix-blend-mode: difference;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.38);
   /* NO transform transition here, and no transform in the hover state: the
      script writes this element's transform EVERY FRAME (it is the child that
      closes the gap between the exact pointer and the lagging ring). A
@@ -2550,7 +2585,7 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
   margin: -9px 0 0 -1px;
   border-radius: 1px;
   background: #fff;
-  mix-blend-mode: difference;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.32);
   opacity: 0;
   transition: opacity 140ms linear;
 }

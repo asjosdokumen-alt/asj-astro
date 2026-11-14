@@ -426,6 +426,28 @@ export default function App(
    */
   const [installEvt, setInstallEvt] = useState<Event | null>(null);
   const [installed, setInstalled] = useState(false);
+  /**
+   * ── PANEL LANGKAH INSTAL, BUKAN TOAST (2026-11-14) ──────────────────────
+   * Owner: "di iOS install app gak bisa, di Android bisa."
+   *
+   * Yang salah bukan tombolnya. Di iOS, `beforeinstallprompt` TIDAK PERNAH
+   * ada (Safari tidak punya install terprogram), jadi `installApp()` jatuh ke
+   * cabang instruksi — dan instruksi itu dikirim sebagai TOAST yang hilang
+   * setelah beberapa detik. Pengunjung harus menghafal tiga langkah dari
+   * pesan yang memudar, sambil menutup drawer. Tidak ada yang bisa diikuti.
+   *
+   * Sekarang cabang itu membuka PANEL yang menetap di dalam drawer, dengan
+   * langkah bernomor, dan drawer TIDAK ditutup — instruksinya harus dibaca
+   * sambil mengikuti langkahnya.
+   *
+   * `inApp` ada karena penyebab paling sering dari "di iPhone tidak bisa":
+   * halaman dibuka dari browser DALAM aplikasi (Instagram/TikTok/Line), yang
+   * tidak punya menu "Tambahkan ke Layar Utama" sama sekali. Tanpa menyebut
+   * itu, pengunjung akan mencari menu yang tidak ada.
+   */
+  const [installHelp, setInstallHelp] = useState<{ os: 'ios' | 'android'; inApp: boolean } | null>(
+    null,
+  );
   useEffect(() => {
     const onPrompt = (e: Event) => {
       e.preventDefault();
@@ -449,22 +471,27 @@ export default function App(
   }, []);
 
   async function installApp() {
-    setMenuOpen(false);
     const evt = installEvt as unknown as
       | { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
       | null;
     if (evt) {
+      setMenuOpen(false);
       await evt.prompt();
       const choice = await evt.userChoice;
       if (choice.outcome === 'accepted') showToast('ui.install_started', 'success');
       setInstallEvt(null);
       return;
     }
+    /* Tidak ada prompt native (iOS selalu begini, Android hanya kalau
+       installability belum terpenuhi). JANGAN tutup drawer dan JANGAN pakai
+       toast: panelnya hidup di dalam drawer, dan langkahnya harus bisa dibaca
+       sambil dikerjakan. Lihat catatan `installHelp`. */
     const ua = navigator.userAgent;
     const isIos =
       /iPad|iPhone|iPod/.test(ua) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    showToast(isIos ? 'ui.install_how_ios' : 'ui.install_how_android', 'info');
+    const inApp = /Instagram|FBAN|FBAV|FB_IAB|Line\/|TikTok|musical_ly|Twitter/i.test(ua);
+    setInstallHelp({ os: isIos ? 'ios' : 'android', inApp });
   }
 
   /* ─── Drawer keyboard contract ────────────────────────────────────────
@@ -1518,6 +1545,44 @@ export default function App(
                 white-text contrast, so the hover must darken instead. Measured
                 on the built 404 page, which uses the same pair: 3.71:1 before. */}
             {!installed && (<button type="button" onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>)}
+            {/* ── PANEL LANGKAH INSTAL (2026-11-14) ────────────────────────
+                Menggantikan toast `ui.install_how_*` yang hilang setelah
+                beberapa detik. Muncul hanya ketika browser tidak memberi
+                prompt native — di iOS itu SELALU. */}
+            {!installed && installHelp ? (
+              <div class="rounded-xl border border-[#475569] bg-[#1e293b] p-3 text-left">
+                <div class="flex items-start justify-between gap-2">
+                  <span class="text-[11px] font-bold uppercase tracking-widest text-[#7dd3fc]">
+                    {t(installHelp.os === 'ios' ? 'ui.install_ios_title' : 'ui.install_android_title')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setInstallHelp(null)}
+                    aria-label={t('ui.install_close')}
+                    class="w-8 h-8 -mt-1.5 -mr-1.5 flex items-center justify-center text-[#94a3b8] hover:text-white transition"
+                  >
+                    <Icon name="times" />
+                  </button>
+                </div>
+                {installHelp.inApp ? (
+                  <p class="mt-1 mb-2 text-xs text-[#fcd34d] leading-relaxed">
+                    {t('ui.install_inapp')}
+                  </p>
+                ) : null}
+                {installHelp.os === 'ios' ? (
+                  <ol class="mt-1 space-y-2">
+                    {['ui.install_ios_1', 'ui.install_ios_2', 'ui.install_ios_3'].map((k, i) => (
+                      <li key={k} class="flex gap-2 text-xs leading-relaxed text-[#cbd5e1]">
+                        <span class="font-bold text-[#38bdf8] tabular-nums">{i + 1}</span>
+                        <span>{t(k)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p class="mt-1 text-xs leading-relaxed text-[#cbd5e1]">{t('ui.install_how_android')}</p>
+                )}
+              </div>
+            ) : null}
             <button type="button" onClick={toggleLang} aria-label="Toggle language" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
           </div>
           {hydrated && !u.isLoggedIn && (<div class="space-y-3">
