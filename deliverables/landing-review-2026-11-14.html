@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review Landing Page ASJ — 2026-11-14</title>
+<style>
+  :root{
+    --ink:#14181f; --ink-2:#3d4756; --ink-3:#6b7789;
+    --line:#e3e7ee; --bg:#ffffff; --bg-2:#f6f8fb;
+    --accent:#b3264a; --accent-soft:#fdeef2;
+    --good:#1a7f5a; --warn:#a86400; --bad:#b3261e;
+    --sans:"Segoe UI",Inter,system-ui,-apple-system,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-2);color:var(--ink);font:15px/1.6 var(--sans)}
+  .page{max-width:1080px;margin:0 auto;padding:40px 28px 80px}
+  header.top{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:30px}
+  .kicker{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+  h1{font:400 40px/1.1 var(--serif);margin:8px 0 10px;letter-spacing:-.02em}
+  .meta{font-size:12.5px;color:var(--ink-3)}
+  .meta b{color:var(--ink-2)}
+
+  .hero-score{display:grid;grid-template-columns:220px 1fr;gap:28px;align-items:center;
+    background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:26px 28px;margin:26px 0 34px}
+  .big{font:400 76px/1 var(--serif);letter-spacing:-.04em}
+  .big small{font:600 16px/1 var(--sans);color:var(--ink-3);letter-spacing:0}
+  .verdict{font-size:14px;color:var(--ink-2)}
+  .verdict b{color:var(--ink)}
+  .pill{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);margin-bottom:10px}
+
+  h2{font:700 13px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+    margin:38px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;background:var(--bg);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13.5px}
+  th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);background:var(--bg-2)}
+  tr:last-child td{border-bottom:0}
+  td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .score{font-weight:800;font-variant-numeric:tabular-nums}
+  .bar{height:6px;border-radius:3px;background:#e9edf3;margin-top:5px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+  .s-hi{color:var(--good)} .s-mid{color:var(--warn)} .s-lo{color:var(--bad)}
+  .ev{font-size:12.5px;color:var(--ink-2)}
+  .ev code{font:600 12px/1 ui-monospace,Consolas,monospace;background:var(--bg-2);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .card{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .card h3{margin:0 0 10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .card ul{margin:0;padding-left:18px}
+  .card li{margin:0 0 9px;font-size:13.5px}
+  .card li b{color:var(--ink)}
+
+  .fix{background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;
+    padding:15px 18px;margin:0 0 12px}
+  .fix.p0{border-left-color:var(--bad)} .fix.p1{border-left-color:var(--warn)} .fix.p2{border-left-color:#5b7fb3}
+  .fix h4{margin:0 0 6px;font-size:14.5px}
+  .fix p{margin:0;font-size:13.5px;color:var(--ink-2)}
+  .fix .where{display:block;margin-top:7px;font:600 11.5px/1.5 ui-monospace,Consolas,monospace;color:var(--ink-3)}
+  .tag{font-size:10px;font-weight:800;letter-spacing:.1em;padding:2px 7px;border-radius:4px;margin-right:8px;
+    text-transform:uppercase;vertical-align:2px}
+  .tag.p0{background:#fdecea;color:var(--bad)} .tag.p1{background:#fdf3e2;color:var(--warn)} .tag.p2{background:#eaf1fa;color:#3c6499}
+
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3)}
+  @media (max-width:760px){
+    .hero-score{grid-template-columns:1fr;gap:14px}
+    .cols{grid-template-columns:1fr}
+    h1{font-size:30px}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <div class="kicker">Review desain · terukur</div>
+    <h1>Landing page / Company Profile ASJ</h1>
+    <div class="meta">
+      <b>Diukur:</b> 14 November 2026 · <b>Build:</b> <code>dist/</code> (08:33) ·
+      <b>Viewport uji:</b> 360 / 390 / 768 / 1024 / 1280 / 1440 / 1920 / 2560 ·
+      <b>Metode:</b> Playwright + gate repo (contrast, aria-names, headings, landing), bukan opini
+    </div>
+  </header>
+
+  <section class="hero-score">
+    <div>
+      <div class="big">7,5<small> / 10</small></div>
+      <div class="bar" style="max-width:170px"><i style="width:75%"></i></div>
+    </div>
+    <div class="verdict">
+      <span class="pill">B+ · kuat di kepercayaan, lemah di bobot &amp; konversi</span><br>
+      Halaman ini menang di hal yang <b>tidak bisa dibeli</b>: legalitas berangka, testimoni Google
+      yang nyata, kejujuran klaim, dan proses yang tergerbang. Ia kalah di tiga hal yang
+      <b>terasa dalam 3 detik pertama dan 30 detik berikutnya</b>: bobot 2,3 MB, panjang 26 layar,
+      dan satu-satunya CTA di hero yang digayakan sebagai tombol sekunder.
+    </div>
+  </section>
+
+  <section class="hero-score" style="border-color:#bfe3cf;background:#f4fbf7">
+    <div>
+      <div class="big" style="color:#17684b">8,0<small> / 10</small></div>
+      <div class="bar" style="max-width:170px"><i style="width:80%;background:#17684b"></i></div>
+    </div>
+    <div class="verdict">
+      <span class="pill" style="background:#e3f6ec;color:#17684b">Pembaruan 14 Nov · 10.00 · sudah diterapkan</span><br>
+      Enam plate dikerjakan. Yang berubah <b>terukur</b>: LCP 668 → <b>396 ms</b> (video keluar dari
+      jalur kritis), track film 5.436 → <b>4.176 px</b> (26 → 24,4 layar), target sentuh &lt; 44 px
+      <b>16 → 1</b>, dan hero akhirnya punya <b>satu</b> aksi primer + rating + nomor pendaftaran.
+      <b>Belum</b> 8,3 seperti proyeksi: bobot total masih 2,3 MB dan halaman masih 24 layar —
+      dua hal yang tidak bisa diselesaikan satu plate.
+    </div>
+  </section>
+
+  <h2>Sebelum → sesudah (diukur, bukan diklaim)</h2>
+  <table>
+    <thead><tr><th>Metrik</th><th>Sebelum</th><th>Sesudah</th><th>Catatan</th></tr></thead>
+    <tbody>
+      <tr><td>LCP (lab, gzip)</td><td class="n">668 ms</td><td class="n"><b>396 ms</b></td><td class="ev">Poster AVIF jadi LCP; klip hero mulai setelah <code>load</code> + 1,2 s</td></tr>
+      <tr><td>Muatan awal total</td><td class="n">2.331 KB</td><td class="n">2.331 KB</td><td class="ev">Tidak turun: video tetap diunduh, hanya <b>setelah</b> layar pertama</td></tr>
+      <tr><td>Tinggi halaman (1440)</td><td class="n">23.202 px</td><td class="n"><b>21.916 px</b></td><td class="ev">26 → 24,4 layar; track film 5.436 → 4.176 px</td></tr>
+      <tr><td>Target sentuh &lt; 44 px</td><td class="n">16</td><td class="n"><b>1</b></td><td class="ev">Chip prefektur &amp; ringkasan 26 prefektur kini 44 px</td></tr>
+      <tr><td>Tautan ke <code>/apply</code></td><td class="n">1</td><td class="n"><b>2</b></td><td class="ev">CTA hero sekarang tautan sungguhan, bukan <code>&lt;button&gt;</code> modal</td></tr>
+      <tr><td>Bukti di layar pertama</td><td class="n">0</td><td class="n"><b>2</b></td><td class="ev">Rating 4,8 · 20 + nomor pendaftaran, keduanya dari sumber yang sudah ada</td></tr>
+      <tr><td>Jalur navigasi seksi</td><td class="n">0</td><td class="n"><b>6</b></td><td class="ev">Daftar isi di drawer, ditutup otomatis saat diklik</td></tr>
+      <tr><td>Kontras: di bawah ambang / tak terukur</td><td class="n">0 / 4.220</td><td class="n">0 / 4.368</td><td class="ev">Tak terukur naik karena pita bukti menambah teks di atas artwork</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:13.5px;color:#4a423b;margin:14px 0 0">
+    <b>Skor 7,5 → 8,0.</b> Proyeksi di proposal 8,3; selisihnya berasal dari tiga hal yang
+    sengaja tidak saya kerjakan: bobot total (butuh pipeline gambar, bukan CSS), panjang halaman
+    (butuh keputusan owner soal seksi mana yang digabung), dan <code>LocalBusiness</code> (non-visual).
+    <b>Semua gate hijau</b>: landing 100%, headings 100%, aria-names 40/40, kontras 0 di bawah ambang.
+  </p>
+
+  <h2>Skor per aspek — yang dilihat pengunjung</h2>
+  <table>
+    <thead>
+      <tr><th style="width:26%">Aspek</th><th style="width:9%">Bobot</th><th style="width:12%">Skor</th><th>Bukti terukur</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>1. Identitas visual</b></td><td class="n">10%</td>
+        <td><span class="score s-hi">8,5</span><div class="bar"><i style="width:85%"></i></div></td>
+        <td class="ev">Serif editorial (Instrument Serif) + Inter, artwork sakura, bahasa "frame film"
+          yang konsisten dari hero → band film → dossier. Bukan template. <b>−1,5:</b> CTA hero
+          bergaya ghost (<code>bg-white/10</code>) sehingga aksi terpenting justru paling lemah bobot visualnya.</td>
+      </tr>
+      <tr>
+        <td><b>2. Tipografi</b></td><td class="n">8%</td>
+        <td><span class="score s-mid">7,5</span><div class="bar"><i style="width:75%"></i></div></td>
+        <td class="ev">Hierarki h1 → h2 → h3 sehat (1 / 20 / 30). <b>−2,5:</b> kutipan testimoni
+          italic serif ~13 px untuk blok panjang; 10 elemen teks &lt; 12 px; hampir semua judul seksi
+          KAPITAL + tracking lebar → berteriak, bukan berbicara.</td>
+      </tr>
+      <tr>
+        <td><b>3. Arsitektur informasi</b></td><td class="n">10%</td>
+        <td><span class="score s-mid">6,5</span><div class="bar"><i style="width:65%"></i></div></td>
+        <td class="ev"><b>18 seksi · 26 layar</b> di 1440×900 (23.202 px); di ponsel <b>35 layar</b>
+          (29.994 px). Seksi <b>#alur 6.081 px = 26%</b> halaman — track filmnya sendiri 5.436 px. Urutannya logis
+          (film → layanan → bukti → kontak), tapi tidak ada "jalan pulang" selain menu.</td>
+      </tr>
+      <tr>
+        <td><b>4. Konsistensi komponen</b></td><td class="n">8%</td>
+        <td><span class="score s-mid">7,0</span><div class="bar"><i style="width:70%"></i></div></td>
+        <td class="ev">Token warna/radius/panel dipakai seragam. <b>−3:</b> #layanan = kotak di dalam
+          kotak di dalam kotak (3 lapis); grid #tim menyisakan 2 sel kosong di baris pertama
+          (kartu "JLPT N1" sendirian); kartu Alamat vs Telepon tingginya tidak sepadan.</td>
+      </tr>
+      <tr>
+        <td><b>5. Motion &amp; interaksi</b></td><td class="n">7%</td>
+        <td><span class="score s-hi">8,5</span><div class="bar"><i style="width:85%"></i></div></td>
+        <td class="ev">Band film 7 babak + coda, entrance berbeda per seksi, fallback
+          <code>prefers-reduced-motion</code> yang benar-benar membongkar band jadi daftar.
+          <b>−1,5:</b> 6.081 px scroll terkunci untuk satu band = komitmen besar sebelum konten kedua.</td>
+      </tr>
+      <tr>
+        <td><b>6. Responsif</b></td><td class="n">8%</td>
+        <td><span class="score s-hi">9,0</span><div class="bar"><i style="width:90%"></i></div></td>
+        <td class="ev"><b>0 px overflow horizontal</b> di 8 lebar (360→2560), <code>scrollWidth == clientWidth</code>
+          di semuanya. Tata letak ponsel bukan versi desktop yang diperkecil: scrim dibalik, teks pindah bawah,
+          klip potret dipakai. <b>−1:</b> target sentuh (lihat #7).</td>
+      </tr>
+      <tr>
+        <td><b>7. Aksesibilitas</b></td><td class="n">10%</td>
+        <td><span class="score s-mid">7,0</span><div class="bar"><i style="width:70%"></i></div></td>
+        <td class="ev">Gate kontras: <b>0 elemen di bawah ambang</b>; gate aria-names <b>0 gagal</b>;
+          29 gambar, 0 tanpa <code>alt</code>; landmark lengkap. <b>−3:</b> 4.220 elemen teks
+          <b>tidak terukur</b> (3.112 di atas gambar/gradien — justru hero &amp; band film);
+          <b>16 target sentuh &lt; 44 px</b>, terkecil chip prefektur 28 px dan <code>&lt;summary&gt;</code> 16 px.</td>
+      </tr>
+      <tr>
+        <td><b>8. Performa &amp; bobot</b></td><td class="n">12%</td>
+        <td><span class="score s-lo">6,0</span><div class="bar"><i style="width:60%"></i></div></td>
+        <td class="ev">Lab lokal (gzip): LCP <b>668 ms</b>, CLS <b>0,007</b>, TTFB 13 ms — bagus.
+          Tapi muatan awal <b>±2,3 MB</b>: video <b>741 KB (32%)</b>, gambar 1,19 MB, font 117 KB,
+          HTML <b>59,7 KB gz</b> (mitra MoU: 6–11 KB). Video hero 520 KB diunduh sebelum siapa pun scroll.</td>
+      </tr>
+      <tr>
+        <td><b>9. Konten &amp; keterpercayaan</b></td><td class="n">12%</td>
+        <td><span class="score s-hi">9,0</span><div class="bar"><i style="width:90%"></i></div></td>
+        <td class="ev">Nomor izin yang bisa diperiksa (AHU-0063921, akta notaris, nomor pendaftaran 4023082735107914),
+          testimoni Google asli <b>4,8 · 20</b> dengan atribusi nama, klaim "belum SO" dinyatakan
+          terbuka, angka mitra/keberangkatan tidak dipublikasi. <b>−1:</b> tidak ada satu pun bukti
+          berbentuk foto tim — enam kartu nama saja.</td>
+      </tr>
+      <tr>
+        <td><b>10. Konversi / CTA</b></td><td class="n">10%</td>
+        <td><span class="score s-lo">6,0</span><div class="bar"><i style="width:60%"></i></div></td>
+        <td class="ev">Dari 25 tautan di halaman: <b>1</b> ke <code>/apply</code>, 5 ke WhatsApp, 1 <code>tel:</code>.
+          CTA hero = <code>&lt;button&gt;</code> (modal), bukan tautan — tidak bisa dibuka di tab baru,
+          tidak terindeks. Untuk halaman yang menyebut dirinya company profile untuk mitra MoU,
+          <b>tidak ada jalur "ajukan kerja sama"</b>.</td>
+      </tr>
+      <tr>
+        <td><b>11. SEO &amp; semantik</b></td><td class="n">5%</td>
+        <td><span class="score s-hi">8,5</span><div class="bar"><i style="width:85%"></i></div></td>
+        <td class="ev">1 <code>h1</code>, 20 <code>h2</code>; JSON-LD <code>EducationalOrganization</code>;
+          hreflang <b>id / ja / x-default</b>; canonical; OG image; sitemap. <b>−1,5:</b> belum ada
+          <code>LocalBusiness</code>/geo untuk pencarian "LPK dekat saya"; 5 gambar tanpa <code>width/height</code>.</td>
+      </tr>
+      <tr>
+        <td colspan="3" style="text-align:right"><b>Rerata berbobot</b></td>
+        <td class="ev"><span class="score" style="font-size:20px">7,5</span> / 10
+          &nbsp;·&nbsp; hitam di atas putih: <b>B+</b></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Skor proses (bukan yang dilihat pengunjung)</h2>
+  <div class="card">
+    <p style="margin:0 0 10px"><span class="score s-hi" style="font-size:20px">9,5</span> / 10 —
+    <b>ini aset terbesar proyek dan tidak terlihat di layar.</b></p>
+    <ul>
+      <li><b>Gate yang bisa gagal.</b> Suite landing mengukur geometri, bukan sekadar keberadaan elemen;
+        gate baru hari ini dibuktikan merah dengan mengembalikan bug-nya.</li>
+      <li><b>Komentar menjelaskan "kenapa", bukan "apa".</b> Setiap angka di CSS punya asal-usul terukur —
+        ini yang membuat perubahan berikutnya tidak merusak keputusan lama.</li>
+      <li><b>Ratchet</b> (bundle, lint, typecheck, symbol) menahan pembusukan diam-diam.</li>
+    </ul>
+  </div>
+
+  <h2>Tiga kekuatan yang harus dijaga</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>1 · Bukti, bukan klaim</h3>
+      <ul>
+        <li>Nomor izin yang bisa dicek pihak lain — pembeda paling mahal di kategori ini.</li>
+        <li>Testimoni Google asli dengan nama; rating agregat satu ikon + angka (bukan lima bintang palsu).</li>
+        <li>Klaim yang tidak bisa dibuktikan <b>tidak dipublikasi</b> (mitra, keberangkatan).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>2 · Bahasa visual yang satu</h3>
+      <ul>
+        <li>Hero, band film, dan dossier memakai satu tata bahasa: bingkai, garis rambut, angka tabular, serif display.</li>
+        <li>Motion tidak dipasang sebagai hiasan — entrance tiap seksi berbeda dan drift-nya dilepas di band yang full-bleed.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Daftar perbaikan, berurut dampak</h2>
+
+  <div class="fix p0">
+    <h4><span class="tag p0">P0</span>Ganti CTA hero jadi tombol primer + tambah jalur mitra</h4>
+    <p>Satu-satunya aksi di hero memakai gaya sekunder (transparan, border tipis). Untuk halaman
+      yang tujuannya kepercayaan + lamaran, aksi itu harus punya bobot visual tertinggi. Sekalian
+      sediakan tautan "Ajukan Kerja Sama / MoU" — sekarang audiens mitra tidak punya pintu.</p>
+    <span class="where">src/components/App.tsx:1121 · hero CTA <code>&lt;button&gt;</code> → <code>&lt;a href="/apply"&gt;</code> + varian primer</span>
+  </div>
+
+  <div class="fix p0">
+    <h4><span class="tag p0">P0</span>Turunkan bobot muatan awal di bawah 1,2 MB</h4>
+    <p>741 KB video sebelum scroll adalah biaya terbesar dan satu-satunya yang tidak dibayar
+      pengunjung dengan perhatian. Tunda klip hero sampai <code>canplay</code> pertama selesai
+      (atau pakai <code>requestIdleCallback</code>), dan beri poster AVIF/WebP yang sudah ada
+      sebagai LCP. Klip band film sudah <code>preload="none"</code> — pertahankan.</p>
+    <span class="where">src/components/App.tsx:751 · <code>hero-vid</code> autoplay · 520 KB</span>
+  </div>
+
+  <div class="fix p1">
+    <h4><span class="tag p1">P1</span>Perpendek 26 layar, atau beri peta jalan</h4>
+    <p>Dua kandidat pemangkasan yang paling murah: (a) band film 5.436 px → 4 babak + coda,
+      (b) gabungkan #tentang / #visi-misi / #tim yang bertumpang topik. Kalau dipangkas bukan opsi,
+      tambahkan rail navigasi seksi yang menempel — sekarang satu-satunya navigasi ada di menu.</p>
+    <span class="where">src/pages/index.astro · <code>.film-track</code> = 7 × 72svh + 100svh</span>
+  </div>
+
+  <div class="fix p1">
+    <h4><span class="tag p1">P1</span>Ukur kontras teks di atas gambar — sekarang tidak terukur</h4>
+    <p>Gate kontras melewati 3.112 elemen karena latarnya gambar/gradien; itu <b>persis</b> teks
+      hero dan band film, yaitu teks paling penting di halaman. Ambil sampel piksel di belakang
+      teks (gate ini sudah punya mode piksel — lihat kasus <code>pm-tab</code>) lalu jadikan
+      ambang nyata untuk dua band itu.</p>
+    <span class="where">e2e/test-contrast.mjs · kategori "unmeasurable (skipped, NOT a pass)"</span>
+  </div>
+
+  <div class="fix p1">
+    <h4><span class="tag p1">P1</span>Perbesar target sentuh ke 44 px</h4>
+    <p>16 target di bawah ambang. Yang paling sering dipakai justru yang terkecil: chip prefektur
+      (28 px) dan <code>&lt;summary&gt;</code> "26 prefektur tercatat" (16 px) — keduanya di dalam
+      blok yang butuh ketukan presisi di ponsel.</p>
+    <span class="where">#penempatan · chip prefektur · <code>min-height:44px</code></span>
+  </div>
+
+  <div class="fix p2">
+    <h4><span class="tag p2">P2</span>Rapikan grid yang menyisakan lubang</h4>
+    <p>#tim menaruh kartu kredensial sendirian di baris pertama (2 sel kosong), #layanan menyusun
+      tiga lapis kotak, kartu Alamat jauh lebih tinggi dari isinya. Semua bisa diselesaikan dengan
+      satu pola: satu tingkat kotak per seksi.</p>
+    <span class="where">#tim, #layanan, #kontak</span>
+  </div>
+
+  <div class="fix p2">
+    <h4><span class="tag p2">P2</span>Ganti italic serif untuk kutipan panjang</h4>
+    <p>Empat kartu testimoni memakai italic ~13 px untuk 300–500 karakter. Italic serif adalah
+      pilihan yang tepat untuk satu baris penekanan, bukan untuk blok baca. Pakai tegak, dan
+      simpan italic untuk satu frasa di dalamnya.</p>
+    <span class="where">#testimoni · kartu kutipan</span>
+  </div>
+
+  <div class="fix p2">
+    <h4><span class="tag p2">P2</span>Tambah LocalBusiness + geo untuk pencarian lokal</h4>
+    <p>JSON-LD sudah <code>EducationalOrganization</code>, tapi tanpa <code>geo</code> dan
+      <code>openingHours</code> yang sudah tertulis di halaman. Pencarian "LPK Jepang Ponorogo"
+      adalah niat dengan konversi tertinggi yang bisa ditangkap tanpa biaya iklan.</p>
+    <span class="where">JSON-LD halaman / · data sudah ada di #kontak</span>
+  </div>
+
+  <h2>Kalau hanya boleh memperbaiki tiga hal</h2>
+  <div class="card">
+    <ul>
+      <li><b>1. Bobot.</b> 2,3 MB → di bawah 1,2 MB dengan menunda video hero. Ini satu-satunya
+        perbaikan yang mengubah pengalaman semua pengunjung, di semua perangkat.</li>
+      <li><b>2. CTA.</b> Jadikan "Daftar" tombol primer dan tautan sungguhan; tambah pintu untuk mitra.
+        Tanpa ini, semua kerja kepercayaan di bawahnya berujung pada satu tombol yang terlihat sekunder.</li>
+      <li><b>3. Panjang.</b> 26 layar membuat seksi #legalitas dan #testimoni — bukti terkuat halaman —
+        berada di layar ke-9 dan ke-19. Pindahkan bukti ke atas, atau pangkas jalannya.</li>
+    </ul>
+  </div>
+
+  <h2>Lampiran — angka mentah</h2>
+  <table>
+    <tbody>
+      <tr><td>LCP / CLS / TTFB (lab lokal, gzip)</td><td class="n">668 ms · 0,007 · 13 ms</td></tr>
+      <tr><td>Muatan awal total</td><td class="n">±2.331 KB</td></tr>
+      <tr><td>Video / gambar / font / JS / CSS / HTML</td><td class="n">741 · 1.216 · 117 · 156 · 40 · 61 KB</td></tr>
+      <tr><td>HTML gzip (halaman /)</td><td class="n">59,7 KB</td></tr>
+      <tr><td>Tinggi halaman 1440 / 390</td><td class="n">23.202 px (26 layar) · 29.994 px (35 layar)</td></tr>
+      <tr><td>Seksi / h2 / h3 / gambar</td><td class="n">18 · 20 · 30 · 29</td></tr>
+      <tr><td>Overflow horizontal 360→2560</td><td class="n">0 px di 8 lebar</td></tr>
+      <tr><td>Kontras: di bawah ambang / tidak terukur</td><td class="n">0 / 4.220</td></tr>
+      <tr><td>Target sentuh &lt; 44 px (390)</td><td class="n">16</td></tr>
+      <tr><td>Tautan: total / <code>/apply</code> / WA / <code>tel:</code></td><td class="n">25 · 1 · 5 · 1</td></tr>
+    </tbody>
+  </table>
+
+  <footer>
+    Semua angka diukur pada build <code>dist/</code> 14 Nov 2026 08:33, disajikan lewat
+    <code>deliverables/serve-gzip.mjs</code> (gzip, seperti Netlify). Angka waktu adalah lab lokal
+    tanpa latensi jaringan — jangan dibaca sebagai Core Web Vitals lapangan. Skor = penilaian
+    desain atas bukti di tabel, bukan hasil rumus.
+  </footer>
+</div>
+</body>
+</html>

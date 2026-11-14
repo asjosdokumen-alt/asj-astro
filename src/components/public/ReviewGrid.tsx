@@ -130,9 +130,24 @@ export default function ReviewGrid({ reviews, class: className }: Props) {
 
             <span class="flex-1 text-body-sm">
               {filled ? (
-                <span class="text-fg italic" data-lang={review.quote?.key}>
-                  “{review.quote?.text}”
-                </span>
+                <>
+                  {/* ── TEGAK, BUKAN ITALIC (2026-11-14) ──────────────────────
+                      Kutipan ini 300–500 karakter dan diset `italic` serif
+                      (`.text-body-sm` + `italic`). Italic menurunkan x-height
+                      efektif dan menambah kemiringan — dua hal yang paling
+                      cepat melelahkan mata pada blok panjang, dan pada 13–14 px
+                      keduanya bekerja sekaligus.
+
+                      Tanda kutipnya kembali ke teks, TAPI di LUAR span
+                      ber-`data-lang`: pengalih bahasa menulis ulang
+                      `textContent` elemen itu, jadi tanda kutip di dalamnya
+                      akan hilang begitu pengunjung memilih bahasa lain. */}
+                  <span class="block text-fg leading-[1.66]">
+                    <span aria-hidden="true">“</span>
+                    <span data-lang={review.quote?.key}>{review.quote?.text}</span>
+                    <span aria-hidden="true">”</span>
+                  </span>
+                </>
               ) : (
                 <span class="text-fg-muted font-normal italic" data-lang={REVIEW_PENDING_KEY}>
                   Review belum tayang
@@ -144,10 +159,21 @@ export default function ReviewGrid({ reviews, class: className }: Props) {
               {/* A pending card shows the initials placeholder; a filled card
                   would show the reviewer photo — but ONLY with consent
                   (COMPANY_PROFILE_DATA.md §11.2, P-7), so initials are the
-                  default until a photo is supplied. */}
+                  default until a photo is supplied.
+
+                  ── GARIS PUTUS-PUTUS = "BELUM ADA ISI" (2026-11-14) ─────────
+                  Sebelumnya kedua keadaan memakai cincin `border-dashed` yang
+                  sama, jadi kartu yang SUDAH berisi review masih terlihat
+                  seperti slot yang menunggu diisi. Sekarang cincin putus-putus
+                  hanya milik keadaan pending; kartu terisi mendapat lingkaran
+                  penuh dengan inisial berwarna. */}
               <span
                 aria-hidden="true"
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-dashed border-line/60 text-caption text-fg-muted"
+                class={
+                  filled
+                    ? 'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-transparent bg-accent/10 text-caption font-bold text-accent'
+                    : 'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-dashed border-line/60 text-caption text-fg-muted'
+                }
               >
                 {filled ? (review.author?.text.slice(0, 1) ?? '?') : '+'}
               </span>

@@ -1949,6 +1949,7 @@ async function run() {
         await page.waitForTimeout(600);
         const st = await page.evaluate(() => {
           const stage = document.querySelector('.film-stage');
+          const track = document.querySelector('[data-film-track]');
           if (!stage) return { why: 'no .film-stage' };
           const r = stage.getBoundingClientRect();
           return {
@@ -1960,6 +1961,9 @@ async function run() {
                (1905). Comparing against the raw viewport makes every correct
                stage look 15px short. */
             doc: document.body.clientWidth,
+            /* The band's DWELL, in screens. 72svh per chapter (the shape until
+               2026-11-14) is 7 × 0.72 + 1 = 6,04 screens; 52svh is 4,64. */
+            trackScreens: track ? +(track.getBoundingClientRect().height / window.innerHeight).toFixed(2) : null,
           };
         });
         if (st.why) throw new Error(st.why);
@@ -1969,6 +1973,17 @@ async function run() {
               `it does not reach the window's edges, so the clip reads as letterboxed. ` +
               `Measured 2026-11-14: <main>'s 1600px cap left 153px of background on each ` +
               `side at 1920.`,
+          );
+        }
+        /* The band may not take more than five screens to play out. Measured:
+           6,04 with `7 * 72svh`, 4,64 with `7 * 52svh`. The floor is not "as
+           short as possible" — below ~44svh the second text beat (38% of a
+           chapter) never appears before the chapter changes. */
+        if (st.trackScreens === null || st.trackScreens > 5) {
+          throw new Error(
+            `the film track is ${st.trackScreens} screens tall — it holds the visitor for more ` +
+              `than five screens before the rest of the page. Measured 2026-11-14: 7 × 72svh + ` +
+              `100svh = 6,04 screens (5.436px at 900px). Use 52svh per chapter (4,64).`,
           );
         }
       } finally {

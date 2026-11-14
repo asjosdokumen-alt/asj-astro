@@ -52,6 +52,27 @@ import { REVIEWS, REVIEW_SOURCE } from '../lib/testimonials';
 import { FAQ } from '../lib/faq';
 import { GALLERY } from '../lib/gallery';
 
+/**
+ * ── NOMOR PENDAFTARAN UNTUK PITA BUKTI DI HERO (2026-11-14) ─────────────────
+ *
+ * Dibaca dari `LEGAL_FACTS` — sumber yang SAMA dengan yang dirender #legalitas
+ * beberapa ribu piksel di bawahnya — lalu dioper ke island sebagai prop.
+ *
+ * KENAPA PROP DAN BUKAN IMPOR DI App.tsx: `companyProfile.ts` adalah modul
+ * data besar, dan App adalah island `client:load` yang diunduh setiap
+ * pengunjung anonim. Menyalin nomornya sebagai literal di App.tsx lebih murah
+ * tapi membuat salinan KETIGA dari satu nomor izin; itu persis kesalahan yang
+ * pernah terjadi pada `CONTACT_MAPS_URL` (tiga salinan, satu terlewat saat
+ * diubah). Prop menjaga satu sumber tanpa membebani bundle.
+ *
+ * `value` di `Fact` boleh `string` (identifier, tidak diterjemahkan) atau
+ * `{ key, text }`. Nomor pendaftaran adalah identifier, jadi bentuknya string —
+ * tapi penyempitan tetap dilakukan supaya tipe `Fact` boleh berubah tanpa
+ * membuat halaman ini gagal render.
+ */
+const LEGAL_REGNO_FACT = LEGAL_FACTS.find((f) => f.label.key === 'profile.legal_regno');
+const legalRegno = typeof LEGAL_REGNO_FACT?.value === 'string' ? LEGAL_REGNO_FACT.value : undefined;
+
 /* WHY THE SECTIONS ARE COMPOSED HERE AND NOT EACH IN THEIR OWN FILE.
    Six of the blocks below are the same three elements — a Section, a SectionTitle
    and one primitive — with different data. A file per composition would add six
@@ -105,7 +126,7 @@ import { GALLERY } from '../lib/gallery';
        `client:only`: they are session-dependent SPAs that cannot function
        without JavaScript, so server-rendering them would add weight and expose
        gate markup for no reader's benefit. -->
-  <App client:load hero />
+  <App client:load hero proof={{ regno: legalRegno }} />
 
   <!-- THE BAND THAT USED TO SIT HERE IS GONE, AND ITS THREE PARTS WENT TOGETHER.
        Owner ruling 2026-09-25, verbatim: "ini kok masih ada bukannya saya suruh
@@ -817,16 +838,25 @@ import { GALLERY } from '../lib/gallery';
         accent="legal"
         headingId="tim-title"
       />
-      <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card class="flex flex-col gap-1">
+      {/* ── KREDENSIAL JADI PITA, BUKAN KARTU SENDIRIAN (2026-11-14) ─────────
+          Sampai hari ini kartu ini adalah satu-satunya isi grid 3 kolom, jadi
+          dua sel di sebelahnya kosong. Terukur di 1440: satu kartu 1/3 lebar
+          dengan dua lubang di kanannya — dan lubang di grid terbaca sebagai
+          "konten belum selesai", padahal isinya lengkap.
+
+          Kredensial juga pernyataan tentang SELURUH tim, bukan tentang satu
+          orang, jadi bentuknya pita penuh di atas grid orang. Grid orangnya
+          sendiri (6 orang = 3×2) sekarang mulai dari baris pertama tanpa sisa. */}
+      <div class="mt-8">
+        <Card class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
           <span data-lang="profile.cred_title" class="text-caption uppercase font-bold text-accent">
             Kredensial pengajar
           </span>
           <span class="text-section font-black text-fg">JLPT N1</span>
-          <span class="text-body-sm text-fg-muted">N1A225127J</span>
+          <span class="text-body-sm text-fg-muted font-mono tracking-tight sm:ml-auto">N1A225127J</span>
         </Card>
       </div>
-      <div class="mt-6">
+      <div class="mt-4">
         <PersonGrid people={TEAM} />
       </div>
     </Section>
@@ -1510,9 +1540,24 @@ import { GALLERY } from '../lib/gallery';
       position: relative;
       margin-top: 0;
     }
+    /* ── 72svh → 52svh PER BABAK (2026-11-14) ────────────────────────────────
+       Tujuh babak tetap tujuh; yang dipangkas adalah WAKTU TINGGALNYA. Pada
+       72svh satu babak menahan pengunjung hampir satu layar penuh sebelum
+       boleh lanjut — terukur di 1440×900: track 5.436 px = 6,04 layar, dan
+       band ini 23,4% dari seluruh halaman (23.202 px).
+
+       Pada 52svh satu babak masih ±2,3 detik baca untuk judul + dua baris
+       badan, cukup untuk ketukan kedua di 38% babak. Track turun ke 4.176 px
+       (4,64 layar) — hemat 1.260 px tanpa memotong satu pun langkah.
+
+       ⚠ Matematika `paint()` TIDAK berubah: ia membaca PROGRES relatif
+       (scrollY / (trackHeight - stageHeight)), bukan tinggi px. Yang berubah
+       hanya jarak yang harus ditempuh untuk mencapai progres yang sama.
+       Gate `e2e/test-landing.mjs` sekarang mengunci track < 5 × innerHeight,
+       supaya angka 72svh tidak kembali diam-diam. */
     .film-track {
       position: relative;
-      height: calc(7 * 72svh + 100svh);
+      height: calc(7 * 52svh + 100svh);
     }
     .film-stage {
       position: sticky;
@@ -2176,7 +2221,14 @@ import { GALLERY } from '../lib/gallery';
       border-top: 1px solid var(--color-line);
       padding-top: 0.9rem;
     }
+    /* 44 px juga untuk ringkasan ini: terukur 16 px tinggi di 390 px — target
+       terkecil di halaman, padahal ia yang membuka daftar 26 prefektur.
+       `inline-flex` supaya tinggi baris tidak menambah tinggi kotak di luar
+       min-height. */
     .pm-all summary {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
       cursor: pointer;
       font-size: 11px;
       font-weight: 700;
@@ -2204,14 +2256,27 @@ import { GALLERY } from '../lib/gallery';
       gap: 0.4rem;
       margin-bottom: 1rem;
     }
+    /* ── 44 px, AMBANG SENTUH (2026-11-14) ──────────────────────────────────
+       Terukur di 390 px: chip ini 28 px tinggi — 16 target di halaman berada
+       di bawah 44 px, dan chip prefektur adalah yang paling sering dipakai
+       jempol (delapan wilayah, saling berdekatan 6 px).
+
+       44 px bukan angka selera: itu ambang WCAG 2.5.8 (Target Size Minimum,
+       AA di 2.2). Padding vertikal dinaikkan, ukuran huruf 11 → 12 px supaya
+       label "Kyushu & Okinawa" tidak terpotong, dan radius mengikuti
+       `--radius-control` yang dipakai tombol lain di halaman ini. */
     .pm-tab {
-      padding: 0.3rem 0.6rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0.5rem 0.95rem;
       border: 1px solid var(--color-line);
-      border-radius: 2px;
+      border-radius: var(--radius-control);
       background: transparent;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--color-fg-muted);
       cursor: pointer;

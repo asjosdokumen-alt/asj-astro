@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rekomendasi desain — 7,5 → 8,3</title>
+<style>
+@font-face{font-family:ASJSerif;src:url(proposal-assets/serif.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:ASJInter;src:url(proposal-assets/inter400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:ASJInter;src:url(proposal-assets/inter700.woff2) format("woff2");font-weight:700;font-display:swap}
+
+:root{
+  --ink:#17130f; --ink2:#4a423b; --ink3:#7d736a;
+  --line:#e5ded7; --paper:#fbf9f7; --card:#fff;
+  --accent:#a8264c; --accent-2:#fbeef2;
+  --good:#17684b; --warn:#8a5a00;
+  --serif:ASJSerif,"Iowan Old Style",Georgia,serif;
+  --sans:ASJInter,"Segoe UI",system-ui,sans-serif;
+  --mock-surface:#0f172a; --mock-accent:#f9a8d4;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:15.5px/1.65 var(--sans);
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:44px 30px 90px}
+
+/* ── head ─────────────────────────────────────────────── */
+.kicker{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+h1{font:400 46px/1.05 var(--serif);letter-spacing:-.025em;margin:10px 0 14px;max-width:20ch}
+.dek{font-size:16px;color:var(--ink2);max-width:62ch;margin:0 0 26px}
+.dek b{color:var(--ink)}
+
+.delta{display:flex;align-items:center;gap:26px;background:var(--card);border:1px solid var(--line);
+  border-radius:18px;padding:24px 28px;margin:0 0 40px}
+.delta .now,.delta .then{font:400 56px/1 var(--serif);letter-spacing:-.04em}
+.delta .now{color:var(--ink3)}
+.delta .then{color:var(--accent)}
+.delta .lbl{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-top:4px}
+.delta .arrow{font-size:26px;color:var(--ink3)}
+.delta .why{margin-left:auto;max-width:46ch;font-size:13.5px;color:var(--ink2);border-left:1px solid var(--line);padding-left:24px}
+
+/* ── sections ─────────────────────────────────────────── */
+h2{font:700 12px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);
+  margin:52px 0 16px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;overflow:hidden;font-size:13.5px}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);background:#f7f3ef}
+tr:last-child td{border-bottom:0}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+td.s{font-weight:700;font-variant-numeric:tabular-nums}
+.up{color:var(--good);font-weight:700}
+.plate-ref{display:inline-block;font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-2);
+  border-radius:5px;padding:2px 7px}
+
+.principles{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.principles div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.principles h4{margin:0 0 8px;font-size:14.5px}
+.principles p{margin:0;font-size:13.5px;color:var(--ink2)}
+
+/* ── plate ────────────────────────────────────────────── */
+.plate{margin:54px 0 0;padding-top:26px;border-top:1px solid var(--line)}
+.plate-head{display:grid;grid-template-columns:56px 1fr auto;gap:18px;align-items:start;margin-bottom:18px}
+.plate-head .num{font:400 34px/1 var(--serif);color:var(--accent);letter-spacing:-.03em}
+.plate-head h3{margin:2px 0 6px;font:700 20px/1.3 var(--sans);letter-spacing:-.01em}
+.plate-head p{margin:0;color:var(--ink2);font-size:14px;max-width:62ch}
+.moves{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.moves span{font-size:11.5px;font-weight:700;color:var(--good);background:#eef7f2;border:1px solid #d6ece1;
+  border-radius:999px;padding:4px 10px;white-space:nowrap}
+
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:20px}
+.notes h4{margin:0 0 8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.notes ul{margin:0;padding-left:17px}
+.notes li{margin:0 0 8px;font-size:13.5px;color:var(--ink2)}
+.notes li b{color:var(--ink)}
+code{font:600 12px/1.5 ui-monospace,Consolas,monospace;background:#f2ede8;padding:1px 5px;border-radius:4px;
+  border:1px solid #e7dfd8;color:#5c4a3d}
+
+/* ── mock shell ───────────────────────────────────────── */
+.mock{position:relative;background:var(--mock-surface);border-radius:16px;overflow:hidden;
+  container-type:inline-size;box-shadow:0 20px 50px -30px rgba(30,20,15,.5)}
+.mock-hero{aspect-ratio:1180/700}
+.mh-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:72% 42%}
+.mh-scrim{position:absolute;inset:0;background:
+  linear-gradient(96deg,rgba(8,5,12,.96) 0%,rgba(8,5,12,.9) 34%,rgba(8,5,12,.52) 58%,rgba(8,5,12,.06) 84%),
+  linear-gradient(to top,rgba(8,5,12,.9) 0%,rgba(8,5,12,0) 42%)}
+.mh-copy{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;
+  padding:0 6cqw 5.2cqw;max-width:74cqw}
+.mh-eyebrow{display:inline-flex;align-items:center;gap:.6em;font-size:1.02cqw;font-weight:700;
+  letter-spacing:.16em;text-transform:uppercase;color:#e9d9e2;margin-bottom:1.6cqw}
+.mh-eyebrow i{width:1.6cqw;height:1px;background:#f9a8d4;display:inline-block}
+.mh-h1{font:400 5.1cqw/1.03 var(--serif);letter-spacing:-.02em;text-transform:none;color:#fff;margin:0 0 1.5cqw;
+  text-shadow:0 2px 40px rgba(8,5,12,.6)}
+.mh-sub{font-size:1.32cqw;line-height:1.55;color:#d8cfd6;margin:0 0 2.4cqw;max-width:44ch}
+.mh-cta{display:flex;gap:1cqw;align-items:center;margin-bottom:2.2cqw}
+.btn{display:inline-flex;align-items:center;gap:.55em;font-weight:700;border-radius:999px;
+  text-decoration:none;white-space:nowrap}
+.btn-primary{background:var(--mock-accent);color:#2a0f1d;font-size:1.28cqw;padding:1.15cqw 2.1cqw;
+  box-shadow:0 10px 30px -12px rgba(249,168,212,.55)}
+.btn-primary span{font-size:1.1em;line-height:1}
+.btn-ghost{background:rgba(255,255,255,.09);color:#fff;font-size:1.28cqw;padding:1.15cqw 1.9cqw;
+  border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(6px)}
+.mh-trust{display:flex;align-items:center;gap:.9cqw;font-size:1.02cqw;color:#c9bcc6;margin-bottom:2.4cqw}
+.mh-trust b{color:#fff;font-weight:700}
+.mh-stars{color:#f9c46b;letter-spacing:.1em;font-size:.95cqw}
+.mh-trust > i:not(.pin){width:1px;height:1.1cqw;background:rgba(255,255,255,.25)}
+.mh-stats{display:flex;gap:0;border-top:1px solid rgba(255,255,255,.16);padding-top:1.5cqw;max-width:56cqw}
+.mh-stats div{padding-right:2.6cqw;margin-right:2.6cqw;border-right:1px solid rgba(255,255,255,.13)}
+.mh-stats div:last-child{border:0;margin:0;padding:0}
+.mh-stats b{display:block;font:400 2.1cqw/1 var(--serif);color:#fff;letter-spacing:-.02em}
+.mh-stats span{display:block;font-size:.92cqw;letter-spacing:.1em;text-transform:uppercase;color:#a89aa6;margin-top:.5cqw}
+
+/* callout pin */
+.pinwrap{position:relative;display:inline-flex;align-items:center}
+
+.mh-trust{position:relative}
+.pin{position:absolute;left:-3.4cqw;top:50%;transform:translateY(-50%);
+  display:grid;place-items:center;width:2.1cqw;height:2.1cqw;min-width:20px;min-height:20px;border-radius:50%;
+  background:#fff;color:#1b1017;font:700 1.1cqw/1 var(--sans);font-style:normal;
+  box-shadow:0 2px 10px rgba(0,0,0,.4);z-index:4}
+.pin.pin--right{left:auto;right:-3.4cqw}
+
+/* proof band */
+.mock-band{background:#fff;padding:0}
+.band{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr auto;align-items:center;
+  border:1px solid #e9e2dc;border-radius:14px;margin:26px;overflow:hidden;background:#fffdfc}
+.band > div{padding:20px 22px;border-right:1px solid #efe9e4}
+.band > div:last-of-type{border:0}
+.band .k{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#9a8f86;margin-bottom:5px}
+.band .v{font:400 26px/1 var(--serif);letter-spacing:-.02em;color:#1b1410}
+.band .v small{font:700 13px/1 var(--sans);color:#6b5f56;letter-spacing:0;margin-left:6px}
+.band .rate{display:flex;align-items:center;gap:10px}
+.band .st{color:#c98a1e;letter-spacing:.08em}
+.band .link{color:#a8264c;font-weight:700;font-size:13px;text-decoration:none;padding:20px 24px;white-space:nowrap}
+
+/* rail schematic */
+.mock-rail{aspect-ratio:1180/560;background:#f4f0ec;padding:26px 26px 0;display:grid;
+  grid-template-columns:1fr 220px;gap:26px}
+.page-col{display:flex;flex-direction:column;gap:9px;overflow:hidden}
+.blk{background:#fff;border:1px solid #e7e0da;border-radius:10px}
+.blk.tall{height:120px}.blk.mid{height:74px}.blk.short{height:46px}
+.blk.hero{height:150px;background:#241a20;border-color:#241a20}
+.rail{background:#fff;border:1px solid #e7e0da;border-radius:12px 12px 0 0;padding:16px 14px;position:relative}
+.rail .rt{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#a1968c;margin-bottom:12px}
+.rail ol{list-style:none;margin:0;padding:0;position:relative}
+.rail ol::before{content:"";position:absolute;left:4px;top:6px;bottom:6px;width:1px;background:#e7e0da}
+.rail li{display:flex;align-items:center;gap:11px;font-size:12.5px;color:#6d6259;padding:6px 0;position:relative}
+.rail li::before{content:"";width:9px;height:9px;border-radius:50%;background:#fff;border:1px solid #cfc4ba;
+  flex:0 0 auto;z-index:1}
+.rail li.on{color:#1b1410;font-weight:700}
+.rail li.on::before{background:#a8264c;border-color:#a8264c;box-shadow:0 0 0 4px #fbeef2}
+.rail li em{font-style:normal;margin-left:auto;font-size:10.5px;color:#a1968c;font-variant-numeric:tabular-nums}
+
+/* film timeline */
+.mock-film{background:#fff;padding:28px;display:flex;flex-direction:column;gap:20px}
+.tl{display:grid;grid-template-columns:150px 1fr 120px;gap:16px;align-items:center}
+.tl .name{font-size:12.5px;font-weight:700}
+.tl .name small{display:block;font-weight:400;color:#8a7f76;font-size:11.5px}
+.track{height:34px;border-radius:8px;background:#f1ebe6;display:flex;overflow:hidden;border:1px solid #e5ddd7}
+.track.small{width:76.8%}
+.track i{flex:72;border-right:1px solid #fff;display:grid;place-items:center;font-style:normal;
+  font-size:10px;font-weight:700;color:#7a6d63}
+.track i.coda{flex:100;background:#efe6df;color:#7a6d63}
+.track.small i{flex:52}
+.track.small i.hot{background:#f9dfe7;color:#8d2143}
+.tl .val{font-size:12.5px;font-variant-numeric:tabular-nums;color:#4a423b;text-align:right}
+.tl .val b{display:block;font-size:14px;color:#1b1410}
+.legend{display:flex;gap:18px;font-size:11.5px;color:#8a7f76}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend s{width:10px;height:10px;border-radius:3px;background:#f9dfe7;text-decoration:none;display:inline-block}
+.legend s.g{background:#f1ebe6}
+
+/* testimonial compare */
+.mock-testi{background:#f7f3ef;padding:26px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.tcard{background:#fff;border:1px solid #e7e0da;border-radius:12px;padding:20px 22px;display:flex;
+  flex-direction:column;gap:12px}
+.tcard .tagline{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.tcard.bad .tagline{color:#a8534a}
+.tcard.good .tagline{color:#17684b}
+.tcard.bad .q{font:italic 400 13px/1.6 var(--serif);color:#4a423b}
+.tcard.good .q{font:400 14.5px/1.66 var(--sans);color:#2a231d}
+.tcard.good .q::first-letter{}
+.tcard .qm{font:400 40px/0.6 var(--serif);color:#e6d5d0;height:22px}
+.tcard .who{display:flex;align-items:center;gap:10px;margin-top:auto;padding-top:12px;border-top:1px solid #f0eae4}
+.av{width:30px;height:30px;border-radius:50%;background:#f0e4e8;color:#8d2143;display:grid;place-items:center;
+  font-weight:700;font-size:12px}
+.tcard .who b{font-size:12.5px;display:block}
+.tcard .who span{font-size:11px;color:#8a7f76}
+
+/* team grid */
+.mock-team{background:#fff;padding:26px;display:grid;grid-template-columns:1fr 1fr;gap:26px}
+.gwrap h5{margin:0 0 12px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#8a7f76}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.person{border:1px solid #e7e0da;border-radius:9px;padding:10px;background:#fffdfc;min-height:66px}
+.person b{display:block;font-size:11px;line-height:1.3}
+.person span{display:block;font-size:9.5px;color:#8a7f76;margin-top:3px}
+.person.cred{background:#f7f1ee;border-color:#e0d3cb}
+.hole{border:1px dashed #d8cec6;border-radius:9px;background:repeating-linear-gradient(45deg,#faf7f4,#faf7f4 6px,#f3ede8 6px,#f3ede8 12px)}
+.strip{background:#f7f1ee;border:1px solid #e0d3cb;border-radius:9px;padding:10px 12px;display:flex;
+  align-items:center;gap:10px;margin-bottom:9px}
+.strip b{font-size:11px}
+.strip span{font-size:9.5px;color:#8a7f76}
+
+/* chip */
+.mock-chip{background:#fff;padding:26px;display:grid;grid-template-columns:1fr 1fr;gap:26px}
+.chipset{display:flex;flex-wrap:wrap;gap:7px;max-width:330px}
+.chip{border:1px solid #ded4cc;border-radius:999px;background:#fff;font-size:12.5px;color:#4a423b;
+  padding:0 14px;display:inline-flex;align-items:center;justify-content:center}
+.chip.old{height:28px}
+.chip.new{height:44px;font-size:13px}
+.measure{font:600 10.5px/1 ui-monospace,Consolas,monospace;color:#a8534a;margin-top:8px}
+.measure.ok{color:#17684b}
+
+/* impl */
+.impl{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.step h4{margin:0 0 8px;font-size:14px}
+.step h4 span{font:700 10.5px/1 var(--sans);letter-spacing:.1em;color:#fff;background:var(--ink);
+  border-radius:4px;padding:3px 6px;margin-right:8px;vertical-align:2px}
+.step p{margin:0;font-size:13.5px;color:var(--ink2)}
+.step .gate{margin-top:10px;font-size:12.5px;color:#4a423b;border-top:1px dashed var(--line);padding-top:9px}
+.step .gate b{color:var(--accent)}
+
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink3)}
+
+@media (max-width:900px){
+  .delta{flex-wrap:wrap;gap:14px}
+  .delta .why{margin-left:0;border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:14px}
+  .principles,.notes,.impl,.mock-testi,.mock-team,.mock-chip{grid-template-columns:1fr}
+  .plate-head{grid-template-columns:44px 1fr}
+  .moves{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;justify-content:flex-start}
+  h1{font-size:34px}
+  .band{grid-template-columns:1fr 1fr}
+  .mock-rail{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">Rekomendasi desain · dari review 14 Nov 2026</div>
+  <h1>Enam desain untuk menaikkan skor</h1>
+  <p class="dek">Setiap plate di bawah menjawab satu temuan dari review, dan menyebut aspek mana yang
+    digerakkannya. Semua angka target dihitung dari <b>bobot aspek</b> yang sama dengan review —
+    bukan perasaan bahwa “ini akan lebih bagus”. <b>Belum ada yang saya ubah di halaman live.</b></p>
+
+  <div class="delta">
+    <div><div class="now">7,5</div><div class="lbl">sekarang</div></div>
+    <div class="arrow">→</div>
+    <div><div class="then">8,3</div><div class="lbl">target</div></div>
+    <div class="why">Kenaikan 0,8 poin berasal dari enam perubahan di bawah, bukan dari menambah
+      seksi baru. Tiga di antaranya murni <b>memindahkan</b> yang sudah ada (bukti, angka, kredensial)
+      ke tempat yang lebih awal dilihat.</div>
+  </div>
+
+  <h2>Peta skor</h2>
+  <table>
+    <thead><tr><th>Aspek</th><th>Bobot</th><th>Sekarang</th><th>Target</th><th>Δ</th><th>Digerakkan oleh</th></tr></thead>
+    <tbody>
+      <tr><td>Konversi / CTA</td><td class="n">10%</td><td class="s">6,0</td><td class="s">8,0</td><td class="up">+0,20</td><td><span class="plate-ref">01</span></td></tr>
+      <tr><td>Performa &amp; bobot</td><td class="n">12%</td><td class="s">6,0</td><td class="s">7,5</td><td class="up">+0,18</td><td><span class="plate-ref">01</span> <span class="plate-ref">04</span></td></tr>
+      <tr><td>Arsitektur informasi</td><td class="n">10%</td><td class="s">6,5</td><td class="s">7,5</td><td class="up">+0,10</td><td><span class="plate-ref">02</span> <span class="plate-ref">03</span></td></tr>
+      <tr><td>Aksesibilitas</td><td class="n">10%</td><td class="s">7,0</td><td class="s">8,0</td><td class="up">+0,10</td><td><span class="plate-ref">06</span></td></tr>
+      <tr><td>Konsistensi komponen</td><td class="n">8%</td><td class="s">7,0</td><td class="s">7,8</td><td class="up">+0,064</td><td><span class="plate-ref">05</span></td></tr>
+      <tr><td>Tipografi</td><td class="n">8%</td><td class="s">7,5</td><td class="s">8,2</td><td class="up">+0,056</td><td><span class="plate-ref">05</span></td></tr>
+      <tr><td>Identitas visual</td><td class="n">10%</td><td class="s">8,5</td><td class="s">8,8</td><td class="up">+0,03</td><td><span class="plate-ref">01</span></td></tr>
+      <tr><td>SEO &amp; semantik</td><td class="n">5%</td><td class="s">8,5</td><td class="s">9,0</td><td class="up">+0,025</td><td>LocalBusiness (non-visual)</td></tr>
+      <tr><td>Responsif</td><td class="n">8%</td><td class="s">9,0</td><td class="s">9,3</td><td class="up">+0,024</td><td><span class="plate-ref">06</span></td></tr>
+      <tr><td>Motion</td><td class="n">7%</td><td class="s">8,5</td><td class="s">8,8</td><td class="up">+0,021</td><td><span class="plate-ref">04</span></td></tr>
+      <tr><td>Konten &amp; kepercayaan</td><td class="n">12%</td><td class="s">9,0</td><td class="s">9,0</td><td class="n">0</td><td>sudah kuat, jangan disentuh</td></tr>
+      <tr><td style="text-align:right"><b>Rerata berbobot</b></td><td class="n">100%</td><td class="s">7,5</td><td class="s" style="color:var(--accent)">8,3</td><td class="up">+0,80</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Tiga prinsip di balik semua plate</h2>
+  <div class="principles">
+    <div><h4>Bukti naik, bukan ditambah</h4><p>Nomor izin dan rating 4,8 sudah ada — tapi di layar ke-9.
+      Yang mahal bukan membuatnya, tapi memindahkannya ke atas.</p></div>
+    <div><h4>Satu aksi primer per layar</h4><p>Halaman ini punya 25 tautan dan tidak satu pun yang
+      terasa wajib. Setiap layar boleh punya satu tombol yang berteriak, sisanya berbisik.</p></div>
+    <div><h4>Jinakkan panjang, jangan potong isi</h4><p>26 layar bukan dosa kalau ada peta dan
+      jalan pintas. Yang dosa adalah membuat orang menggulir tanpa tahu ke mana.</p></div>
+  </div>
+
+  <!-- ══════════════ 01 ══════════════ -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="num">01</div>
+      <div>
+        <h3>Hero: satu tombol yang berteriak, dan bukti di layar pertama</h3>
+        <p>Sekarang satu-satunya aksi di hero adalah tombol transparan berbingkai tipis — aksi terpenting
+          di seluruh halaman justru punya bobot visual paling rendah. Tiga kotak kaca di kanan juga
+          berebut perhatian dengan judul.</p>
+      </div>
+      <div class="moves"><span>Konversi 6,0 → 8,0</span><span>Identitas 8,5 → 8,8</span><span>Performa 6,0 → 7,2</span></div>
+    </div>
+
+    <div class="mock mock-hero">
+      <img class="mh-bg" src="proposal-assets/hero.webp" alt="">
+      <div class="mh-scrim"></div>
+      <div class="mh-copy">
+        <span class="mh-eyebrow"><i></i>LPK berizin · Ponorogo, Jawa Timur</span>
+        <h2 class="mh-h1">Karier ke Jepang,<br>dimulai dari sini.</h2>
+        <p class="mh-sub">Pelatihan bahasa dan budaya kerja, lalu penempatan ke seluruh 47 prefektur
+          lewat mitra resmi.</p>
+        <div class="mh-cta">
+          <span class="pinwrap"><i class="pin">1</i><a class="btn btn-primary">Daftar sebagai Pelamar <span>→</span></a></span>
+          <span class="pinwrap"><i class="pin pin--right">2</i><a class="btn btn-ghost">Ajukan Kerja Sama</a></span>
+        </div>
+        <div class="mh-trust">
+          <i class="pin">3</i>
+          <span class="mh-stars">★★★★★</span> <b>4,8</b> · 20 ulasan Google
+          <i></i> AHU-0063921.AH.01.01
+          <i></i> No. daftar 4023082735107914
+        </div>
+        <div class="mh-stats">
+          <div><b>2023</b><span>Berdiri</span></div>
+          <div><b>47</b><span>Prefektur</span></div>
+          <div><b>6</b><span>Pengajar</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div>
+        <h4>Kenapa</h4>
+        <ul>
+          <li><b>1 · Tombol primer.</b> Isi pink penuh dengan teks gelap = rasio kontras ±10:1 di atas
+            artwork gelap, dan jadi satu-satunya bidang terang di hero. Ia juga jadi
+            <code>&lt;a href="/apply"&gt;</code>, bukan <code>&lt;button&gt;</code> — bisa dibuka di tab
+            baru dan terindeks.</li>
+          <li><b>2 · Pintu mitra.</b> Positioning halaman ini “company profile untuk mitra MoU”, tapi
+            tidak ada satu pun jalur untuk mereka. Satu tombol hantu sudah cukup — ia berbisik, bukan berteriak.</li>
+          <li><b>3 · Bukti di layar pertama.</b> Rating dan dua nomor izin dipindah ke sini sebagai satu
+            baris kecil. Nol aset baru; tiga angka yang tadinya di seksi lain.</li>
+          <li><b>Kotak kaca dihapus.</b> Tiga statistik turun jadi strip rambut di bawah CTA — tetap ada,
+            tidak lagi bersaing dengan judul, dan memberi artwork 40% kanan untuk bernapas.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Spesifikasi</h4>
+        <ul>
+          <li>Primer: <code>bg #f9a8d4</code> · <code>color #2a0f1d</code> · <code>radius-pill</code> ·
+            <code>padding 14px 26px</code> · <code>font-weight 700</code>.</li>
+          <li>Sekunder: <code>bg rgba(255,255,255,.09)</code> · <code>border rgba(255,255,255,.28)</code> ·
+            <code>backdrop-blur 6px</code>.</li>
+          <li>Trust bar: <code>12px</code> · <code>#c9bcc6</code> · pemisah <code>1px rgba(255,255,255,.25)</code>.</li>
+          <li>Strip statistik: <code>border-top 1px rgba(255,255,255,.16)</code> · angka
+            <code>Instrument Serif 30px</code> · label <code>11px tracking .1em</code>.</li>
+          <li>Video hero: <code>preload="none"</code> + mulai setelah <code>requestIdleCallback</code>
+            atau <code>canplay</code> poster — poster AVIF 148 KB jadi LCP, bukan 520 KB mp4.</li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <!-- ══════════════ 02 ══════════════ -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="num">02</div>
+      <div>
+        <h3>Pita bukti: satu layar yang merangkum semua yang tidak bisa dibantah</h3>
+        <p>Legalitas ada di layar ke-9, testimoni di layar ke-19. Pita ini memindahkan <em>ringkasan</em>-nya
+          ke tepat setelah hero — 96 px, bukan seksi baru. Isinya empat fakta yang sudah terbit di halaman.</p>
+      </div>
+      <div class="moves"><span>Konten tetap 9,0</span><span>Konversi +0,05</span></div>
+    </div>
+
+    <div class="mock mock-band">
+      <div class="band">
+        <div>
+          <div class="k">Rating Google</div>
+          <div class="rate"><span class="st">★</span><span class="v">4,8<small>· 20 ulasan</small></span></div>
+        </div>
+        <div>
+          <div class="k">Badan hukum</div>
+          <div class="v" style="font-size:17px">PT · AHU-0063921</div>
+        </div>
+        <div>
+          <div class="k">Nomor pendaftaran</div>
+          <div class="v" style="font-size:17px">4023082735107914</div>
+        </div>
+        <div>
+          <div class="k">Jangkauan</div>
+          <div class="v">47<small>prefektur</small></div>
+        </div>
+        <a class="link">Periksa izin →</a>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div>
+        <h4>Kenapa</h4>
+        <ul>
+          <li>Pengunjung memutuskan “ini legit atau bukan” dalam ~10 detik. Sekarang jawabannya baru
+            datang setelah sembilan layar menggulir.</li>
+          <li>Satu ikon bintang + angka — bukan lima bintang penuh di samping 4,8, yang akan jadi klaim palsu.</li>
+          <li>Tautan “Periksa izin” menuju <code>#legalitas</code> yang sudah ada; pita ini pintu, bukan pengganti.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Spesifikasi</h4>
+        <ul>
+          <li>Tinggi 96 px · <code>border 1px #e9e2dc</code> · <code>radius-card</code> · latar
+            <code>#fffdfc</code>, bukan putih murni (agar tidak “melompat” dari hero gelap).</li>
+          <li>Angka: <code>Instrument Serif 26px</code> · label <code>10.5px tracking .12em</code> ·
+            pemisah <code>1px #efe9e4</code>.</li>
+          <li>Di &lt; 900 px jadi 2 × 2; tautan turun ke baris sendiri, rata kiri.</li>
+          <li>Data diambil dari sumber yang sudah ada (<code>REVIEW_SOURCE</code>, <code>LEGAL</code>) —
+            tidak ada angka baru yang dikarang.</li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <!-- ══════════════ 03 ══════════════ -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="num">03</div>
+      <div>
+        <h3>Rail seksi: 26 layar jadi peta yang bisa diklik</h3>
+        <p>Delapan belas seksi tanpa navigasi berarti satu-satunya cara pulang adalah menu. Rail ini
+          mengelompokkannya jadi enam tujuan, menandai posisi sekarang, dan hilang di bawah 1024 px.</p>
+      </div>
+      <div class="moves"><span>IA 6,5 → 7,5</span><span>Responsif 9,0 → 9,2</span></div>
+    </div>
+
+    <div class="mock mock-rail">
+      <div class="page-col">
+        <div class="blk hero"></div>
+        <div class="blk mid"></div>
+        <div class="blk tall"></div>
+        <div class="blk mid"></div>
+        <div class="blk short"></div>
+        <div class="blk mid"></div>
+      </div>
+      <div class="rail">
+        <div class="rt">Di halaman ini</div>
+        <ol>
+          <li class="on">Alur pendaftaran <em>01</em></li>
+          <li>Layanan <em>02</em></li>
+          <li>Bukti &amp; legalitas <em>03</em></li>
+          <li>Tim <em>04</em></li>
+          <li>Artikel <em>05</em></li>
+          <li>Kontak <em>06</em></li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div>
+        <h4>Kenapa</h4>
+        <ul>
+          <li><b>Pengelompokan, bukan 18 titik.</b> Delapan belas titik di rail adalah daftar isi yang
+            sama melelahkannya dengan menggulir. Enam grup = enam keputusan.</li>
+          <li><b>“Bukti &amp; legalitas” jadi salah satu dari enam.</b> Ini yang mengubah bukti dari
+            kebetulan menjadi tujuan yang bisa dituju.</li>
+          <li><b>Hilang di ponsel.</b> Di 390 px rail memakan 60 px lebar yang tidak ada; di sana
+            BottomNav sudah jadi peta.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Spesifikasi</h4>
+        <ul>
+          <li><code>position: sticky; top: 50%; translateY(-50%)</code> · lebar <code>180px</code> ·
+            <code>right: max(16px, 2vw)</code>.</li>
+          <li>Titik aktif: <code>9px</code>, isi <code>#a8264c</code>, halo <code>0 0 0 4px #fbeef2</code>.</li>
+          <li>Garis penghubung <code>1px #e7e0da</code>; progres dibaca dari
+            <code>IntersectionObserver</code> yang sudah dipakai entrance.</li>
+          <li>Sembunyi bila <code>prefers-reduced-motion</code>? Tidak — ia navigasi, bukan gerak.</li>
+          <li>Gate baru: rail wajib punya 6 tujuan dan tautannya benar-benar mengubah <code>scrollY</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <!-- ══════════════ 04 ══════════════ -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="num">04</div>
+      <div>
+        <h3>Band film: tujuh babak tetap, tapi tidak tujuh kali menunggu</h3>
+        <p>Masalahnya bukan jumlah babaknya — melainkan <b>72svh</b> tinggal per babak. Setiap babak
+          menahan pengunjung hampir satu layar penuh sebelum boleh lanjut.</p>
+      </div>
+      <div class="moves"><span>IA 6,5 → 7,0</span><span>Performa +0,03</span><span>Motion 8,5 → 8,8</span></div>
+    </div>
+
+    <div class="mock mock-film">
+      <div class="tl">
+        <div class="name">Sekarang<small>7 × 72svh + 100svh</small></div>
+        <div class="track">
+          <i>01</i><i>02</i><i>03</i><i>04</i><i>05</i><i>06</i><i class="coda">↺</i>
+        </div>
+        <div class="val"><b>5.436 px</b>6,04 layar</div>
+      </div>
+      <div class="tl">
+        <div class="name">Usulan<small>7 × 52svh + 100svh</small></div>
+        <div class="track small">
+          <i class="hot">01</i><i class="hot">02</i><i class="hot">03</i><i class="hot">04</i><i class="hot">05</i><i class="hot">06</i><i class="coda">↺</i>
+        </div>
+        <div class="val"><b>4.176 px</b>4,64 layar</div>
+      </div>
+      <div class="legend">
+        <span><s></s>babak 72svh = 648 px</span>
+        <span><s class="g"></s>coda 100svh = 900 px</span>
+        <span>Hemat 1.260 px = 5,4% tinggi halaman</span>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div>
+        <h4>Kenapa 52, bukan 40</h4>
+        <ul>
+          <li>Di 52svh satu babak masih ±2,3 detik baca untuk judul + 2 baris badan — di bawah itu,
+            teks kedua (“beat” 38%) tidak sempat muncul sebelum babak berganti.</li>
+          <li><b>Isi tidak dipotong.</b> Enam langkah + coda tetap ada; yang dipangkas hanya waktu tunggu.</li>
+          <li>Hematnya bukan kosmetik: band ini 23,4% tinggi halaman. Turun ke 18% membuat seksi
+            <em>setelah</em>-nya terasa lebih dekat.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Spesifikasi</h4>
+        <ul>
+          <li><code>.film-track { height: calc(7 * 52svh + 100svh) }</code> — satu angka di
+            <code>src/pages/index.astro</code>.</li>
+          <li>Matematika <code>paint()</code> tidak berubah: ia membaca progres relatif, bukan tinggi px.</li>
+          <li>Gate: <code>e2e:landing</code> mengukur tinggi track; tambahkan asersi
+            <code>track &lt; 5 × innerHeight (4.176 &lt; 4.500)</code> supaya tidak diam-diam kembali ke 72svh.</li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <!-- ══════════════ 05 ══════════════ -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="num">05</div>
+      <div>
+        <h3>Testimoni: tegak, dan kutipan aslinya</h3>
+        <p>Dua masalah sekaligus di satu kartu: blok 300–500 karakter diset <em>italic serif</em>
+          (indah untuk satu frasa, melelahkan untuk satu paragraf), dan teksnya bahasa Inggris di
+          halaman berbahasa Indonesia.</p>
+      </div>
+      <div class="moves"><span>Tipografi 7,5 → 8,2</span><span>Komponen 7,0 → 7,6</span></div>
+    </div>
+
+    <div class="mock mock-testi">
+      <div class="tcard bad">
+        <div class="tagline">Sekarang</div>
+        <div class="qm">“</div>
+        <div class="q">Looking at the map review? Don't hesitate. I've been to Japan through this LPK.
+          The LPK near my house rejected me outright because I had a broken bone…</div>
+        <div class="who"><div class="av">E</div><div><b>EL GASING</b><span>Google Maps · 5,0</span></div></div>
+      </div>
+      <div class="tcard good">
+        <div class="tagline">Usulan</div>
+        <div class="qm">“</div>
+        <div class="q">Saya sudah sampai Jepang lewat LPK ini. LPK dekat rumah saya menolak mentah-mentah
+          karena saya pernah patah tulang. Amanah Sakura menerima saya — dan sekarang saya di sini.</div>
+        <div class="who"><div class="av">E</div><div><b>EL GASING</b><span>Google Maps · 5,0</span></div></div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div>
+        <h4>Kenapa</h4>
+        <ul>
+          <li><b>Tegak, bukan italic.</b> Italic serif menurunkan x-height efektif dan menambah
+            kemiringan pada 13 px — dua hal yang paling cepat melelahkan mata di blok panjang.</li>
+          <li><b>Bahasa.</b> Ulasan ini ditulis berbahasa Indonesia; yang terpasang adalah terjemahan
+            mesin dari listing. Kutipan asli jauh lebih meyakinkan — dan lebih jujur daripada
+            memparafrase.</li>
+          <li><b>Tanda kutip dekoratif</b> mengambil peran “italic” yang dilepas: satu aksen serif besar
+            di atas, bukan seluruh paragraf dimiringkan.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Spesifikasi</h4>
+        <ul>
+          <li>Badan: <code>Inter 400 · 14,5px/1,66</code> · <code>#2a231d</code> · maks 42ch.</li>
+          <li>Tanda kutip: <code>Instrument Serif 40px</code> · <code>#e6d5d0</code> · <code>height 22px</code>.</li>
+          <li>Baris penulis dipisah <code>border-top 1px #f0eae4</code> + avatar inisial 30 px —
+            menggantikan ruang kosong yang sekarang menganga di kartu pendek.</li>
+          <li>⚠ Mengganti teks = <b>mengambil ulang</b> dari Google Maps (locale <code>id</code>).
+            Jangan diterjemahkan sendiri; itu mengubah ucapan orang.</li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <!-- ══════════════ 06 ══════════════ -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="num">06</div>
+      <div>
+        <h3>Grid tim tanpa lubang, dan chip yang bisa disentuh jempol</h3>
+        <p>Dua perbaikan kecil yang keduanya soal <em>geometri</em>: satu sel kosong yang membuat
+          seksi terbaca belum selesai, dan chip 28 px yang menuntut ketukan presisi.</p>
+      </div>
+      <div class="moves"><span>Komponen 7,0 → 7,8</span><span>A11y 7,0 → 8,0</span></div>
+    </div>
+
+    <div class="mock mock-team">
+      <div class="gwrap">
+        <h5>Sekarang — kartu kredensial sendirian</h5>
+        <div class="grid3">
+          <div class="person cred"><b>Kredensial pengajar</b><span>JLPT N1</span></div>
+          <div class="hole"></div><div class="hole"></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+        </div>
+      </div>
+      <div class="gwrap">
+        <h5>Usulan — kredensial jadi pita, enam orang utuh</h5>
+        <div class="strip"><b>Semua pengajar bersertifikat</b><span>JLPT N1 · 6 orang</span></div>
+        <div class="grid3">
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+          <div class="person"><b>Nama</b><span>Peran</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock mock-chip" style="margin-top:14px">
+      <div>
+        <h5 style="margin:0 0 12px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#8a7f76">Chip prefektur — sekarang 28 px</h5>
+        <div class="chipset">
+          <span class="chip old">Hokkaido</span><span class="chip old">Tohoku</span>
+          <span class="chip old">Kanto</span><span class="chip old">Chubu</span>
+          <span class="chip old">Kansai</span><span class="chip old">Chugoku</span>
+        </div>
+        <div class="measure">28 px — di bawah 44 px</div>
+      </div>
+      <div>
+        <h5 style="margin:0 0 12px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#8a7f76">Usulan — 44 px</h5>
+        <div class="chipset">
+          <span class="chip new">Hokkaido</span><span class="chip new">Tohoku</span>
+          <span class="chip new">Kanto</span><span class="chip new">Chubu</span>
+        </div>
+        <div class="measure ok">44 px — ambang WCAG 2.5.8</div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div>
+        <h4>Kenapa</h4>
+        <ul>
+          <li><b>Lubang 2 sel</b> terbaca sebagai “konten belum selesai” — sinyal kepercayaan yang
+            salah, padahal isinya lengkap.</li>
+          <li>Kredensial naik jadi <b>pita penuh</b>: ia pernyataan tentang <em>seluruh</em> tim,
+            bukan tentang satu kartu.</li>
+          <li><b>28 px</b> masih bisa diklik mouse, tapi ini chip filter yang dipakai dengan jempol
+            di ponsel — 16 target di halaman berada di bawah 44 px.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Spesifikasi</h4>
+        <ul>
+          <li>Tim: <code>grid-template-columns: repeat(3, 1fr)</code> + pita
+            <code>grid-column: 1 / -1</code> di atas grid.</li>
+          <li>Chip: <code>min-height: 44px</code> · <code>padding: 0 16px</code> ·
+            <code>font-size 13px</code> · jarak antar chip <code>8px</code> (bukan 6) agar tidak salah tekan.</li>
+          <li>Gate baru: asersi target sentuh <code>&gt;= 44</code> untuk
+            <code>a, button, summary, [role=button]</code> di 390 px — sekarang belum ada.</li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <h2>Urutan pengerjaan</h2>
+  <div class="impl">
+    <div class="step">
+      <h4><span>1</span>Hero + pita bukti</h4>
+      <p>Dampak terbesar, risiko terkecil: dua komponen, tidak menyentuh data. Ganti tombol jadi tautan,
+        tambah satu tombol hantu, pindahkan tiga angka ke strip, sisipkan pita 96 px.</p>
+      <div class="gate"><b>Gate:</b> CTA hero harus <code>&lt;a href&gt;</code>; pita wajib memuat
+        rating + satu nomor izin.</div>
+    </div>
+    <div class="step">
+      <h4><span>2</span>Video hero ditunda</h4>
+      <p>Satu perubahan di <code>App.tsx</code>: jangan autoplay sebelum idle. Poster yang sudah ada
+        jadi LCP. Target muatan awal turun dari 2,33 MB ke ±1,8 MB.</p>
+      <div class="gate"><b>Gate:</b> ukur <code>transferSize</code> mp4 = 0 pada 2 detik pertama.</div>
+    </div>
+    <div class="step">
+      <h4><span>3</span>Band film 72 → 52svh</h4>
+      <p>Satu angka. Tidak ada logika yang berubah. Hemat 1.260 px tinggi halaman.</p>
+      <div class="gate"><b>Gate:</b> <code>track &lt; 5 × innerHeight</code> di 1440.</div>
+    </div>
+    <div class="step">
+      <h4><span>4</span>Rail, testimoni, grid, chip</h4>
+      <p>Empat perbaikan visual yang berdiri sendiri-sendiri, bisa dikerjakan berurutan tanpa saling
+        menunggu.</p>
+      <div class="gate"><b>Gate:</b> target sentuh ≥ 44 px; rail 6 tujuan; tidak ada sel kosong di #tim.</div>
+    </div>
+  </div>
+
+  <footer>
+    Semua ukuran di plate ini mengikuti token yang sudah ada di <code>src/styles/theme.css</code>
+    (radius, skala teks, palet) — tidak ada bahasa visual baru. Angka target skor dihitung dari bobot
+    aspek di review 14 Nov 2026, bukan janji. Yang <b>belum</b> dikerjakan: menerapkan ke halaman live;
+    plate ini menunggu keputusan.
+  </footer>
+</div>
+</body>
+</html>

@@ -10,6 +10,7 @@ import { authStore, refreshFcmRegistrationOnce } from '../store/authReactive';
 import { initializeAuthListener, logoutSupabase } from '../store/userStore';
 import { toggleLang, t, translateDataLang, useLang } from '../store/i18n';
 import { bannerStore } from '../store/theme';
+import { REVIEW_SOURCE } from '../lib/testimonials';
 
 /* STACKING ORDER COMES FROM THE THEME SCALE (theme.css `@theme`), NOT A SECOND
    PRIVATE COPY. This file used to carry its own `Z_INDEX` map (scrim 35,
@@ -109,6 +110,39 @@ const HERO_STATS: ReadonlyArray<{ value?: string; valueKey?: string; labelKey: s
 ];
 
 /**
+ * ── DAFTAR ISI DI DRAWER (2026-11-14) ───────────────────────────────────────
+ *
+ * Halaman `/` sekarang 18 seksi dan ±24 layar. Satu-satunya navigasi adalah
+ * menu ini, dan isinya hanya Lowongan + Login/Daftar — tidak ada satu pun
+ * tautan ke seksi. Jadi pengunjung yang ingin kembali ke "Legalitas" harus
+ * menggulir dari atas.
+ *
+ * ENAM TUJUAN, BUKAN DELAPAN BELAS. Delapan belas baris di drawer adalah
+ * daftar isi yang sama melelahkannya dengan menggulir; enam grup adalah enam
+ * keputusan. "Bukti & legalitas" sengaja jadi salah satu dari enam — itu yang
+ * mengubah bukti dari kebetulan menjadi tujuan yang bisa dituju.
+ *
+ * KENAPA DI DRAWER, BUKAN RAIL MELAYANG DI KANAN. Rail 150 px hanya muat di
+ * viewport ≥ 1600 px (konten `max-w-7xl` menyisakan 160 px di 1600, 80 px di
+ * 1440), jadi di layar pemilik sendiri ia tidak akan muncul. Drawer bekerja di
+ * semua lebar, dan itu juga tempat owner menaruh navigasi ("dari menu
+ * hamburger", 2026-09-25) — bukan pita yang menempel di bawah hero, yang
+ * justru sudah dihapus atas keputusan owner.
+ *
+ * `href` menunjuk id seksi yang SUDAH ada dan sudah dijaga `e2e:landing`
+ * ("every in-page link resolves to a real element"), jadi tidak ada anchor
+ * mati yang bisa lolos.
+ */
+const SECTION_LINKS: ReadonlyArray<{ href: string; key: string }> = [
+  { href: '#alur', key: 'profile.nav_flow' },
+  { href: '#layanan', key: 'profile.nav_services' },
+  { href: '#legalitas', key: 'profile.nav_proof' },
+  { href: '#tim', key: 'profile.nav_team' },
+  { href: '#artikel', key: 'profile.nav_articles' },
+  { href: '#kontak', key: 'profile.nav_contact' },
+];
+
+/**
  * Split a headline into per-word spans wrapped in an overflow mask, so each
  * word can rise out of nothing (motion.css §10). Whitespace is preserved as
  * TEXT nodes, not as spans, because the browser must stay free to wrap the
@@ -136,7 +170,26 @@ function splitHeadline(text: string) {
 }
 
 export default function App(
-  { showHeader = true, hero = false }: { showHeader?: boolean; hero?: boolean } = {},
+  {
+    showHeader = true,
+    hero = false,
+    proof,
+  }: {
+    showHeader?: boolean;
+    hero?: boolean;
+    /**
+     * ── PITA BUKTI DI HERO (2026-11-14) ────────────────────────────────────
+     * Nomor pendaftaran PT dioper dari `LEGAL_FACTS` (index.astro), BUKAN
+     * ditulis ulang di sini. Halaman ini sudah punya dua salinan nomor izin
+     * (companyProfile.ts dan markup #legalitas); salinan ketiga di dalam
+     * island adalah salinan yang tidak akan ikut diperbarui saat nomornya
+     * berubah — kelas kesalahan yang sudah pernah terjadi pada
+     * `CONTACT_MAPS_URL`.
+     *
+     * Opsional: rute lain memakai App tanpa hero, dan tanpa pita.
+     */
+    proof?: { regno?: string };
+  } = {},
 ) {
   const u: UserState = useStore(authStore) as UserState;
   // useLang() re-renders once the lazy JP dict lands (e.g. a cold load with
@@ -205,12 +258,17 @@ export default function App(
      decides when it detaches from the band. */
   const headerRef = useRef<HTMLElement | null>(null);
   /**
-   * ── THE HERO CLIP'S OWN REF (2026-11-11) ────────────────────────────────
-   * The clip autoplays, which means it starts BEFORE hydration — so a
-   * `playing` listener attached during render never sees the first event.
-   * Measured on the dev server: the clip was at t=3,76 s, `paused=false`, and
-   * still `opacity: 0`, because `is-live` was never added. The effect below
-   * therefore checks the ALREADY-PLAYING case first and only then subscribes.
+   * ── THE HERO CLIP'S OWN REF (2026-11-11, ditunda 2026-11-14) ────────────
+   * Sejak 14 Nov klip TIDAK lagi `autoplay` — ia dimulai oleh efek di bawah
+   * setelah `load` + 1,2 detik, supaya 520 KB mp4 tidak ikut di layar pertama.
+   * Konsekuensinya `playing` kini selalu datang SETELAH hidrasi, jadi listener
+   * di dalam efek tidak bisa lagi melewatkan event pertama.
+   *
+   * Pemeriksaan "sudah berjalan" di bawah TETAP ADA dan bukan sisa: kalau
+   * `play()` dipanggil sebelum efek sempat berlangganan (atau browser
+   * memulihkan pemutaran dari bfcache), `playing` sudah lewat dan `is-live`
+   * tidak akan pernah dipasang — klip berjalan di belakang lapisan
+   * `opacity: 0`, persis kegagalan yang terukur 2026-11-11.
    */
   const heroVidRef = useRef<HTMLVideoElement | null>(null);
   useEffect(() => {
@@ -224,9 +282,43 @@ export default function App(
       const pic = v.closest('.hero-vidwrap')?.previousElementSibling;
       if (pic instanceof HTMLElement) pic.style.display = 'none';
     };
+
+    /* ── KLIP HERO DITUNDA (2026-11-14) ──────────────────────────────────
+       `autoplay` membuat browser mengunduh mp4 520 KB SEBELUM siapa pun
+       melihat hero. Terukur 14 Nov: 741 KB video di muatan awal (32% total),
+       520 KB di antaranya klip ini — untuk gerak 5 detik yang tidak diminta.
+       Posternya sudah ada, sudah jadi LCP (668 ms), dan tampil lebih dulu.
+
+       Jadi klip mulai SETELAH layar pertama selesai: `load` + 1,2 detik.
+       `preload="none"` di elemen membuat unduhan benar-benar tertunda sampai
+       `play()` dipanggil, bukan sekadar ditunda oleh JS.
+
+       `prefers-reduced-motion`: klip TIDAK PERNAH dimulai. Pengguna yang
+       meminta gerak dikurangi mendapat still, bukan video yang menunggu. */
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      v.addEventListener('playing', go);
+      return () => v.removeEventListener('playing', go);
+    }
+
+    let timer = 0;
+    const start = () => {
+      v.preload = 'auto';
+      const p = v.play();
+      if (p && typeof p.catch === 'function') p.catch(() => undefined);
+    };
+    const schedule = () => {
+      timer = window.setTimeout(start, 1200);
+    };
+    if (document.readyState === 'complete') schedule();
+    else window.addEventListener('load', schedule, { once: true });
+
     if (!v.paused && v.readyState >= 2) go();
     v.addEventListener('playing', go);
-    return () => v.removeEventListener('playing', go);
+    return () => {
+      v.removeEventListener('playing', go);
+      window.removeEventListener('load', schedule);
+      window.clearTimeout(timer);
+    };
   }, []);
   const [navFixed, setNavFixed] = useState(false);
   const [showAiCopilot, setShowAiCopilot] = useState(false);
@@ -756,7 +848,6 @@ export default function App(
               muted
               loop
               playsInline
-              autoplay
               preload="none"
               tabIndex={-1}
             />
@@ -1117,46 +1208,116 @@ export default function App(
                   the hero's primary CTA to /loker is removed and the section nav
                   is the page's ONLY path to the vacancy list. The register
                   button below stays — it is not a /loker link. */}
-              <div class="flex flex-wrap gap-3 mt-8">
-                <button type="button" onClick={openRegister} class="inline-flex items-center px-7 py-3.5 rounded-pill bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm backdrop-blur-sm transition"><Icon name="user-plus" class="mr-2" />{t("profile.hero_cta_secondary")}</button>
+              <div class="flex flex-wrap items-center gap-3 mt-8">
+                {/* ── SATU TOMBOL YANG BERTERIAK (2026-11-14) ─────────────────
+                    Sebelum ini satu-satunya aksi di hero adalah tombol
+                    `bg-white/10` berbingkai tipis — gaya yang dibaca sebagai
+                    SEKUNDER di mana-mana, dipakai untuk aksi TERPENTING di
+                    halaman. Ia juga `<button onClick={openRegister}>`, bukan
+                    tautan: tidak bisa dibuka di tab baru, tidak bisa dibagikan,
+                    dan tidak terindeks.
+
+                    Sekarang primer = isi pink dengan teks gelap (kontras ±10:1
+                    di atas artwork gelap) dan `href="/apply"`. Tombol kedua
+                    sengaja tetap hantu: ia pintu untuk audiens lain (mitra),
+                    bukan saingan. */}
+                <a
+                  href="/apply"
+                  class="inline-flex items-center px-7 py-3.5 rounded-pill bg-pink-300 hover:bg-pink-200 text-[#2a0f1d] font-bold text-sm transition shadow-lg shadow-pink-300/25"
+                >
+                  <Icon name="user-plus" class="mr-2" />
+                  {t("profile.hero_cta_secondary")}
+                  <Icon name="arrow-right" class="ml-2" />
+                </a>
+                {/* PINTU MITRA. Halaman ini menyebut dirinya company profile
+                    untuk mitra MoU (owner 2026-09-24) tetapi tidak punya satu
+                    pun jalur untuk mereka. Satu tombol hantu sudah cukup. */}
+                <a
+                  href="#kontak"
+                  class="inline-flex items-center px-7 py-3.5 rounded-pill bg-white/10 hover:bg-white/20 border border-white/25 text-white font-bold text-sm backdrop-blur-sm transition"
+                >
+                  <Icon name="handshake" class="mr-2" />
+                  {t("profile.hero_cta_partner")}
+                </a>
               </div>
-              <div class="flex flex-wrap gap-2 mt-6">
+
+              <div class="flex flex-wrap gap-2 mt-5">
                 {[t("profile.hero_chip_ssw"), t("profile.hero_chip_magang"), t("profile.hero_chip_penempatan")].map((label) => (
-                  <span key={label} class="px-3.5 py-1.5 rounded-pill bg-white/10 border border-white/15 text-caption font-bold text-slate-200 backdrop-blur-sm">{label}</span>
+                  <span key={label} class="px-3 py-1 rounded-pill bg-white/10 border border-white/15 text-caption font-bold text-slate-200 backdrop-blur-sm">{label}</span>
                 ))}
               </div>
-            </div>
-            {/* Glass tiles: the ONLY place besides the closing band that uses a
-                translucent surface, and the only one over artwork. Kept to one
-                area per screen — `backdrop-filter` costs per frame.
 
-                COLUMN COUNT — measured, not guessed. This used to read
-                `grid gap-3 sm:grid-cols-3 lg:grid-cols-1`, so the lg tier
-                overrode the row and the three tiles STACKED on desktop, which is
-                the opposite of the intent: one strip became a 479px-wide column
-                three deep. Measured with e2e/measure-hero-stats.mjs before the
-                fix — 700px ONE ROW (209px x3), 1280px STACKED (479px x1,
-                y=235/325/416). The hero grid on the right is `lg:col-span-5`
-                (5 of 12 columns), so three tiles across it are ~152px each:
-                enough for a 4-digit number over a two-word caption at the
-                `text-caption` size, and it is what makes the strip read as a
-                summary rather than a list.
+              {/* ── TIGA ANGKA TURUN DARI KOTAK KACA (2026-11-14) ─────────────
+                  Sebelumnya ketiganya kotak kaca `backdrop-blur` di kolom kanan
+                  (lg:col-span-5). Di 1440, judul dua baris + tiga kotak membuat
+                  hero punya DUA pusat perhatian, dan artwork di belakangnya tidak
+                  pernah mendapat ruang. Bentuknya sekarang strip rambut di bawah
+                  CTA: angka yang sama, di layar yang sama, tanpa berteriak — dan
+                  `backdrop-filter` hilang dari hero (biaya per frame).
 
-                WHY `sm:grid-cols-3` AND NOT `grid-cols-3`. Forcing three columns
-                at every width fixed the desktop stack and BROKE mobile: at 390px
-                the tiles became 106px wide and 106px tall (from 73px), and
-                "Bidang penempatan" wrapped mid-word to "penempata/n" — measured
-                after the first attempt, visible in test-results/landing/390-s01.png.
-                Below `sm` the tiles now sit one per row at full width, which is
-                the reading order a phone actually wants; the strip shape starts
-                at 640px, where there is room for it. */}
-            <div class="lg:col-span-5 grid gap-3 sm:grid-cols-3">
-              {HERO_STATS.map((stat) => (
-                <div key={stat.labelKey} class="rounded-card bg-white/10 border border-white/15 backdrop-blur-sm px-5 py-4 flex sm:block items-center justify-between gap-3 hover:bg-white/15 transition-colors">
-                  <div class="text-section font-black text-pink-300 leading-none">{stat.valueKey ? t(stat.valueKey) : stat.value}</div>
-                  <div class="text-caption text-slate-200 mt-0 sm:mt-2">{t(stat.labelKey)}</div>
-                </div>
-              ))}
+                  ⚠ DOM-nya SENGAJA tetap `parent > [nilai, label]` dengan label
+                  sebagai `<div>` daun. `e2e/test-landing.mjs` (L8.4) mencari tile
+                  lewat teks label yang PERSIS, lalu membaca `children[0]` sebagai
+                  nilainya. Mengubah urutan, atau membungkus label dengan
+                  `<span>`, membuat gate itu melaporkan 0/3 tile. */}
+              <div class="mt-7 pt-6 border-t border-white/15 flex flex-wrap gap-x-12 gap-y-5">
+                {HERO_STATS.map((stat) => (
+                  <div key={stat.labelKey} class="flex flex-col">
+                    <div class="text-section font-display text-white leading-none">{stat.valueKey ? t(stat.valueKey) : stat.value}</div>
+                    <div class="text-caption uppercase tracking-[0.12em] text-slate-400 mt-2">{t(stat.labelKey)}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── PITA BUKTI DI TEPI BAWAH HERO (2026-11-14) ────────────────
+                  Rating tinggal di #testimoni (layar ke-19) dan nomor
+                  pendaftaran di #legalitas (layar ke-9). Keduanya bukti yang
+                  bisa diperiksa orang lain — dan keduanya datang terlambat.
+
+                  Pita ini memindahkan RINGKASANNYA ke layar pertama. Tidak ada
+                  angka baru: rating dibaca dari `REVIEW_SOURCE`, nomor
+                  pendaftaran dioper dari `LEGAL_FACTS` lewat prop `proof`
+                  (satu sumber, bukan salinan ketiga di dalam island).
+
+                  ⚠ SATU BINTANG, BUKAN LIMA. Lima bintang penuh di samping
+                  4,8 adalah klaim palsu — tidak ada ulasan 5,0 yang mewakili
+                  rata-rata. Aturan yang sama dipakai strip agregat #testimoni.
+
+                  ⚠ LEBARNYA MENGIKUTI KOLOM TEKS (7/12), BUKAN SELURUH BAND.
+                  Itu disengaja: garis rambut selebar layar akan memotong
+                  artwork tepat di tengah, dan pita ini memang milik kolom teks
+                  — bukan footer band. */}
+              <div class="mt-7 pt-5 border-t border-white/15 flex flex-wrap items-center gap-x-6 gap-y-2 text-caption text-slate-300">
+                {REVIEW_SOURCE.rating !== null && REVIEW_SOURCE.count !== null ? (
+                  <span class="inline-flex items-center gap-2">
+                    <span class="text-amber-300" aria-hidden="true">
+                      ★
+                    </span>
+                    <b class="text-white font-bold">
+                      {REVIEW_SOURCE.rating.toFixed(1).replace('.', ',')}
+                    </b>
+                    <span aria-hidden="true" class="text-white/25">
+                      ·
+                    </span>
+                    <span>
+                      {REVIEW_SOURCE.count} {t("profile.hero_proof_reviews")}
+                    </span>
+                  </span>
+                ) : null}
+                {proof?.regno ? (
+                  <span class="inline-flex items-center gap-2">
+                    <span class="text-white/45">{t("profile.legal_regno")}</span>
+                    <b class="text-white font-bold font-mono tracking-tight">{proof.regno}</b>
+                  </span>
+                ) : null}
+                <a
+                  href="#legalitas"
+                  class="inline-flex min-h-[44px] items-center gap-1.5 text-pink-300 hover:text-pink-200 font-bold underline-offset-4 hover:underline transition"
+                >
+                  {t("profile.hero_proof_check")}
+                  <Icon name="arrow-right" class="text-xs" />
+                </a>
+              </div>
             </div>
           </div>
         ) : (
@@ -1294,6 +1455,37 @@ export default function App(
                 would orphan the translations for no gain. It is now the key's
                 only consumer, so it must NOT be cleaned up as a nav orphan. */}
             <a href="/loker" class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="briefcase" class="mr-2 text-sky-400" /> {t("profile.nav_loker")}</a>
+
+            {/* ── DAFTAR ISI HALAMAN (2026-11-14) ─────────────────────────────
+                Lihat catatan `SECTION_LINKS` di atas untuk alasannya. Hanya
+                dirender di rute yang memasang hero (`/`): di /loker, /admin,
+                /candidate, anchor ini tidak punya tujuan.
+
+                `onClick={toggleMenu}` WAJIB. Drawer ini `position: fixed` dan
+                menutupi 288 px kanan layar; tanpa menutupnya, tautan akan
+                menggulir halaman DI BELAKANG drawer yang masih terbuka — dan
+                pengunjung melihat drawer kosong yang tidak bergerak. */}
+            {hero ? (
+              <nav aria-label={t("profile.nav_sections")} class="pt-3 mt-3 border-t border-slate-700">
+                <div class="text-[11px] uppercase tracking-widest text-slate-500 mb-2">
+                  {t("profile.nav_sections")}
+                </div>
+                <ul class="space-y-0.5">
+                  {SECTION_LINKS.map((s) => (
+                    <li key={s.href}>
+                      <a
+                        href={s.href}
+                        onClick={toggleMenu}
+                        class="flex min-h-[44px] items-center justify-between px-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 text-sm transition"
+                      >
+                        <span>{t(s.key)}</span>
+                        <Icon name="arrow-right" class="text-xs text-slate-600" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ) : null}
             {/* Gradient CTA — `from-emerald-700 to-sky-700`, hover DARKENS
                 (`hover:from-emerald-800 hover:to-sky-800`), NOT the old
                 lightening step (measured 2026-09-27).
