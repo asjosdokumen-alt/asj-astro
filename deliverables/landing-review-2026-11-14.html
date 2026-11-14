@@ -99,16 +99,16 @@
 
   <section class="hero-score" style="border-color:#bfe3cf;background:#f4fbf7">
     <div>
-      <div class="big" style="color:#17684b">8,0<small> / 10</small></div>
-      <div class="bar" style="max-width:170px"><i style="width:80%;background:#17684b"></i></div>
+      <div class="big" style="color:#17684b">8,1<small> / 10</small></div>
+      <div class="bar" style="max-width:170px"><i style="width:81%;background:#17684b"></i></div>
     </div>
     <div class="verdict">
-      <span class="pill" style="background:#e3f6ec;color:#17684b">Pembaruan 14 Nov · 10.00 · sudah diterapkan</span><br>
+      <span class="pill" style="background:#e3f6ec;color:#17684b">Pembaruan 14 Nov · 10.05 · sudah diterapkan</span><br>
       Enam plate dikerjakan. Yang berubah <b>terukur</b>: LCP 668 → <b>396 ms</b> (video keluar dari
       jalur kritis), track film 5.436 → <b>4.176 px</b> (26 → 24,4 layar), target sentuh &lt; 44 px
       <b>16 → 1</b>, dan hero akhirnya punya <b>satu</b> aksi primer + rating + nomor pendaftaran.
-      <b>Belum</b> 8,3 seperti proyeksi: bobot total masih 2,3 MB dan halaman masih 24 layar —
-      dua hal yang tidak bisa diselesaikan satu plate.
+      <b>Belum</b> 8,3 seperti proyeksi: halaman masih 24 layar dan video masih 723 KB di desktop —
+      keduanya butuh keputusan di luar satu plate.
     </div>
   </section>
 
@@ -116,8 +116,8 @@
   <table>
     <thead><tr><th>Metrik</th><th>Sebelum</th><th>Sesudah</th><th>Catatan</th></tr></thead>
     <tbody>
-      <tr><td>LCP (lab, gzip)</td><td class="n">668 ms</td><td class="n"><b>396 ms</b></td><td class="ev">Poster AVIF jadi LCP; klip hero mulai setelah <code>load</code> + 1,2 s</td></tr>
-      <tr><td>Muatan awal total</td><td class="n">2.331 KB</td><td class="n">2.331 KB</td><td class="ev">Tidak turun: video tetap diunduh, hanya <b>setelah</b> layar pertama</td></tr>
+      <tr><td>LCP (lab, gzip)</td><td class="n">668 ms</td><td class="n"><b>428 ms</b></td><td class="ev">Poster AVIF jadi LCP; klip hero mulai setelah <code>load</code> + 1,2 s</td></tr>
+      <tr><td>Muatan awal total</td><td class="n">2.331 KB</td><td class="n"><b>1.532 KB</b> desktop<br><b>986 KB</b> ponsel</td><td class="ev">Gambar −64% (AVIF), poster ganda dihapus, klip hero tidak diunduh di &lt; 640 px</td></tr>
       <tr><td>Tinggi halaman (1440)</td><td class="n">23.202 px</td><td class="n"><b>21.916 px</b></td><td class="ev">26 → 24,4 layar; track film 5.436 → 4.176 px</td></tr>
       <tr><td>Target sentuh &lt; 44 px</td><td class="n">16</td><td class="n"><b>1</b></td><td class="ev">Chip prefektur &amp; ringkasan 26 prefektur kini 44 px</td></tr>
       <tr><td>Tautan ke <code>/apply</code></td><td class="n">1</td><td class="n"><b>2</b></td><td class="ev">CTA hero sekarang tautan sungguhan, bukan <code>&lt;button&gt;</code> modal</td></tr>

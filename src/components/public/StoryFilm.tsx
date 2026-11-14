@@ -58,7 +58,9 @@ export interface FilmStep {
 const MEDIA = [
   {
     portrait: '/assets/story/01-daftar.webp',
+    avif: '/assets/story/01-daftar.avif',
     wide: '/assets/story/wide/01-daftar.webp',
+    avifw: '/assets/story/wide/01-daftar.avif',
     mp4: '/assets/story/01-daftar.mp4',
     mp4w: '/assets/story/wide/01-daftar.mp4',
     focus: '64% 50%',
@@ -66,7 +68,9 @@ const MEDIA = [
   },
   {
     portrait: '/assets/story/02-latihan.webp',
+    avif: '/assets/story/02-latihan.avif',
     wide: '/assets/story/wide/02-latihan.webp',
+    avifw: '/assets/story/wide/02-latihan.avif',
     mp4: '/assets/story/02-latihan.mp4',
     mp4w: '/assets/story/wide/02-latihan.mp4',
     focus: '60% 46%',
@@ -74,7 +78,9 @@ const MEDIA = [
   },
   {
     portrait: '/assets/story/03-wawancara.webp',
+    avif: '/assets/story/03-wawancara.avif',
     wide: '/assets/story/wide/03-wawancara.webp',
+    avifw: '/assets/story/wide/03-wawancara.avif',
     mp4: null,
     mp4w: null,
     focus: '62% 50%',
@@ -82,7 +88,9 @@ const MEDIA = [
   },
   {
     portrait: '/assets/story/04-paspor.webp',
+    avif: '/assets/story/04-paspor.avif',
     wide: '/assets/story/wide/04-paspor.webp',
+    avifw: '/assets/story/wide/04-paspor.avif',
     mp4: null,
     mp4w: null,
     focus: '58% 52%',
@@ -90,7 +98,9 @@ const MEDIA = [
   },
   {
     portrait: '/assets/story/05-mcu.webp',
+    avif: '/assets/story/05-mcu.avif',
     wide: '/assets/story/wide/05-mcu.webp',
+    avifw: '/assets/story/wide/05-mcu.avif',
     mp4: '/assets/story/05-mcu.mp4',
     mp4w: '/assets/story/wide/05-mcu.mp4',
     focus: '58% 52%',
@@ -98,7 +108,9 @@ const MEDIA = [
   },
   {
     portrait: '/assets/story/06-tiba.webp',
+    avif: '/assets/story/06-tiba.avif',
     wide: '/assets/story/wide/06-tiba.webp',
+    avifw: '/assets/story/wide/06-tiba.avif',
     mp4: '/assets/story/06-tiba.mp4',
     mp4w: '/assets/story/wide/06-tiba.mp4',
     focus: '62% 46%',
@@ -124,7 +136,9 @@ const MEDIA = [
  */
 const CODA = {
   portrait: '/assets/story/01-daftar.webp',
+    avif: '/assets/story/01-daftar.avif',
   wide: '/assets/story/wide/01-daftar.webp',
+    avifw: '/assets/story/wide/01-daftar.avif',
   focus: '62% 50%',
   alt: 'Ilustrasi peserta mengisi formulir pendaftaran — frame yang sama dengan langkah pertama, diredupkan sebagai penutup siklus.',
 } as const;
@@ -147,7 +161,26 @@ export default function StoryFilm({ steps }: Props) {
               <article class={`film-ch${i === 0 ? ' is-on' : ''}`} data-film-ch>
                 <div class="film-plate">
                   <picture>
+                    {/* ── AVIF DULU, WEBP SEBAGAI JARING (2026-11-14) ────────
+                        Terukur: 14 plat story 859 KB (webp) → 366 KB (avif),
+                        dan yang benar-benar diunduh di layar pertama turun
+                        ~250 KB. `type="image/avif"` membuat browser yang
+                        tidak mengenal AVIF melewati source ini dan memakai
+                        webp di bawahnya — tidak ada yang rusak, hanya lebih
+                        besar.
+
+                        URUTAN SOURCE ADALAH LOGIKANYA: browser memilih source
+                        PERTAMA yang cocok `media` DAN didukung `type`. Jadi
+                        avif-lanskap → webp-lanskap → avif-potret → img. */}
+                    <source
+                      type="image/avif"
+                      media="(min-width: 861px)"
+                      srcset={m.avifw}
+                      width="1536"
+                      height="904"
+                    />
                     <source media="(min-width: 861px)" srcset={m.wide} width="1536" height="904" />
+                    <source type="image/avif" srcset={m.avif} width="1024" height="1464" />
                     <img
                       src={m.portrait}
                       alt={m.alt}
@@ -182,7 +215,6 @@ export default function StoryFilm({ steps }: Props) {
                           class="film-vid film-vid--w"
                           data-vid="w"
                           src={m.mp4w}
-                          poster={m.wide}
                           muted
                           loop
                           playsInline
@@ -194,7 +226,6 @@ export default function StoryFilm({ steps }: Props) {
                           class="film-vid film-vid--p"
                           data-vid="p"
                           src={m.mp4}
-                          poster={m.portrait}
                           muted
                           loop
                           playsInline
@@ -226,7 +257,15 @@ export default function StoryFilm({ steps }: Props) {
           <article class="film-ch film-coda" data-film-ch>
             <div class="film-plate">
               <picture>
+                <source
+                  type="image/avif"
+                  media="(min-width: 861px)"
+                  srcset={CODA.avifw}
+                  width="1536"
+                  height="904"
+                />
                 <source media="(min-width: 861px)" srcset={CODA.wide} width="1536" height="904" />
+                <source type="image/avif" srcset={CODA.avif} width="1024" height="1464" />
                 <img
                   src={CODA.portrait}
                   alt={CODA.alt}

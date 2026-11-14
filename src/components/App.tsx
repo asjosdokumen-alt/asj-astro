@@ -300,6 +300,22 @@ export default function App(
       return () => v.removeEventListener('playing', go);
     }
 
+    /* ── JANGAN UNDUH KLIP DI PONSEL (2026-11-14) ────────────────────────
+       `.hero-vidwrap` is `display: none` di bawah 640 px (motion.css:1374),
+       jadi klip ini TIDAK PERNAH terlihat di ponsel — tetapi `play()` tetap
+       dipanggil, dan `preload="none"` hanya menunda sampai panggilan itu.
+       Terukur: 520 KB mp4 masuk muatan awal di 390 px, untuk elemen yang
+       tidak dirender. Itu 34% dari seluruh halaman di perangkat yang paling
+       sering dipakai.
+
+       Cek ini dilakukan SEKALI saat mount. Memutar layar dari potret ke
+       lanskap di ponsel tidak menyeberangi 640 px, dan memperbesar jendela
+       desktop sudah melewati ambang ini saat mount — jadi tidak ada kasus
+       nyata yang kehilangan klip karena cek satu kali. */
+    if (!window.matchMedia('(min-width: 640px)').matches) {
+      return;
+    }
+
     let timer = 0;
     const start = () => {
       v.preload = 'auto';
@@ -867,11 +883,18 @@ export default function App(
               karena alasan yang sama) begitu klip hidup — dua lapis 60% akan
               saling menambah terang. */}
           <div class="hero-art hero-layer hero-vidwrap pointer-events-none" aria-hidden="true">
+            {/* ⚠ `poster` DILEPAS (2026-11-14). Poster menunjuk ke
+                `hero-sakura-asj.webp` — gambar yang SAMA dengan `<picture>` di
+                atasnya — jadi browser mengunduh DUA kali: AVIF 148,9 KB dari
+                `<source>` + WebP 169,2 KB dari poster. Terukur di muatan awal
+                1440: keduanya ada di daftar resource. Poster itu juga tidak
+                pernah terlihat: video `opacity: 0` sampai `is-live`, dan
+                selama itu yang tampil justru `<picture>`. Membuangnya
+                menghemat 169 KB tanpa mengubah satu piksel. */}
             <video
               ref={heroVidRef}
               class="hero-vid"
               src="/assets/ilustrasi/hero-sakura-asj-loop.mp4"
-              poster="/assets/ilustrasi/hero-sakura-asj.webp"
               muted
               loop
               playsInline

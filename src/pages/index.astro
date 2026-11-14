@@ -2811,7 +2811,14 @@ const legalRegno = typeof LEGAL_REGNO_FACT?.value === 'string' ? LEGAL_REGNO_FAC
               kick();
             } else pauseAll();
           },
-          { rootMargin: '25% 0px' }
+          /* ── 25% -> 0 (2026-11-14) ──────────────────────────────────────
+             `25%` membuat panggung dianggap "masuk" saat ia masih 225 px DI
+             BAWAH lipatan, dan `kick()` langsung memutar babak pertama —
+             terukur: 202,6 KB mp4 diunduh pada 1,1 s, SEBELUM event `load`,
+             untuk klip yang belum terlihat siapa pun. Dengan 0, klip mulai
+             saat panggung benar-benar menyentuh viewport; poster tetap
+             tampil lebih dulu, jadi tidak ada lubang visual. */
+          { rootMargin: '0px' }
         );
         io.observe(track);
       } else {
