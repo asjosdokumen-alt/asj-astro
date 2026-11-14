@@ -191,8 +191,28 @@ import { GALLERY } from '../lib/gallery';
        offset without creating a scroll container, and nothing overflows
        horizontally once the bands are revealed (measured: 375 = 375). Visually
        the bands slide in from the edge instead of pushing the whole page
-       sideways, which is what the motion was for. -->
-  <main id="main-content" class="w-full max-w-[100rem] mx-auto pb-16 min-h-[50vh] overflow-x-clip">
+       sideways, which is what the motion was for.
+
+       ── TANPA BATAS LEBAR SEJAK 2026-11-14 (owner) ─────────────────────────
+       Sampai hari ini <main> dipatok `max-w-[100rem]` (1600 px) dan dipusatkan.
+       Di monitor 1920 px itu menyisakan 153 px kosong di KIRI dan KANAN, dan
+       pada band film — satu-satunya `bleed` di dalam <main> — celah itu terbaca
+       sebagai letterbox: videonya seperti tidak mau melebar, padahal
+       `.film-stage` memang hanya mendapat 1600 px. Terukur: viewport 1920,
+       panggung 1600 di x=153; di 1440 panggungnya 1425 = selebar dokumen, jadi
+       gejalanya hanya muncul di layar > 1600 px — persis yang dilaporkan owner
+       ("gak bisa kah stretch sesuai window-nya, untuk desktop saja").
+
+       Yang dibuang HANYA patokannya, bukan `overflow-x-clip`-nya. Aman karena
+       <main> tidak lagi memuat satu pun band selebar layar selain #alur: semua
+       seksi lain memakai `max-w-7xl` (1280 px) dari `Section.astro`, jadi di
+       viewport mana pun posisinya tidak berubah. Efek sampingnya cuma
+       `section-alt` (tint tembus pandang) kini ikut sampai tepi jendela —
+       sebelumnya berhenti di 1600 dan menyisakan tepi vertikal yang terlihat.
+       Tidak ada tes yang mengunci angka 1600 ini; yang dijaga
+       `e2e/test-headings.mjs` adalah "tidak ada overflow horizontal", dan
+       `clip` tetap memenuhinya. -->
+  <main id="main-content" class="w-full pb-16 min-h-[50vh] overflow-x-clip">
     <!-- Section: Alur & Persyaratan (pages 3 and 4) — BAND PERTAMA SETELAH HERO.
          Owner 2026-11-11: film ini harus membuka halaman, bukan duduk di tengah
          profil. "kalau taruh bawah gini gak sama kek yg web corn video kan ya" —

@@ -1911,6 +1911,72 @@ async function run() {
     }
   });
 
+  // ── THE FILM BAND MUST REACH THE WINDOW'S EDGES ──────────────────────────
+  // ADDED 2026-11-14, the day the owner asked "video landing page-nya gak bisa
+  // kah stretch sesuai window-nya, untuk desktop saja".
+  //
+  // Nothing was wrong with the film itself. `<main>` carried `max-w-[100rem]`
+  // (1600 px) and `mx-auto`, so above 1600 px the whole column stopped growing
+  // and centred itself: measured on a 1920 viewport the stage was 1600 px at
+  // x=153, and the 153 px left over on each side read as a letterbox around a
+  // clip that was, in fact, correctly `object-fit: cover`. At 1440 the stage
+  // was 1425 px = the document width, which is why the complaint could only
+  // ever appear on a wide monitor.
+  //
+  // WHY THESE WIDTHS AND NOT THE LOOP'S. The section loop runs 390 and 1280 —
+  // both BELOW the cap, so an assertion there is green whether the bug is
+  // present or not. A gate that cannot fail is the defect class this suite
+  // already carries a note about. 1920 is the width that was measured broken.
+  //
+  // The assertion is the RENDERED GEOMETRY, not "main has no max-width": the
+  // cap may come back in any form (a wrapper, a container query) as long as the
+  // band still paints edge to edge.
+  for (const width of [1440, 1920]) {
+    await test(`${width}px /: the film band is edge to edge, not letterboxed`, async () => {
+      const ctx = await browser.newContext({
+        viewport: { width, height: 900 },
+        deviceScaleFactor: 1,
+      });
+      const page = await ctx.newPage();
+      try {
+        await page.goto(`${BASE}/`, { waitUntil: 'networkidle', timeout: 45000 });
+        const top = await page.evaluate(() => {
+          const t = document.querySelector('[data-film-track]');
+          return t ? t.getBoundingClientRect().top + window.scrollY : null;
+        });
+        if (top === null) throw new Error('no [data-film-track] — the film band is gone');
+        await page.evaluate((y) => window.scrollTo(0, y), top + 40);
+        await page.waitForTimeout(600);
+        const st = await page.evaluate(() => {
+          const stage = document.querySelector('.film-stage');
+          if (!stage) return { why: 'no .film-stage' };
+          const r = stage.getBoundingClientRect();
+          return {
+            left: Math.round(r.left),
+            width: Math.round(r.width),
+            /* `body.clientWidth`, not `documentElement.clientWidth`: in this
+               browser the html box reports the RAW viewport (1920) while the
+               body reports the layout width the scrollbar leaves behind
+               (1905). Comparing against the raw viewport makes every correct
+               stage look 15px short. */
+            doc: document.body.clientWidth,
+          };
+        });
+        if (st.why) throw new Error(st.why);
+        if (st.left !== 0 || Math.abs(st.width - st.doc) > 1) {
+          throw new Error(
+            `the stage is ${st.width}px wide at x=${st.left} inside a ${st.doc}px document — ` +
+              `it does not reach the window's edges, so the clip reads as letterboxed. ` +
+              `Measured 2026-11-14: <main>'s 1600px cap left 153px of background on each ` +
+              `side at 1920.`,
+          );
+        }
+      } finally {
+        await ctx.close();
+      }
+    });
+  }
+
   await browser.close();
   await stopServer();
 
