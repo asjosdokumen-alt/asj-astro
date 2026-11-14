@@ -42,7 +42,7 @@ import { authStore } from '../../store/authReactive';
 import { ambilPapanGame, bolehKirim, kirimSkor, waSiswa, type BarisPapanGame } from '../../lib/skorGame';
 import ArcadeIkon from '../ui/ArcadeIkon';
 import LoginGate from '../ui/LoginGate';
-import { bunyi, bunyiHasil, bunyiKombo, bunyiMulai, ucap } from '../../lib/tts';
+import { alihBunyi, bunyi, bunyiHasil, bunyiKombo, bunyiMenyala, bunyiMulai, ucap } from '../../lib/tts';
 import {
   COMBO_SOAL,
   KOMBO_MAKS,
@@ -373,6 +373,17 @@ export default function ArcadeGame() {
    * animasinya tidak menempel dan bisa dipicu ulang pada jawaban berikutnya.
    */
   const [animasi, setAnimasi] = useState<'' | 'benar' | 'salah'>('');
+  /**
+   * Saklar efek suara.
+   *
+   * Arena ini punya TUJUH panggilan `bunyi*` dan sebelumnya tidak satu pun
+   * bisa dimatikan — `/matematika` punya saklarnya sendiri, `/kotoba` punya
+   * saklar tetapi hanya untuk pelafalan otomatis. Keadaannya dibaca dari
+   * `tts.ts` (satu saklar untuk keempat efek), jadi tombol ini hanya
+   * memantulkan nilai modul, bukan menyimpan salinan kedua.
+   */
+  const [bunyiNyala, setBunyiNyala] = useState<boolean>(() => bunyiMenyala());
+  const alihSuaraArena = () => setBunyiNyala(alihBunyi());
   /**
    * Rak yang diketuk saat salah — dan rak yang SEHARUSNYA.
    *
@@ -854,7 +865,13 @@ export default function ArcadeGame() {
        tengah layar 1280 px. */
     <div class="mx-auto w-full max-w-md lg:max-w-none">
       {/* Tab */}
-      <div class="mb-3 grid grid-cols-2 gap-2">
+      {/* Saklar efek suara duduk di baris TAB, bukan di dalam salah satu tab:
+          permainan punya dua tab (`genba`/`combo`) dan yang default hanya
+          `genba`, jadi tombol yang ditaruh di dalam satu tab tidak akan
+          ditemukan separuh waktu. `aria-pressed` yang menyatakan keadaannya;
+          emoji hanya hiasan (`aria-hidden`), sama seperti saklar di `/kotoba`. */}
+      <div class="mb-3 flex items-stretch gap-2">
+        <div class="grid flex-1 grid-cols-2 gap-2">
         {(['genba', 'combo'] as const).map((id) => (
           <button
             key={id}
@@ -868,6 +885,21 @@ export default function ArcadeGame() {
             {id === 'genba' ? `📦 ${t('arcade.tab_genba')}` : `🃏 ${t('arcade.tab_combo')}`}
           </button>
         ))}
+        </div>
+        <button
+          type="button"
+          onClick={alihSuaraArena}
+          aria-pressed={bunyiNyala}
+          aria-label={t('arcade.suara')}
+          title={t('arcade.suara')}
+          class={`min-h-11 rounded-control border px-3 text-[14px] font-bold transition-colors ${
+            bunyiNyala
+              ? 'border-line bg-surface-raised text-fg-muted'
+              : 'border-accent-amber bg-accent-amber/10 text-accent-amber'
+          }`}
+        >
+          <span aria-hidden="true">{bunyiNyala ? '🔊' : '🔇'}</span>
+        </button>
       </div>
 
       {tab === 'genba' ? (

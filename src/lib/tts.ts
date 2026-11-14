@@ -111,6 +111,50 @@ interface KonteksAudio {
 let audioCtx: KonteksAudio | null = null;
 let pembukaTerpasang = false;
 
+/**
+ * ── SAKLAR BUNYI (2026-11-14) ────────────────────────────────────────────
+ * `bunyi()` dan tiga turunannya dulu tidak punya saklar sama sekali. Di
+ * `/arcade` ada TUJUH panggilan bunyi dan tidak satu pun bisa dimatikan —
+ * sedangkan `/matematika` punya saklarnya sendiri (dan `/kotoba` punya
+ * saklar, tetapi hanya untuk pelafalan otomatis, bukan untuk efek suara).
+ * Artinya siswa di asrama yang sepi tidak bisa memainkan arcade tanpa
+ * membunyikan HP-nya, kecuali dengan membisukan seluruh perangkat.
+ *
+ * Skill `build-game-audio-feedback` menaruh ini di daftar wajibnya:
+ * "respect mute/volume settings". Saklarnya di sini, di satu tempat, supaya
+ * keempat efek suara ikut serta tanpa satu pun call site perlu diubah.
+ *
+ * `speechSynthesis` SENGAJA tidak ikut: itu pelafalan bahasa Jepang, bahan
+ * belajar, bukan efek suara. `/kotoba` sudah punya saklarnya sendiri untuk
+ * itu (`suaraOtomatis`), dan mematikan efek suara tidak boleh diam-diam
+ * mematikan pengucapan.
+ */
+const KUNCI_BUNYI = 'asj_bunyi';
+let bunyiAktif = (() => {
+  if (typeof localStorage === 'undefined') return true;
+  try {
+    return localStorage.getItem(KUNCI_BUNYI) !== '0';
+  } catch {
+    return true; // mode privat: anggap menyala
+  }
+})();
+
+/** Apakah efek suara sedang menyala. Dipakai tombol untuk `aria-pressed`. */
+export function bunyiMenyala(): boolean {
+  return bunyiAktif;
+}
+
+/** Balik saklar bunyi, simpan pilihannya, kembalikan keadaan baru. */
+export function alihBunyi(): boolean {
+  bunyiAktif = !bunyiAktif;
+  try {
+    localStorage.setItem(KUNCI_BUNYI, bunyiAktif ? '1' : '0');
+  } catch {
+    /* Mode privat: pilihan tidak diingat, tapi tetap berlaku di sesi ini. */
+  }
+  return bunyiAktif;
+}
+
 function cariAudioContext(): (new () => KonteksAudio) | undefined {
   const w = window as unknown as {
     AudioContext?: new () => KonteksAudio;
@@ -190,6 +234,7 @@ pasangPembukaAudio();
  * dipanggil, jadi tidak menambah satu byte pun ke bundel.
  */
 export function bunyi(ok: boolean): void {
+  if (!bunyiAktif) return;
   if (typeof window === 'undefined') return;
   siapkanAudio();
   const ctx = audioCtx;
@@ -234,6 +279,10 @@ export function bunyi(ok: boolean): void {
  * yang tidak sedang disentuh.
  */
 function nada(a: number, b: number, durasi: number, tipe: string, volume: number): void {
+  /* Satu gerbang untuk tiga efek turunan (`bunyiKombo`, `bunyiMulai`,
+     `bunyiHasil`); `bunyi()` punya gerbangnya sendiri karena ia menulis
+     osilatornya langsung. */
+  if (!bunyiAktif) return;
   if (typeof window === 'undefined') return;
   siapkanAudio();
   const ctx = audioCtx;

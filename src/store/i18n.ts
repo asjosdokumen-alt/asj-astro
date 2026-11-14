@@ -1987,6 +1987,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "arcade.sempurna": "Sempurna! Kalimat selesai.",
     "arcade.butuh": "Urutan ini butuh",
     "arcade.susun": "Susun kalimatnya",
+    "arcade.suara": "Efek suara",
     "arcade.ketuk_berurutan": "Ketuk kartu berurutan…",
     "arcade.evaluasi": "Catatan ulangan",
     "arcade.bersihkan": "Bersihkan",
