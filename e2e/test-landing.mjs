@@ -688,10 +688,21 @@ async function inspectLanding(width) {
         // by walking the SECTIONS list. A section that gained a `data-enter` the
         // table does not know about would be skipped by an id-list walk; this
         // makes it visible to the check instead.
-        const entrances = [...document.querySelectorAll('[data-enter]')].map((el) => ({
-          id: el.id || null,
-          enter: el.getAttribute('data-enter'),
-        }));
+        //
+        // `closest('[id]')` — SEJAK 2026-11-14 `data-enter` TIDAK LAGI DI ELEMEN
+        // BER-ID. Section.astro memindahkannya ke pembungkus di dalam section
+        // (`.section-enter`), supaya entrance §9b dan drift §9f bisa hidup di
+        // dua elemen dan tidak lagi saling mengalahkan. Id tetap di <section>,
+        // jadi sebuah entrance masih harus dapat dipetakan ke section-nya —
+        // dan itu yang dilakukan `closest` di sini. Tanpa ini, setiap band akan
+        // dilaporkan "carries data-enter with no id" padahal pemetaannya sah.
+        const entrances = [...document.querySelectorAll('[data-enter]')].map((el) => {
+          const owner = el.id ? el : el.closest('[id]');
+          return {
+            id: el.id || (owner ? owner.id : null),
+            enter: el.getAttribute('data-enter'),
+          };
+        });
 
         // ── HERO_STATS tiles (L8.4) ────────────────────────────────────────
         //

@@ -184,23 +184,32 @@ await page.waitForTimeout(400);
 /* Assert the premise of the assertion above: the bands really are entered. If
    they are not, the §9b competition does not exist and every `scroll-*` reading
    below would be vacuous — the exact state that let M6 through. */
-await test('premise: the §9b entrances have fired, so §9b and §9f really compete', async () => {
-  const notEntered = await page.evaluate(
-    (ids) =>
-      ids.filter((id) => {
-        const el = document.querySelector(`#${id}`);
-        return el && !el.classList.contains('is-entered');
-      }),
-    BANDS,
-  );
-  if (notEntered.length) {
+await test('premise: drift and entrance live on DIFFERENT elements, and the entrance really runs', async () => {
+  const bad = await page.evaluate((ids) => {
+    const out = [];
+    for (const id of ids) {
+      const sec = document.getElementById(id);
+      if (!sec) {
+        out.push(`${id}: section not found`);
+        continue;
+      }
+      if (!sec.hasAttribute('data-scroll')) out.push(`${id}: section carries no data-scroll, so nothing drifts`);
+      if (sec.hasAttribute('data-enter')) {
+        out.push(
+          `${id}: the section carries BOTH data-scroll and data-enter. One element has one ` +
+            `animation-name, so one of the two motions silently stops — that is the exact defect ` +
+            `Section.astro was restructured to remove (2026-11-14).`,
+        );
+      }
+      const inner = sec.querySelector('[data-enter]');
+      if (!inner) out.push(`${id}: no inner [data-enter] element, so the §9b entrance never runs`);
+      else if (inner === sec) out.push(`${id}: the inner entrance IS the section`);
+    }
+    return out;
+  }, BANDS);
+  if (bad.length) {
     throw new Error(
-      `these bands never received .is-entered after scrolling the page: ${notEntered.join(', ')}. ` +
-        `§9b declares its animation-name ONLY on .is-entered, so an unentered band matches no ` +
-        `§9b rule and §9f would win by default — making the specificity assertion below ` +
-        `vacuous. (This is measured: demoting §9f's selector to the bare [data-scroll] left the ` +
-        `gate green on all four bands until this pass existed.) Fix the scroll pass before ` +
-        `trusting any verdict below.`,
+      `the drift/entrance split is broken on ${bad.length} band(s):\n    - ${bad.join('\n    - ')}`,
     );
   }
 });
@@ -248,7 +257,18 @@ for (const id of BANDS) {
     await page.evaluate((yy) => window.scrollTo(0, Math.max(0, yy)), y);
     await page.waitForTimeout(120);
     const read = await page.evaluate(READ(sel));
-    samples.push({ frac, y, t: read.t });
+    /* The INNER element's animation, read at the same moment the band is on
+       screen. Before 2026-11-14 this was always `none` or `scroll-*` because
+       §9f owned the only animation-name the element had; the entrance now has
+       its own element and this is what proves it runs. */
+    const innerAnim = await page.evaluate(
+      (s) => {
+        const el = document.querySelector(`${s} [data-enter]`);
+        return el ? getComputedStyle(el).animationName : null;
+      },
+      sel,
+    );
+    samples.push({ frac, y, t: read.t, innerAnim });
   }
 
   // Reversibility: go PAST the midpoint, then come back UP to it.
@@ -267,6 +287,7 @@ for (const id of BANDS) {
     distinct: new Set(samples.map((s) => s.t)).size,
     midT: mid.t,
     backT: back.t,
+    innerAnim: mid.innerAnim,
   });
 }
 
@@ -401,6 +422,29 @@ for (const band of seen) {
           `is being driven by elapsed time, not by scroll position. Check the declaration ` +
           `order in §9f: the \`animation\` shorthand RESETS the timeline, so ` +
           `\`animation-duration: auto\` and \`animation-timeline: view()\` must come AFTER it.`,
+      );
+    }
+  });
+
+  /**
+   * ── THE ENTRANCE MUST ACTUALLY RUN, NOT JUST EXIST ─────────────────────
+   * MEASURED 2026-11-14, before the split: `animation-name` on ALL 18 bands
+   * was `scroll-drift-y`/`scroll-tilt-y`, never `enter-*`. Every section on
+   * the page had lost its own entrance — the seven kinds the owner asked for
+   * ("setiap scrollnya bikin transisi beda beda") were dead — and this gate
+   * was green throughout, because it only ever asserted that the DRIFT was
+   * running. That is the blind spot this assertion closes: it is the other
+   * half of the same element.
+   */
+  await test(`#${band.id}: the inner entrance is a §9b entrance, and it runs`, async () => {
+    if (!band.innerAnim || !/^enter-/.test(band.innerAnim)) {
+      throw new Error(
+        `#${band.id}'s inner [data-enter] element reports animation-name ` +
+          `"${band.innerAnim}" while the band is on screen. It must be an enter-* animation: ` +
+          `that is the band's OWN entrance (rise / slide-left / slide-right / grow / curtain / ` +
+          `drop / focus), and it is the half of the motion that carries the direction. ` +
+          `"none" means the entrance never fired; "scroll-*" means the drift has taken the ` +
+          `element back over, which is the defect the drift/entrance split exists to prevent.`,
       );
     }
   });

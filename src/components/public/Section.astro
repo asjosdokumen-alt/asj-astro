@@ -137,6 +137,35 @@ const {
 // can see every candidate string it needs to emit.
 const shell = bleed ? 'w-full' : 'w-full max-w-7xl mx-auto px-4 md:px-6';
 const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(' ');
+
+/**
+ * ── ENTRANCE DI ELEMEN DALAM, DRIFT DI ELEMEN LUAR (2026-11-14) ──────────
+ *
+ * MEASURED: `animation-name` pada ke-18 band halaman ini SELALU
+ * `scroll-drift-y`/`scroll-tilt-y`, tidak pernah `enter-*`. Sebabnya CSS
+ * hanya punya SATU `animation-name` per elemen, dan §9f sengaja ditulis
+ * dengan spesifisitas (0,4,1) supaya menang atas §9b. Akibatnya ketujuh
+ * entrance — `rise`, `slide-left`, `slide-right`, `grow`, `curtain`,
+ * `drop`, `focus` — yang diminta pemilik ("setiap scrollnya bikin transisi
+ * beda beda") TIDAK PERNAH BERJALAN. Yang terlihat di semua section hanya
+ * fade + geser 10 px, dan itulah yang dilaporkan pemilik 2026-11-14:
+ * "semua muncul tenggelam saja, ga ada effect lain".
+ *
+ * Menukar siapa yang menang bukan jalan keluar — drift-nya yang hilang.
+ * Yang benar adalah memisahkan PEMILIKNYA, prinsip yang §9f sendiri sudah
+ * pakai untuk hover: "the scroll link is applied to a DIFFERENT ELEMENT
+ * than the hover". Di sini: drift tetap di <section>, entrance pindah ke
+ * pembungkus di dalamnya. Dua elemen, dua `animation-name`, tidak ada yang
+ * kalah.
+ *
+ * Efeknya bukan kosmetik: entrance `slide-left`/`slide-right` menggeser
+ * ISI, bukan band-nya. Band tidak boleh digeser horizontal — terukur
+ * 2026-11-14: 40 px saja membuat tepi kanan terlihat terpotong.
+ *
+ * `drift={false}` (hanya `#alur`) mempertahankan bentuk lama: band film
+ * mengelola geraknya sendiri, dan `data-enter` tetap di elemen luar.
+ */
+const withInner = drift && Boolean(enter);
 ---
 
 {
@@ -145,30 +174,54 @@ const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(
       id={id}
       aria-labelledby={labelledBy}
       class={classes}
-      data-enter={enter}
+      data-enter={withInner ? undefined : enter}
       data-scroll={drift ? enter : undefined}
     >
-      <slot />
+      {
+        withInner ? (
+          <div class="section-enter" data-enter={enter}>
+            <slot />
+          </div>
+        ) : (
+          <slot />
+        )
+      }
     </aside>
   ) : as === 'div' ? (
     <div
       id={id}
       aria-labelledby={labelledBy}
       class={classes}
-      data-enter={enter}
+      data-enter={withInner ? undefined : enter}
       data-scroll={drift ? enter : undefined}
     >
-      <slot />
+      {
+        withInner ? (
+          <div class="section-enter" data-enter={enter}>
+            <slot />
+          </div>
+        ) : (
+          <slot />
+        )
+      }
     </div>
   ) : (
     <section
       id={id}
       aria-labelledby={labelledBy}
       class={classes}
-      data-enter={enter}
+      data-enter={withInner ? undefined : enter}
       data-scroll={drift ? enter : undefined}
     >
-      <slot />
+      {
+        withInner ? (
+          <div class="section-enter" data-enter={enter}>
+            <slot />
+          </div>
+        ) : (
+          <slot />
+        )
+      }
     </section>
   )
 }
