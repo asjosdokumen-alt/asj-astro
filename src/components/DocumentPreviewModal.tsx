@@ -212,6 +212,27 @@ async function renderExcelToHtml(url: string): Promise<string | null> {
 export default function DocumentPreviewModal({ url, title, onClose, previewOnly, closing = false, mime }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  /**
+   * "Slow", NOT "failed". Set by the 8-second notice below, cleared the moment
+   * the frame finally reports `load`.
+   *
+   * KENAPA DIPISAH (terukur 2026-11-16)
+   * -----------------------------------
+   * Pemilik: *"masih banyak pratinjau yg gagal"*, dengan tangkapan layar
+   * "Sertif SSW — Gagal memuat pratinjau". Diukur di produksi:
+   *   · **270 dari 270** URL dokumen (`ssw_url`, `jft_url`, `file_cv`) menjawab
+   *     **200** dengan MIME yang benar — tidak ada satu berkas pun rusak;
+   *   · modal-nya yang salah: timer 8 detik menulis `error = true`, dan cabang
+   *     `error` MENGGANTI isi — iframe-nya di-unmount, jadi pemuatan yang
+   *     selesai pada detik ke-12 tidak pernah terlihat.
+   * Direproduksi pada komponen ini sendiri (Chromium, throttle 400 kbps):
+   * `iframe=no err=true`, teks persis seperti tangkapan layar pemilik.
+   * Dengan jaringan cepat/3G-normal: `iframe=yes err=false`.
+   *
+   * Jadi batas waktu hanya boleh menjadi PETUNJUK, bukan putusan: berkas 0,8–3,4 MB
+   * lewat Google Docs Viewer memang bisa lebih dari 8 detik di jaringan lambat.
+   */
+  const [slow, setSlow] = useState(false);
   const [excelHtml, setExcelHtml] = useState<string | null>(null);
   // MEASURED 2026-10-11 on production `share?job=TG591ASJ`, in Chromium, with a
   // HAR-level timeline:
@@ -249,17 +270,23 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
   // worse: its empty dep array pinned the FIRST `onClose` for the lifetime of
   // the component, and it fired even when this modal was not the topmost one.
 
-  // 8-second timeout fallback (from legacy preview.ts)
+  // 8-second NOTICE (legacy preview.ts timer). It used to raise `error`, which
+  // unmounted the frame — see the `slow` note above. A timeout is not evidence
+  // of failure, so it only reveals whatever has painted and offers the download.
+  //
+  // `excelPending` is excluded on purpose: while the client-side spreadsheet
+  // render is in flight the iframe is deliberately NOT mounted (anti
+  // auto-download), so the 8 s would always elapse and warn about a file that is
+  // still being parsed. That path has its own 20 s fetch bound and its own
+  // failure state ("tidak bisa dipratinjau" + Unduh).
   useEffect(() => {
-    if (!loading) return;
+    if (!loading || excelPending) return;
     const timeout = setTimeout(() => {
-      if (loading) {
-        setLoading(false);
-        setError(true);
-      }
+      setLoading(false);
+      setSlow(true);
     }, 8000);
     return () => clearTimeout(timeout);
-  }, [loading]);
+  }, [loading, excelPending]);
 
   // Excel/CSV client-side rendering (from legacy preview.ts)
   useEffect(() => {
@@ -295,7 +322,9 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
     }
   }, [url]);
 
-  const handleLoad = () => setLoading(false);
+  // A late `load` must be able to clear everything the notice raised: that is
+  // the whole point of not treating the timeout as a failure.
+  const handleLoad = () => { setLoading(false); setSlow(false); setError(false); };
   const handleError = () => { setLoading(false); setError(true); };
 
   const renderContent = () => {
@@ -439,12 +468,30 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
         </div>
         {/* Content */}
         <div class="flex-1 relative bg-black/50 m-2 rounded-xl overflow-hidden">
-          {loading && !error && (
+          {/* Full-cover spinner only while there is nothing to look at yet. Once
+              the notice fires, it is replaced by the slim bar below so a frame
+              that has already painted is no longer hidden behind it. */}
+          {loading && !error && !slow && (
             <div class="absolute inset-0 flex items-center justify-center z-10">
               <div class="text-center space-y-2">
                 <Icon spin name="spinner" class="text-2xl text-sky-400" />
                 <p class="text-xs text-slate-400">{t('ui.preview_loading')}</p>
               </div>
+            </div>
+          )}
+          {/* Slow-link notice — NON-destructive: the frame stays mounted under
+              it, so a load that finishes late is shown instead of being thrown
+              away (that discard was the "gagal memuat pratinjau" report). */}
+          {slow && !error && (
+            <div class="absolute inset-x-0 top-0 z-20 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-b border-slate-700 bg-slate-900/95 px-3 py-2">
+              <Icon spin name="spinner" class="text-xs text-sky-400" />
+              <span class="text-xs text-slate-300">{t('ui.preview_slow')}</span>
+              {!previewOnly && (
+                <a href={url} target="_blank" rel="noopener"
+                   class="inline-flex items-center gap-1 text-xs font-bold text-sky-400 hover:text-sky-300 underline">
+                  <Icon name="download" />{t('ui.download')}
+                </a>
+              )}
             </div>
           )}
           {error ? (

@@ -13,6 +13,7 @@
 //     (parity bukaPreviewDokumen), bukan iframe kosong
 // ==========================================
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/preact';
+import { act } from 'preact/test-utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import DocumentPreviewModal, { driveFileId, drivePreviewUrl, isDriveFolder } from './DocumentPreviewModal';
 
@@ -245,5 +246,81 @@ describe('DocumentPreviewModal — spreadsheet tanpa CDN & tanpa auto-download',
       restore();
       vi.unstubAllGlobals();
     }
+  });
+});
+
+// ==========================================
+// 2026-11-16 — "masih banyak pratinjau yg gagal" (Sertif SSW)
+//
+// Diukur di produksi sebelum menulis tes ini:
+//   · **270 dari 270** URL dokumen (`ssw_url` 91, `jft_url` 91, `file_cv` 92)
+//     menjawab **200** dengan MIME benar — tidak ada berkas yang rusak;
+//   · komponen ini sendiri, dimuat di Chromium dan di-throttle ke 400 kbps,
+//     menghasilkan `iframe=no`, teks `"Sertif SSWGagal memuat pratinjauUnduh"`
+//     — persis tangkapan layar pemilik. Pada jaringan cepat: `iframe=yes`.
+//
+// Sebabnya: timer 8 detik menulis `error = true`, dan cabang `error` MENGGANTI
+// isi konten — iframe-nya di-unmount. Berkas 0,8–3,4 MB lewat Google Docs
+// Viewer memang bisa lebih dari 8 detik, jadi batas waktu itu bukan bukti
+// kegagalan: ia harus menjadi petunjuk, dan pemuatan yang terlambat harus tetap
+// ditampilkan. Dua tes di bawah MERAH pada versi lama.
+// ==========================================
+describe('DocumentPreviewModal — batas waktu 8 detik bukan kegagalan', () => {
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('frame lambat: iframe TETAP terpasang dan "gagal memuat" tidak muncul', () => {
+    vi.useFakeTimers();
+    renderAt('https://res.cloudinary.com/ybzzbw9i/image/upload/v1/ssw_abc.pdf');
+    expect(document.querySelector('iframe')).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(9000);
+    });
+
+    expect(
+      document.querySelector('iframe'),
+      'iframe tidak boleh di-unmount oleh batas waktu — berkasnya sehat',
+    ).toBeTruthy();
+    expect(screen.queryByText('ui.preview_load_failed')).toBeNull();
+    expect(screen.getByText('ui.preview_slow')).toBeTruthy();
+    // Unduhan tetap tersedia sebagai aksi eksplisit selama menunggu.
+    expect(screen.getAllByText('ui.download').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('pemuatan yang selesai terlambat membersihkan petunjuk "lambat"', () => {
+    vi.useFakeTimers();
+    renderAt('https://res.cloudinary.com/ybzzbw9i/image/upload/v1/ssw_abc.pdf');
+
+    act(() => {
+      vi.advanceTimersByTime(9000);
+    });
+    expect(screen.getByText('ui.preview_slow')).toBeTruthy();
+
+    const frame = document.querySelector('iframe') as HTMLIFrameElement;
+    fireEvent.load(frame);
+
+    expect(screen.queryByText('ui.preview_slow')).toBeNull();
+    expect(document.querySelector('iframe')).toBeTruthy();
+  });
+
+  it('spreadsheet yang masih dirender tidak dilaporkan gagal oleh timer', () => {
+    vi.useFakeTimers();
+    // Render spreadsheet punya batas sendiri (20 s) dan keadaan gagal sendiri
+    // ("tidak bisa dipratinjau" + Unduh). Timer 8 s tidak boleh mendahuluinya:
+    // iframe memang SENGAJA belum dipasang selama render berjalan.
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+
+    renderAt('https://x.supabase.co/storage/master/X/1._X_CV.xlsx');
+
+    act(() => {
+      vi.advanceTimersByTime(9000);
+    });
+
+    expect(screen.queryByText('ui.preview_load_failed')).toBeNull();
+    expect(screen.queryByText('ui.preview_slow')).toBeNull();
   });
 });

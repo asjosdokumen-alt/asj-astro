@@ -2352,6 +2352,7 @@ export const jpTranslations: Record<string, string> = {
     "ui.preview_unavailable_hint": "このファイル形式はブラウザのプレビューで表示できません。ダウンロードボタンをご利用ください。",
     "ui.download": "ダウンロード",
     "ui.preview_load_failed": "プレビューの読み込みに失敗しました",
+    "ui.preview_slow": "通信が遅いため、まだ読み込み中です…",
     "ui.preview_admin_only_download": "ファイルをダウンロードできるのは管理者のみです",
     "ui.open_cv": "CVを開く",
     "ui.open_jft": "JFTを開く",

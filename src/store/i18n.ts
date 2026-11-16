@@ -2784,6 +2784,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.preview_unavailable_hint": "Tipe file ini tidak bisa ditampilkan di preview browser — gunakan tombol Unduh.",
     "ui.download": "Unduh",
     "ui.preview_load_failed": "Gagal memuat pratinjau",
+    "ui.preview_slow": "Jaringan lambat — berkas masih dimuat…",
     "ui.preview_admin_only_download": "Hanya admin yang bisa mengunduh file ini",
     "ui.open_cv": "BUKA CV",
     "ui.open_jft": "BUKA JFT",
