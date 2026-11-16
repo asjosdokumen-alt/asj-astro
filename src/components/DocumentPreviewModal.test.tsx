@@ -30,6 +30,23 @@ vi.mock('mammoth', () => ({
   convertToHtml: vi.fn(async () => ({ value: '<p>HALO DUNIA</p>', messages: [] })),
 }));
 
+// pdf.js di-mock: yang dikunci di sini adalah JALURNYA (digambar sendiri, tanpa
+// iframe pihak ketiga), bukan kemampuan rasterisasi pustakanya.
+vi.mock('pdfjs-dist/build/pdf.mjs', () => ({
+  GlobalWorkerOptions: { workerSrc: '' },
+  getDocument: () => ({
+    promise: Promise.resolve({
+      numPages: 1,
+      destroy: async () => {},
+      getPage: async () => ({
+        getViewport: ({ scale }: { scale: number }) => ({ width: 600 * scale, height: 800 * scale }),
+        render: () => ({ promise: Promise.resolve() }),
+      }),
+    }),
+  }),
+}));
+vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({ default: '/mock-pdf-worker.mjs' }));
+
 const openSpy = vi.fn();
 vi.stubGlobal('open', openSpy);
 
@@ -100,8 +117,8 @@ describe('DocumentPreviewModal (B03)', () => {
   it('PDF di Cloudinary BUKAN gambar (tidak dirender sebagai <img>)', () => {
     renderAt('https://res.cloudinary.com/ybzzbw9i/image/upload/v1/ktp_abc.pdf');
     expect(screen.queryByRole('img')).toBeNull();
-    const frame = document.querySelector('iframe') as HTMLIFrameElement;
-    expect(frame?.src).toContain('docs.google.com/gview');
+    // Dan bukan iframe ke pihak ketiga: PDF digambar sendiri oleh pdf.js.
+    expect(document.querySelector('iframe')).toBeNull();
   });
 
   it('drive folder → buka tab baru + tutup modal (parity bukaPreviewDokumen)', () => {
@@ -121,11 +138,24 @@ describe('DocumentPreviewModal (B03)', () => {
     await waitFor(() => expect(screen.queryByText('ui.preview_loading')).toBeNull());
   });
 
-  it('PDF → Google Docs Viewer wrapper (parity preview.ts FIX 2026-08-19)', () => {
+  // ==========================================
+  // 2026-11-16 (malam) — "sering kali emang buka preview auto ke donload"
+  //
+  // Terukur: saat gview memutuskan berkasnya tidak bisa ditampilkan, ia
+  // MENGUNDUH berkasnya sendiri — event `download` muncul dengan `d.url()` = URL
+  // gview itu, tanpa satu pun klik. Berkasnya mendarat di folder Unduhan dan
+  // pratinjaunya kosong. Iframe PDF native bukan jawaban (setelan Chrome
+  // "Download PDFs" + Chrome Android tanpa penampil inline), jadi PDF digambar
+  // pdf.js ke <canvas> di dalam halaman ini.
+  // ==========================================
+  it('PDF digambar pdf.js di klien — tanpa iframe Google (anti unduhan otomatis)', async () => {
+    stubFetchOk();
     renderAt('https://x.supabase.co/storage/ktp.pdf');
-    const frame = document.querySelector('iframe') as HTMLIFrameElement;
-    expect(frame.src).toContain('https://docs.google.com/gview?url=');
-    expect(frame.src).toContain(encodeURIComponent('https://x.supabase.co/storage/ktp.pdf'));
+
+    await waitFor(() => expect(document.querySelector('canvas')).toBeTruthy(), { timeout: 4000 });
+    expect(document.querySelector('iframe'), 'tidak boleh ada iframe pihak ketiga').toBeNull();
+    expect(document.body.innerHTML).not.toContain('docs.google.com/gview');
+    expect(screen.queryByText('ui.preview_load_failed')).toBeNull();
   });
 
   it('docx → dirender sendiri (mammoth), BUKAN diserahkan ke Microsoft', async () => {
@@ -302,7 +332,7 @@ describe('DocumentPreviewModal — batas waktu 8 detik bukan kegagalan', () => {
 
   it('frame lambat: iframe TETAP terpasang dan "gagal memuat" tidak muncul', () => {
     vi.useFakeTimers();
-    renderAt('https://res.cloudinary.com/ybzzbw9i/image/upload/v1/ssw_abc.pdf');
+    renderAt('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz01234/preview');
     expect(document.querySelector('iframe')).toBeTruthy();
 
     act(() => {
@@ -321,7 +351,7 @@ describe('DocumentPreviewModal — batas waktu 8 detik bukan kegagalan', () => {
 
   it('pemuatan yang selesai terlambat membersihkan petunjuk "lambat"', () => {
     vi.useFakeTimers();
-    renderAt('https://res.cloudinary.com/ybzzbw9i/image/upload/v1/ssw_abc.pdf');
+    renderAt('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz01234/preview');
 
     act(() => {
       vi.advanceTimersByTime(9000);

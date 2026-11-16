@@ -122,12 +122,14 @@ describe('PemberkasanModal — A05 parity', () => {
     expect(document.querySelector('a[href="https://cdn.example/kk.pdf"]')).toBeNull();
     expect(screen.queryByText('ui.upload_locked')).toBeNull();
 
-    // Klik tombol → DocumentPreviewModal terbuka (PDF → Google Docs Viewer)
+    // Klik tombol → DocumentPreviewModal terbuka untuk berkas itu. PDF digambar
+    // pdf.js di klien; tidak ada iframe Google (itu yang dulu auto-unduh).
     fireEvent.click(screen.getByText('ui.uploaded_view'));
-    const frame = document.querySelector('iframe') as HTMLIFrameElement;
-    expect(frame).toBeTruthy();
-    expect(frame.src).toContain('docs.google.com/gview?url=');
-    expect(frame.src).toContain(encodeURIComponent('https://cdn.example/kk.pdf'));
+    expect(
+      document.querySelector('a[href="https://cdn.example/kk.pdf"]'),
+      'modal pratinjau harus terbuka untuk KK',
+    ).toBeTruthy();
+    expect(document.body.innerHTML).not.toContain('docs.google.com/gview');
   });
 
   it('prefills biodata from candidate.bio (short keys → long payload keys)', async () => {

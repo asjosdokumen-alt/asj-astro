@@ -140,9 +140,94 @@ function renderKind(url: string, mime?: string): RenderKind {
   return '';
 }
 
-// Google Docs Viewer for PDFs (better mobile compatibility than native iframe)
-function getPdfViewerUrl(url: string): string {
-  return 'https://docs.google.com/gview?url=' + encodeURIComponent(url) + '&embedded=true';
+/**
+ * pdf.js dimuat hanya saat ada PDF yang dibuka.
+ *
+ * KENAPA BUKAN GOOGLE DOCS VIEWER / IFRAME NATIVE (terukur 2026-11-16)
+ * -------------------------------------------------------------------
+ * Pemilik: *"sering kali emang buka preview auto ke donload"*. Diukur dengan
+ * Playwright: saat gview memutuskan berkasnya tidak bisa ditampilkan, ia
+ * MENGUNDUH berkasnya sendiri — event `download` muncul dengan `d.url()` = URL
+ * gview itu, tanpa satu pun klik pengguna. Berkasnya mendarat di folder Unduhan
+ * dan pratinjaunya kosong. Itu persis keluhan pemilik.
+ *
+ * Iframe PDF native juga bukan jawaban: pengguna yang menyalakan "Download PDFs
+ * instead of automatically opening them" di Chrome tetap mendapat unduhan, dan
+ * Chrome Android tidak punya penampil PDF inline sama sekali.
+ *
+ * pdf.js menggambar halaman ke <canvas> di dalam halaman ini: tidak ada navigasi,
+ * tidak ada pihak ketiga, tidak ada unduhan — dan terbukti bisa dirender di
+ * Chromium headless (yang TIDAK punya penampil PDF), jadi bisa diverifikasi.
+ */
+let pdfjsPromise: Promise<typeof import('pdfjs-dist')> | null = null;
+
+async function loadPdfjs(): Promise<typeof import('pdfjs-dist')> {
+  if (!pdfjsPromise) {
+    pdfjsPromise = (async () => {
+      const pdfjs = await import('pdfjs-dist');
+      // `?url` adalah sintaks Vite: worker disalin ke aset, URL-nya dikembalikan
+      // (tipenya dideklarasikan di `src/env.d.ts`).
+      const { default: workerUrl } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+      return pdfjs;
+    })().catch((e) => {
+      // Jangan cache kegagalan: percobaan berikutnya boleh memuat ulang.
+      pdfjsPromise = null;
+      throw e;
+    });
+  }
+  return pdfjsPromise;
+}
+
+/** Halaman maksimum yang digambar — CV/sertifikat 1–3 halaman. */
+const MAX_PDF_PAGES = 10;
+
+/** Gambar semua halaman PDF ke <canvas> di dalam host. */
+async function paintPdf(url: string, host: HTMLElement, cancelled: () => boolean): Promise<number> {
+  const blob = await fetchDocBlob(url);
+  if (!blob || cancelled()) return 0;
+
+  const pdfjs = await loadPdfjs();
+  const data = new Uint8Array(await blob.arrayBuffer());
+  const doc = await pdfjs.getDocument({ data }).promise;
+  if (cancelled()) { void doc.destroy(); return 0; }
+
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const lebar = Math.max(320, host.clientWidth - 16);
+  let digambar = 0;
+
+  for (let n = 1; n <= Math.min(doc.numPages, MAX_PDF_PAGES); n++) {
+    if (cancelled()) break;
+    const page = await doc.getPage(n);
+    const dasar = page.getViewport({ scale: 1 });
+    // Lebar mengikuti wadah; jangan pernah mengecilkan di bawah 0,5× dan jangan
+    // memperbesar lebih dari 2× — PDF 1 halaman jadi tidak buram/raksasa.
+    const scale = Math.min(2, Math.max(0.5, lebar / dasar.width));
+    const vp = page.getViewport({ scale });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(vp.width * dpr);
+    canvas.height = Math.round(vp.height * dpr);
+    canvas.style.width = `${Math.round(vp.width)}px`;
+    canvas.style.height = `${Math.round(vp.height)}px`;
+    canvas.className = 'mx-auto block rounded shadow-lg bg-white';
+    host.appendChild(canvas);
+
+    await page.render({
+      canvasContext: canvas.getContext('2d') as CanvasRenderingContext2D,
+      viewport: vp,
+      transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined,
+    }).promise;
+    digambar++;
+  }
+
+  if (doc.numPages > MAX_PDF_PAGES && !cancelled()) {
+    const note = document.createElement('p');
+    note.className = 'mx-auto max-w-lg text-center text-xs text-slate-400 py-2';
+    note.textContent = `${MAX_PDF_PAGES} / ${doc.numPages}`;
+    host.appendChild(note);
+  }
+  return digambar;
 }
 
 // Drive folder links cannot be previewed inline — legacy bukaPreviewDokumen
@@ -317,6 +402,45 @@ async function renderDocxToHtml(url: string): Promise<string | null> {
   }
 }
 
+/**
+ * PDF → <canvas> per halaman, digambar pdf.js di dalam halaman ini.
+ *
+ * Tidak ada iframe, tidak ada navigasi, tidak ada pihak ketiga — jadi tidak ada
+ * jalan bagi browser untuk "mengunduh" berkasnya tanpa klik (lihat catatan
+ * `loadPdfjs`).
+ */
+function PdfPages({ url, onReady, onFail }: { url: string; onReady: () => void; onFail: () => void }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  // Callback disimpan di ref: kalau masuk daftar dependensi, efek akan berjalan
+  // ulang tiap render induk dan menggambar ulang semua halaman.
+  const cb = useRef({ onReady, onFail });
+  cb.current = { onReady, onFail };
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    let cancelled = false;
+    host.innerHTML = '';
+    paintPdf(url, host, () => cancelled)
+      .then((n) => {
+        if (cancelled) return;
+        if (n > 0) cb.current.onReady();
+        else cb.current.onFail();
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        renderFailed('pdf render gagal', e);
+        cb.current.onFail();
+      });
+    return () => {
+      cancelled = true;
+      host.innerHTML = '';
+    };
+  }, [url]);
+
+  return <div ref={hostRef} class="w-full h-full overflow-auto bg-slate-800 p-2 space-y-2" />;
+}
+
 export default function DocumentPreviewModal({ url, title, onClose, previewOnly, closing = false, mime }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -472,17 +596,9 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
     }
 
     if (mime ? mime === 'application/pdf' : isPdf(url)) {
-      // Use Google Docs Viewer for better mobile compatibility (from legacy preview.ts)
-      return (
-        <iframe
-          ref={iframeRef}
-          src={url.startsWith('blob:') ? url : getPdfViewerUrl(url)}
-          class="w-full h-full border-0 rounded-lg"
-          onLoad={handleLoad}
-          onError={handleError}
-          title={title}
-        />
-      );
+      // Digambar sendiri dengan pdf.js — BUKAN iframe ke Google Docs Viewer.
+      // gview kadang berubah menjadi unduhan tanpa klik; lihat `loadPdfjs`.
+      return <PdfPages url={url} onReady={handleLoad} onFail={handleError} />;
     }
 
     if (renderKind(url, mime) && renderedHtml) {

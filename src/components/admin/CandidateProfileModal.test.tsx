@@ -202,13 +202,16 @@ describe('CandidateProfileModal', () => {
     expectExists('BUKA JFT');
     expectExists('BUKA SSW');
 
-    // Klik BUKA CV → DocumentPreviewModal (iframe Google Docs Viewer utk PDF)
+    // Klik BUKA CV → DocumentPreviewModal terbuka untuk berkas itu.
+    // PDF kini digambar pdf.js di klien, jadi TIDAK ada iframe ke Google —
+    // iframe gview itulah yang dulu mengunduh berkasnya tanpa klik.
     const btnCv = screen.getAllByText('BUKA CV')[0] as HTMLButtonElement;
     fireEvent.click(btnCv);
-    const frame = document.querySelector('iframe') as HTMLIFrameElement;
-    expect(frame).toBeTruthy();
-    expect(frame.src).toContain('docs.google.com/gview?url=');
-    expect(frame.src).toContain(encodeURIComponent('https://x.supabase.co/storage/revin_cv.pdf'));
+    expect(
+      document.querySelector('a[href="https://x.supabase.co/storage/revin_cv.pdf"]'),
+      'modal pratinjau harus terbuka untuk CV kandidat',
+    ).toBeTruthy();
+    expect(document.body.innerHTML).not.toContain('docs.google.com/gview');
   });
 
   it('B03: tanpa dokumen ter-upload → baris Dokumen tidak dirender', async () => {
