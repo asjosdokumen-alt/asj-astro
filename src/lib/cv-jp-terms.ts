@@ -29,6 +29,7 @@
  *   • Istilah yang tidak dikenal dikembalikan APA ADANYA. Menerjemahkan teks
  *     bebas dengan kamus karangan lebih buruk daripada mencetak aslinya.
  */
+import { KOTA, PROVINSI } from './opsi-form';
 
 /** Teks sudah berisi kana/kanji? Kalau ya, jangan diterjemahkan lagi. */
 export function sudahJp(v: unknown): boolean {
@@ -121,4 +122,90 @@ export function jpTerm(v: unknown): string {
     if (key.includes(k) && k.length > bestKey.length) bestKey = k;
   }
   return bestKey ? JP_TERMS[bestKey] : t;
+}
+
+/* ── 地域: kota / provinsi dalam bahasa Jepang ─────────────────────────────── */
+
+/** Label opsi → bagian Jepang di dalam kurung: `PONOROGO (ポノロゴ)` → `ポノロゴ`. */
+function jpDariLabel(label: string): string {
+  const isi = /[（(]([^）)]*)[）)]/.exec(label)?.[1]?.trim() ?? '';
+  return sudahJp(isi) ? isi : '';
+}
+
+/**
+ * 地域 — kota (katakana) → provinsi (Jepang) → teks asli.
+ *
+ * Dipakai form KINKI (`K20`/`K22`/`K27`…) dan JIPA (`F13` 出身地). Sumbernya
+ * daftar yang SUDAH ada di form (`KOTA`/`PROVINSI`), yang labelnya menyimpan
+ * katakana/kanji — jadi tidak ada penerjemahan karangan: kota yang belum punya
+ * padanan jatuh ke provinsinya, dan kalau provinsinya juga tidak dikenal, nama
+ * aslinya yang dicetak (sel kosong terbaca "belum diisi").
+ */
+export function wilayahJp(kota: unknown, provinsi?: unknown): string {
+  const k = bersih(kota);
+  if (k) {
+    if (sudahJp(k)) return k;
+    const key = k.toUpperCase().replace(/\s+/g, ' ').trim();
+    const hit = KOTA.find(([v]) => String(v).toUpperCase() === key);
+    const jp = hit ? jpDariLabel(String(hit[1])) : '';
+    if (jp) return jp;
+  }
+  const p = bersih(provinsi);
+  if (p) {
+    if (sudahJp(p)) return p;
+    const key = p.toUpperCase().replace(/\s+/g, ' ').trim();
+    const hit = PROVINSI.find(([v]) => String(v).toUpperCase() === key);
+    const jp = hit ? jpDariLabel(String(hit[1])) : '';
+    if (jp) return jp;
+  }
+  return k;
+}
+
+/**
+ * 業種 / 職業: nilai Jepang → STRING OPSI dropdown yang persis.
+ *
+ * Beberapa sel form adalah dropdown dengan nilai `日本語(indonesia)`. Menulis
+ * `製造業` saja membuat Excel menandainya tidak sah, sedangkan menulis teks
+ * Indonesia membuat form klien Jepang berisi bahasa Indonesia. Fungsi ini
+ * memilih opsi yang bagian Jepangnya sama, dan mengembalikan nilai Jepangnya
+ * sendiri kalau tidak ada opsi yang cocok.
+ */
+export function opsiJp(nilaiJp: string, daftar: string[]): string {
+  const t = nilaiJp.trim();
+  if (!t) return '';
+  for (const opsi of daftar) {
+    const jepang = /^([^（(]+)/.exec(opsi)?.[1]?.trim() ?? '';
+    if (jepang === t) return opsi;
+  }
+  return t;
+}
+
+/**
+ * 備考 / 業種 — bidang/industri dalam bahasa Jepang.
+ *
+ * Kolom `bidang` di database berisi teks bebas Indonesia ("Manufaktur",
+ * "Teknik Pemesian") dan dulu dicetak apa adanya di form klien Jepang.
+ *
+ * Kalau kamus tidak mengenali teksnya (salah ketik, istilah lokal), bidang
+ * DITURUNKAN dari 職種 yang sudah Jepang — mis. 機械オペレーター → 機械加工.
+ * Teks Indonesia TIDAK dicetak sebagai jalan terakhir: sel kosong lebih jujur
+ * daripada kolom berbahasa Indonesia di form resmi.
+ */
+export function bidangJp(raw: unknown, jabatanJp: string): string {
+  const t = jpTerm(raw);
+  if (sudahJp(t)) return t;
+  const turunan: [RegExp, string][] = [
+    [/溶接/, '溶接'],
+    [/機械|オペレーター|整備|技術/, '機械加工'],
+    [/調理|キッチン|飲食/, '飲食'],
+    [/接客|販売|レジ|ウェイター|美容/, 'サービス'],
+    [/運転|ドライバー|配達/, '運輸'],
+    [/建設|土木|大工|左官|鉄筋|型枠|重機/, '建設'],
+    [/農業|農家|収穫/, '農業'],
+    [/畜産|養鶏|搾乳/, '畜産'],
+    [/縫製|ミシン|繊維/, '縫製'],
+    [/清掃/, '清掃'],
+  ];
+  for (const [re, label] of turunan) if (re.test(jabatanJp)) return label;
+  return '';
 }

@@ -25,14 +25,34 @@
  * SEL YANG TIDAK DIISI
  * --------------------
  * `B5` CODE LOWONGAN (diisi agensi; kolomnya ada di `database_candidate`, bukan
- * di baris master), `B46`-`E51` tanggal perolehan tiap sertifikat, dan `L60`
- * tanggal pengisian. `J5` 希望職種, `E54` ビザ種類 dan `E55` 在日期間 SUDAH
+ * di baris master). `J5` 希望職種, `E54` ビザ種類 dan `E55` 在日期間 SUDAH
  * diisi sejak migrasi 022 (`bidangssw`, `visa_jepang`, `lama_di_jepang`).
+ * Tanggal perolehan sertifikat (`B47:B51`) dan 日付 (`M58`) + kotak tanda
+ * tangan (`L60`) TERISI sejak 2026-11-16 — lihat di bawah.
+ *
+ * BAHASA & ATURAN PENGISIAN — KEPUTUSAN PEMILIK 2026-11-16
+ * -------------------------------------------------------
+ *   1. 学歴 専攻 (`K19:K23`) bahasa Jepang (`TEKNIK PEMESINAN` → 機械加工).
+ *   2. 出身地 (`F13`) bahasa Jepang — `tempat_lahir_jp` menang, lalu
+ *      `wilayahJp` (PONOROGO → ポノロゴ).
+ *   3. 職歴: 年月 memakai kanji `年`/`月` seperti blok 学歴 (dulu angka
+ *      telanjang `2024` / `08`); nama perusahaan tetap ejaan Indonesia,
+ *      sedangkan 業種 (`L27:L30`) bahasa Jepang.
+ *   4. 家族: 氏名 kembali ke nama Indonesia (dulu katakana); 職業 = opsi
+ *      dropdown di `K`, dan kalau pekerjaannya TIDAK ada di daftar →
+ *      `その他(lain-lain)` + pekerjaan Jepangnya di sel sebelah (`L`).
+ *   5. 資格試験: tanggal dulu (`B`), lalu opsi dropdown (`F`), lalu penjelasan
+ *      (`I`) — `国際交流基金日本語基礎テスト 190点(250)`. Urutan baris:
+ *      JFT/JLPT → SSW → SIM → その他. Sertifikat yang sama tidak lagi dicetak
+ *      dua kali (dulu baris `sertifikat_lain` muncul lagi sebagai その他).
+ *   6. 日付 (`M58`) dan kotak tanda tangan (`L60`) = tanggal CV dicetak,
+ *      `2026年11月16日`. Pemilik: *"cukup tulis kapan cv ini di cetak"*.
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { JIPA_BASE64 } from '../templates/jipa.b64';
 import { isGood, kouritsuSekolah, tingkatSekolahJp, batasiRiwayatSekolah } from '../../helpers_cv';
 import { isCurrent } from '../../cvPeriod';
+import { jpTerm, sudahJp, wilayahJp, opsiJp, bidangJp } from '../../cv-jp-terms';
 import { buildXlsxForm, cvFileName, durasiJp, kanaJp, negatif, s } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
@@ -202,20 +222,131 @@ function sertifikatAda(v: unknown): string {
 }
 
 /**
- * 職業 keluarga. `主婦` hanya sah di baris ke-2 (dropdown K34 memuatnya, K35:K40
- * tidak), jadi pemetaannya bergantung indeks baris.
+ * 職業 keluarga — dropdown `K33:K40`, nilainya `日本語(indonesia)`.
+ *
+ * Keputusan pemilik 2026-11-16: kalau pekerjaannya ADA di daftar, tulis opsinya
+ * dan biarkan sel di sebelahnya (`L`) kosong; kalau TIDAK ada, pilih
+ * `その他(lain-lain)` dan tulis pekerjaan sebenarnya dalam bahasa Jepang di `L`.
+ * `主婦` hanya sah di baris ke-2 (dropdown K34 memuatnya, K35:K40 tidak), jadi
+ * pemetaannya bergantung indeks baris.
  */
-function pekerjaanJp(v: unknown, i: number): string {
+function pekerjaanJp(v: unknown, i: number): { opsi: string; catatan: string } {
   const t = s(v).toUpperCase();
-  if (!isGood(t)) return '';
-  if (/IBU RUMAH|RUMAH TANGGA|主婦/.test(t)) return i === 1 ? '主婦' : 'その他(lain-lain)';
-  if (/PETANI|TANI|農業/.test(t)) return '農業(petani)';
-  if (/WIRASWASTA|USAHA|自営/.test(t)) return '自営業(wirausaha)';
-  if (/KARYAWAN|PABRIK|MANUFAKTUR|BURUH/.test(t)) return '製造業(manufaktur)';
-  if (/RESTORAN|KULINER|WARUNG/.test(t)) return '飲食業(restoran dsb)';
-  if (/HOTEL|PENGINAPAN/.test(t)) return '宿泊(perhotelan)';
-  if (/PELAJAR|MAHASISWA|SEKOLAH|学生/.test(t)) return 'その他(lain-lain)';
-  return 'その他(lain-lain)';
+  if (!isGood(t)) return { opsi: '', catatan: '' };
+  const lain = (ket: string) => ({ opsi: 'その他(lain-lain)', catatan: ket });
+  if (/IBU RUMAH|RUMAH TANGGA|主婦/.test(t)) return i === 1 ? { opsi: '主婦', catatan: '' } : lain('主婦');
+  if (/PETANI|TANI|農業/.test(t)) return { opsi: '農業(petani)', catatan: '' };
+  if (/WIRASWASTA|USAHA|自営/.test(t)) return { opsi: '自営業(wirausaha)', catatan: '' };
+  if (/KARYAWAN|PABRIK|MANUFAKTUR|BURUH/.test(t)) return { opsi: '製造業(manufaktur)', catatan: '' };
+  if (/RESTORAN|KULINER|WARUNG/.test(t)) return { opsi: '飲食業(restoran dsb)', catatan: '' };
+  if (/HOTEL|PENGINAPAN/.test(t)) return { opsi: '宿泊(perhotelan)', catatan: '' };
+  if (/PELAJAR|MAHASISWA|SEKOLAH|学生/.test(t)) return lain('学生');
+  const jp = jpTerm(bersih(v));
+  return lain(sudahJp(jp) ? jp : '');
+}
+
+/** 業種 dropdown `L27:L30` — harus PERSIS salah satu nilai ini. */
+const BIDANG_OPSI = [
+  '自営業(wirausaha)',
+  '飲食業(restoran dll)',
+  '製造業(manufaktur)',
+  '宿泊業(perhotelan)',
+  '教師(guru dsb)',
+  '農業(petani)',
+  '販売業(jualan)',
+  'アルバイト(paru waktu)',
+  'その他',
+];
+
+const NAMA_JFT = '国際交流基金日本語基礎テスト';
+
+/**
+ * Satu baris `sertifikat_lain` → tanggal + nama + nilai.
+ *
+ * Bentuk yang ditulis CV AI: `NAMA — lulus YYYY-MM (nilai X)`. Baris yang tidak
+ * cocok pola tetap dicetak (nama saja) — kehilangan satu sertifikat lebih buruk
+ * daripada kehilangan tanggalnya.
+ */
+function uraiSertifikat(raw: string): { tanggal: string; nama: string; nilai: string } {
+  const m = /^(.*?)\s*[—–-]\s*lulus\s+(\d{4})-(\d{1,2})(?:\s*\(nilai\s+([^)]+)\))?/i.exec(raw);
+  if (!m) return { tanggal: '', nama: raw.trim(), nilai: '' };
+  return {
+    tanggal: `${m[2]}年${parseInt(m[3], 10)}月`,
+    nama: m[1].trim(),
+    nilai: (m[4] ?? '').trim(),
+  };
+}
+
+/** `190/250` → `国際交流基金日本語基礎テスト 190点(250)` (pemilik 2026-11-16). */
+function detailJft(jft: string, nilai: string): string {
+  const raw = jft || nilai;
+  const m = /(\d+)\s*[/／]\s*(\d+)/.exec(raw);
+  if (m) return `${NAMA_JFT} ${m[1]}点(${m[2]})`;
+  const n = /^(\d+)$/.exec(raw.trim());
+  if (n) return `${NAMA_JFT} ${n[1]}点`;
+  return `${NAMA_JFT} ${raw}`.trim();
+}
+
+/**
+ * 資格試験 (baris 47-51) — tanggal dulu, lalu opsi dropdown, lalu penjelasan.
+ *
+ * Keputusan pemilik 2026-11-16: *"tulis tahun bulan mendapatkan sertifikatnya di
+ * awal, terus dropdown pilihan jft ssw, sampingnya baru dijelaskan … kalau SSW
+ * juga di tulis juga baris bawahnya, SIM juga"*. Urutannya karena itu:
+ * JFT → SSW → SIM → sisanya, dan tanggal diambil dari baris `sertifikat_lain`
+ * yang menyebut sertifikat itu (satu-satunya sumber tanggal yang ada).
+ *
+ * Baris `sertifikat_lain` yang sudah "dipakai" JFT/SSW/SIM TIDAK dicetak ulang
+ * sebagai その他 — dulu sertifikat yang sama muncul dua kali di blok ini.
+ */
+function barisSertifikat(data: CandidateData): { tanggal: string; label: string; detail: string }[] {
+  const sert = data.sertifikasi;
+  const lines = sertifikatAda(sert.sertifikat_lain)
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map(uraiSertifikat);
+  const ambil = (re: RegExp) => {
+    const i = lines.findIndex((l) => re.test(l.nama));
+    return i >= 0 ? lines.splice(i, 1)[0] : null;
+  };
+
+  const out: { tanggal: string; label: string; detail: string }[] = [];
+  const jftLine = ambil(/JFT|日本語基礎|KSIC/i);
+  const jft = sertifikatAda(sert.jft) || jftLine?.nilai || '';
+  if (isGood(jft)) {
+    const n = /N([1-5])/.exec(jft.toUpperCase())?.[1];
+    out.push({
+      tanggal: jftLine?.tanggal ?? '',
+      label: n ? '日本語能力(JLPT)' : '日本語基礎力(JFT Basic)',
+      /* JLPT: teks kolomnya sudah Jepang dan lengkap (`N3 合格`) — disalin
+         apa adanya. JFT: disusun ulang jadi `… 190点(250)`. */
+      detail: n ? jft : detailJft(jft, jftLine?.nilai ?? ''),
+    });
+  }
+  const ssw = sertifikatAda(sert.ssw);
+  if (isGood(ssw)) {
+    const line = ambil(/SSW|特定技能/i);
+    out.push({ tanggal: line?.tanggal ?? '', label: '特定技能(SSW)', detail: ssw });
+  }
+  const sim = sertifikatAda(data.identitas.sim);
+  if (isGood(sim)) {
+    const line = ambil(/SIM|運転免許/i);
+    out.push({ tanggal: line?.tanggal ?? '', label: '自動車免許(SIM A)', detail: sim });
+  }
+  for (const l of lines) {
+    out.push({
+      tanggal: l.tanggal,
+      label: 'その他(lain-lain)',
+      detail: l.nilai ? `${l.nama} ${l.nilai}` : l.nama,
+    });
+  }
+  return out.slice(0, CERT_ROWS);
+}
+
+/** Tanggal cetak untuk 日付 (`M58`) dan kotak tanda tangan (`L60`). */
+export function tanggalCetak(kini: Date = new Date()): string {
+  return `${kini.getFullYear()}年${kini.getMonth() + 1}月${kini.getDate()}日`;
 }
 
 export function buildValues(data: CandidateData): Record<string, string> {
@@ -232,7 +363,14 @@ export function buildValues(data: CandidateData): Record<string, string> {
     F9: bersih(id.panggilan_katakana) || bersih(id.panggilan),
     F11: tanggalJp(id.tgl_lahir),
     J11: angka(id.umur),
-    F13: bersih(id.tempat_lahir).toUpperCase(),
+    /* 出身地 — bahasa Jepang (pemilik 2026-11-16). `tempat_lahir_jp` menang;
+       kalau kosong, nama kotanya diterjemahkan lewat daftar `KOTA`/`PROVINSI`
+       (`wilayahJp`) — PONOROGO → ポノロゴ. Nama yang tidak dikenal tetap
+       dicetak huruf besar seperti dulu, bukan dikarang. */
+    F13: (() => {
+      const asal = wilayahJp(bersih(id.tempat_lahir_jp) || bersih(id.tempat_lahir));
+      return sudahJp(asal) ? asal : asal.toUpperCase();
+    })(),
     L6: angka(data.fisik.tb) ? `${angka(data.fisik.tb)}cm` : '',
     L7: angka(data.fisik.bb) ? `${angka(data.fisik.bb)}kg` : '',
     L8: darahJp(id.golongan_darah),
@@ -282,7 +420,9 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`G${row}`] = isGood(sekolah)
       ? [kouritsuSekolah(sekolah, p.status_sekolah), sekolah, tingkatSekolahJp(p.tingkat)].filter(Boolean).join(' ')
       : '';
-    cells[`K${row}`] = bersih(p.jurusan ?? p.jurusan_id);
+    /* 専攻 — bahasa Jepang (pemilik 2026-11-16): TEKNIK PEMESINAN → 機械加工,
+       BAHASA JEPANG → 日本語. Kolom `jurusan_jp` selalu menang. */
+    cells[`K${row}`] = jpTerm(bersih(p.jurusan_jp) || bersih(p.jurusan ?? p.jurusan_id));
   }
 
   /* ── pekerjaan: 4 baris ─────────────────────────────────────────────────── */
@@ -296,13 +436,21 @@ export function buildValues(data: CandidateData): Record<string, string> {
        jadi `ym()` mengembalikan kosong dan sel itu terbaca seperti data hilang.
        Formulir Jepang menulis 現在 di kolom tahun. */
     const masihKerja = isCurrent(String(keluarRaw ?? ''));
-    cells[`B${row}`] = masuk.y;
-    cells[`C${row}`] = masuk.m;
+    /* 年月 memakai kanji `年`/`月` PERSIS seperti blok 学歴 (pemilik 2026-11-16:
+       *"tgl bulan nya pake kanji sama kek riwayat sekolah"*). Dulu blok ini
+       mencetak angka telanjang (`2024` / `08`) di sebelah blok yang menulis
+       `2024年` / `08月`. */
+    cells[`B${row}`] = masuk.y ? `${masuk.y}年` : '';
+    cells[`C${row}`] = masuk.m ? `${masuk.m.padStart(2, '0')}月` : '';
     cells[`D${row}`] = masuk.y || keluar.y || masihKerja ? '-' : '';
-    cells[`E${row}`] = masihKerja ? '現在' : keluar.y;
-    cells[`F${row}`] = masihKerja ? '' : keluar.m;
+    cells[`E${row}`] = masihKerja ? '現在' : keluar.y ? `${keluar.y}年` : '';
+    cells[`F${row}`] = masihKerja || !keluar.m ? '' : `${keluar.m.padStart(2, '0')}月`;
+    /* Nama perusahaan tetap ejaan Indonesia (pemilik: "nama perusahaan bhsa
+       indo dah bener"), sedangkan 業種 dicetak Jepang dan — kalau ada — memakai
+       string opsi dropdown yang persis. */
     cells[`G${row}`] = bersih(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
-    cells[`L${row}`] = bersih(p.bidang ?? p.industri);
+    const jabatanJp = jpTerm(bersih(p.jabatan_jp) || (p.jabatan ?? p.jabatan_id));
+    cells[`L${row}`] = opsiJp(bidangJp(bersih(p.bidang ?? p.industri), jabatanJp), BIDANG_OPSI);
   }
 
   /* ── keluarga: 8 baris ──────────────────────────────────────────────────── */
@@ -312,12 +460,15 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const hub = s(p.hubungan).toUpperCase();
     cells[`B${row}`] = hubunganJipa(p.hubungan, i);
     cells[`E${row}`] = isGood(hub) ? tinggalJp(p.tinggal ?? p.status_tinggal) : '';
-    /* 氏名: katakana bila sudah diterjemahkan (kolom sejak migrasi 046),
-       jatuh ke nama Latin bila belum. */
-    const ktKeluarga = bersih(p.katakana);
-    cells[`G${row}`] = /[ぁ-ヿ一-龯]/.test(ktKeluarga) ? ktKeluarga : bersih(p.nama);
+    /* 氏名: nama INDONESIA (pemilik 2026-11-16) — dulu katakana didahulukan.
+       Katakana hanya dipakai kalau nama Latinnya memang kosong. */
+    cells[`G${row}`] = bersih(p.nama) || bersih(p.katakana);
     cells[`J${row}`] = angka(p.usia ?? p.umur) ? `${angka(p.usia ?? p.umur)}歳` : '';
-    cells[`K${row}`] = pekerjaanJp(p.pekerjaan, i);
+    /* 職業: opsi dropdown di `K`; kalau pekerjaannya tidak ada di daftar,
+       `その他(lain-lain)` + pekerjaan Jepangnya di sel sebelah (`L`). */
+    const kerja = pekerjaanJp(p.pekerjaan, i);
+    cells[`K${row}`] = kerja.opsi;
+    cells[`L${row}`] = kerja.catatan;
   }
 
   /* ── keluarga/teman di Jepang: 3 baris ──────────────────────────────────── */
@@ -330,32 +481,20 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`L${KEN_START}`] = bersih(ken.alamat_jp) || bersih(ken.alamat_id);
   }
 
-  /* ── 資格試験: nama ujian + keterangan, berurutan dari baris 47 ─────────── */
-  const ssw = sertifikatAda(data.sertifikasi.ssw);
-  const jft = sertifikatAda(data.sertifikasi.jft);
-  const sim = sertifikatAda(id.sim);
-  const sertifikat: { label: string; detail: string }[] = [];
-  if (isGood(ssw)) sertifikat.push({ label: '特定技能(SSW)', detail: ssw });
-  if (isGood(jft)) {
-    // `jft` di database dipakai untuk dua ujian sekaligus; yang berhuruf N
-    // adalah JLPT, sisanya JFT Basic (A2/B1/…).
-    sertifikat.push({
-      label: /N[1-5]/.test(jft.toUpperCase()) ? '日本語能力(JLPT)' : '日本語基礎力(JFT Basic)',
-      detail: jft,
-    });
-  }
-  if (isGood(sim)) sertifikat.push({ label: '自動車免許(SIM A)', detail: sim });
-  /* その他資格 — kolom `sertifikat_lain` (migrasi 022). Satu baris untuk semua
-     sertifikat di luar SSW/JLPT/SIM, karena blok form hanya punya 5 baris dan
-     tiga di antaranya sudah dipakai. */
-  const lain = sertifikatAda(data.sertifikasi.sertifikat_lain);
-  if (isGood(lain)) sertifikat.push({ label: 'その他(資格)', detail: lain });
+  /* ── 資格試験: tanggal + opsi dropdown + penjelasan (lihat `barisSertifikat`) */
+  const sertifikat = barisSertifikat(data);
   for (let i = 0; i < CERT_ROWS; i++) {
     const row = CERT_START + i;
     const c = sertifikat[i];
-    cells[`F${row}`] = c ? c.label : '';
-    cells[`I${row}`] = c ? c.detail : '';
+    cells[`B${row}`] = c?.tanggal ?? '';
+    cells[`F${row}`] = c?.label ?? '';
+    cells[`I${row}`] = c?.detail ?? '';
   }
+
+  /* ── 日付 + kotak tanda tangan: tanggal cetak (pemilik 2026-11-16) ──────── */
+  const cetak = tanggalCetak();
+  cells.M58 = cetak;
+  cells.L60 = cetak;
 
   return cells;
 }

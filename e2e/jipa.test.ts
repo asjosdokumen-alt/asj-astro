@@ -256,9 +256,10 @@ describe('jipa · peta sel', () => {
 
   it('pekerjaan & keluarga terisi sesuai bloknya', () => {
     const c = buildValues(kandidat());
-    expect(c.B27).toBe('2022');
-    expect(c.C27).toBe('1');
-    expect(c.E27).toBe('2023');
+    // 年月 memakai kanji 年/月 seperti blok 学歴 (pemilik 2026-11-16).
+    expect(c.B27).toBe('2022年');
+    expect(c.C27).toBe('01月');
+    expect(c.E27).toBe('2023年');
     expect(c.G27).toBe('PT. SUMA ARTHA PERKASA');
     expect(c.B33).toBe('父(AYAH)');
     expect(c.E33).toBe('同居(t.l bersama)');
@@ -278,12 +279,14 @@ describe('jipa · peta sel', () => {
     expect(c.D27).toBe('-');
   });
 
-  it('資格試験: SSW lalu JLPT, berurutan dari baris 47', () => {
+  it('資格試験: JFT/JLPT dulu, lalu SSW (pemilik 2026-11-16)', () => {
     const c = buildValues(kandidat());
-    expect(c.F47).toBe('特定技能(SSW)');
-    expect(c.I47).toBe('1号　飲食料品製造業　合格');
-    expect(c.F48).toBe('日本語能力(JLPT)');
-    expect(c.I48).toBe('N3 合格');
+    // Fixture memakai JLPT N3, jadi baris pertama 日本語能力(JLPT) — dulu SSW
+    // yang di atas. Urutan baru: ujian bahasa → SSW → SIM → その他.
+    expect(c.F47).toBe('日本語能力(JLPT)');
+    expect(c.I47).toBe('N3 合格');
+    expect(c.F48).toBe('特定技能(SSW)');
+    expect(c.I48).toBe('1号　飲食料品製造業　合格');
     expect(c.F49).toBe('');
   });
 
@@ -326,7 +329,7 @@ describe('jipa · dari baris BERSARANG getDrafCvMaster', () => {
     expect(c.F7).toBe('RIYAN SAPUTRA');
     expect(c.G19).toBe('私立 SMK BMW REJOMULYO 専門学校');
     expect(c.G33).toBe('SAMSUL HUDA');
-    expect(c.F47).toBe('特定技能(SSW)');
+    expect(c.F47).toBe('日本語能力(JLPT)');
     expect(c.H5).toBe('ASJ00201');
   });
 });
@@ -381,7 +384,7 @@ describe('jipa · kolom migrasi 022 benar-benar masuk ke sel', () => {
     const c = buildValues(denganKolom());
     expect(c.J43).toBe('技能実習2号 (2024-2027)');
     // Fixture sudah punya SSW + JLPT ⇒ その他 jatuh di baris ke-3 (49).
-    expect(c.F49).toBe('その他(資格)');
+    expect(c.F49).toBe('その他(lain-lain)');
     expect(c.I49).toBe('調理師 (2023)');
   });
 });
@@ -453,5 +456,80 @@ describe('jipa · bahasa kolom Jepang', () => {
     const d = kandidat();
     d.pendidikan = [{ tingkat: 'SD', masuk: '2008-07', lulus: '2014-06', sekolah: 'SD NEGERI BUNGKAL' }];
     expect(buildValues(d).G19).toBe('公立 SD NEGERI BUNGKAL 小学校');
+  });
+});
+
+/* ==========================================
+   2026-11-16 — enam catatan pemilik pada CV hasil generate (template no. 4)
+   ========================================== */
+describe('jipa · bahasa & aturan pengisian (2026-11-16)', () => {
+  const dasar = (): CandidateData => kandidat();
+
+  it('学歴 専攻 Jepang; 出身地 Jepang', () => {
+    const d = dasar();
+    d.pendidikan = [
+      { tingkat: 'SMK', masuk: '2021-07', lulus: '2024-06', sekolah: 'SMK NEGERI 1 JENANGAN', jurusan: 'TEKNIK PEMESINAN' },
+      { tingkat: 'LPK', masuk: '2024-08', lulus: '2026-10', sekolah: 'LKP AMANAH SAKURA JAPAN', jurusan: 'BAHASA JEPANG' },
+    ];
+    d.identitas = { ...d.identitas, tempat_lahir: 'PONOROGO' };
+    const c = buildValues(d);
+    expect(c.K19).toBe('機械加工');
+    expect(c.K20).toBe('日本語');
+    expect(c.F13).toBe('ポノロゴ'); // dulu `PONOROGO`
+  });
+
+  it('職歴: 年月 pakai 年/月, perusahaan Indonesia, 業種 Jepang', () => {
+    const d = dasar();
+    d.pekerjaan = [
+      { masuk: '2024-08', keluar: '2025-01', perusahaan: 'Cv. Sumber Pangestu Mandiri', jabatan: 'OPERATOR PRODUKSI', bidang: 'Teknik Pemesisna' },
+    ];
+    const c = buildValues(d);
+    expect(c.B27).toBe('2024年');
+    expect(c.C27).toBe('08月');
+    expect(c.E27).toBe('2025年');
+    expect(c.F27).toBe('01月');
+    expect(c.G27).toBe('Cv. Sumber Pangestu Mandiri'); // nama perusahaan tetap
+    expect(c.L27).toBe('機械加工'); // 業種 bahasa Jepang
+  });
+
+  it('家族: nama Indonesia; 職業 = opsi dropdown, catatan Jepang di sebelahnya', () => {
+    const d = dasar();
+    d.keluarga = [
+      { hubungan: 'AYAH', nama: 'KATSUJI', katakana: 'カツジ', usia: '53', pekerjaan: 'PETANI' },
+      { hubungan: 'IBU', nama: 'SULASTRI', usia: '47', pekerjaan: 'IBU RUMAH TANGGA' },
+      { hubungan: 'ADIK PEREMPUAN', nama: 'SINTA', usia: '16', pekerjaan: 'PELAYAN / WAITER' },
+    ];
+    const c = buildValues(d);
+    expect(c.G33).toBe('KATSUJI'); // bukan カツジ
+    expect(c.K33).toBe('農業(petani)');
+    expect(c.L33).toBe(''); // ada di dropdown → sel sebelah kosong
+    expect(c.K34).toBe('主婦');
+    // Tidak ada opsinya → その他(lain-lain) + pekerjaan Jepang di sel sebelah.
+    expect(c.K35).toBe('その他(lain-lain)');
+    expect(c.L35).toBe('接客');
+  });
+
+  it('資格試験: tanggal dulu, opsi dropdown, lalu penjelasan', () => {
+    const d = dasar();
+    d.sertifikasi = {
+      jft: '190/250',
+      ssw: '',
+      bahasa: 'JFT-BASIC A2',
+      sertifikat_lain: 'KSIC A2 (国際交流基金日本語基礎テスト) — lulus 2020-10 (nilai 190)',
+    };
+    d.identitas = { ...d.identitas, sim: 'SIM A' };
+    const c = buildValues(d);
+    expect(c.B47).toBe('2020年10月');
+    expect(c.F47).toBe('日本語基礎力(JFT Basic)');
+    expect(c.I47).toBe('国際交流基金日本語基礎テスト 190点(250)');
+    // SIM di baris berikutnya, dan baris JFT TIDAK dicetak ulang sebagai その他.
+    expect(c.F48).toBe('自動車免許(SIM A)');
+    expect(c.F49).toBe('');
+  });
+
+  it('日付 dan kotak tanda tangan berisi tanggal cetak', () => {
+    const c = buildValues(dasar());
+    expect(c.M58).toMatch(/^\d{4}年\d{1,2}月\d{1,2}日$/);
+    expect(c.L60).toBe(c.M58);
   });
 });

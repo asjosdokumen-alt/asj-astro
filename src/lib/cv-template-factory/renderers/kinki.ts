@@ -82,8 +82,7 @@ import { KINKI_BASE64 } from '../templates/kinki.b64';
 import { isGood, isLpkTingkat, kouritsuSekolah, sortEdu } from '../../helpers_cv';
 import { isCurrent } from '../../cvPeriod';
 import { inferMbti, mbtiFromCode } from '../mbti';
-import { jpTerm, sudahJp } from '../../cv-jp-terms';
-import { KOTA, PROVINSI } from '../../opsi-form';
+import { jpTerm, sudahJp, wilayahJp, bidangJp } from '../../cv-jp-terms';
 import { buildXlsxForm, cvFileName, durasiJp, excelSerial, kanaJp, negatif, s, yearMonth, type PhotoBox } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
@@ -471,67 +470,9 @@ function asalJp(alamatJp: string, tempatJp: string): string {
  * jepang"*. Dulu sel ini mencetak `PONOROGO` mentah, dan baris 日本語学校
  * dibiarkan kosong sama sekali.
  *
- * Sumbernya daftar yang SUDAH ada di form (`KOTA`/`PROVINSI`, `opsi-form.ts`):
- * labelnya menyimpan katakana/kanji di dalam kurung — `PONOROGO (ポノロゴ)`,
- * `JAWA TIMUR (東ジャワ)`. Tidak ada penerjemahan karangan: kota yang belum punya
- * padanan jatuh ke provinsinya, dan kalau provinsinya juga tidak dikenal, nama
- * aslinya yang dicetak (sel kosong terbaca "belum diisi").
+ * Implementasinya pindah ke `../../cv-jp-terms` (`wilayahJp`) saat form JIPA
+ * membutuhkan hal yang sama untuk 出身地 — satu salinan, bukan dua.
  */
-function jpDariLabel(label: string): string {
-  const isi = /[（(]([^）)]*)[）)]/.exec(label)?.[1]?.trim() ?? '';
-  return sudahJp(isi) ? isi : '';
-}
-
-function wilayahJp(kota: unknown, provinsi: unknown): string {
-  const k = bersih(kota);
-  if (k) {
-    if (sudahJp(k)) return k;
-    const key = k.toUpperCase().replace(/\s+/g, ' ').trim();
-    const hit = KOTA.find(([v]) => String(v).toUpperCase() === key);
-    const jp = hit ? jpDariLabel(String(hit[1])) : '';
-    if (jp) return jp;
-  }
-  const p = bersih(provinsi);
-  if (p) {
-    if (sudahJp(p)) return p;
-    const key = p.toUpperCase().replace(/\s+/g, ' ').trim();
-    const hit = PROVINSI.find(([v]) => String(v).toUpperCase() === key);
-    const jp = hit ? jpDariLabel(String(hit[1])) : '';
-    if (jp) return jp;
-  }
-  return k;
-}
-
-/**
- * 備考 (`AA27`/`AA29`/`AA31`) — bidang/industri dalam bahasa Jepang.
- *
- * Pemilik 2026-11-16: *"bidangnya bahasa jepang"*. Kolom `bidang` di database
- * berisi teks bebas Indonesia ("Manufaktur", "Teknik Pemesian") dan dulu
- * dicetak apa adanya di form klien Jepang.
- *
- * Kalau kamus tidak mengenali teksnya (salah ketik, istilah lokal), bidang
- * DITURUNKAN dari 職種 yang sudah Jepang — mis. 機械オペレーター → 機械加工.
- * Teks Indonesia TIDAK dicetak sebagai jalan terakhir: sel kosong lebih jujur
- * daripada kolom berbahasa Indonesia di form resmi.
- */
-function bidangJp(raw: unknown, jabatanJp: string): string {
-  const t = jpTerm(raw);
-  if (sudahJp(t)) return t;
-  const turunan: [RegExp, string][] = [
-    [/溶接/, '溶接'],
-    [/機械|オペレーター|整備|技術/, '機械加工'],
-    [/調理|キッチン|飲食/, '飲食'],
-    [/接客|販売|レジ|ウェイター|美容/, 'サービス'],
-    [/運転|ドライバー|配達/, '運輸'],
-    [/建設|土木|大工|左官|鉄筋|型枠|重機/, '建設'],
-    [/農業|農家|収穫/, '農業'],
-    [/畜産|養鶏|搾乳/, '畜産'],
-    [/縫製|ミシン|繊維/, '縫製'],
-    [/清掃/, '清掃'],
-  ];
-  for (const [re, label] of turunan) if (re.test(jabatanJp)) return label;
-  return '';
-}
 
 /** 実習満了後の希望 — hanya kalau kalimatnya jelas menyebut tetap bekerja di Jepang. */
 function harapanSetelahJp(rencana: string): string {
