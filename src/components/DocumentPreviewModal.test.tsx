@@ -16,8 +16,19 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/pr
 import { act } from 'preact/test-utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import DocumentPreviewModal, { driveFileId, drivePreviewUrl, isDriveFolder } from './DocumentPreviewModal';
+import { xlsxPreviewHtml } from '../lib/cv-template-factory/preview';
 
 vi.mock('../store/i18n', () => ({ t: (k: string) => k }));
+
+// Pembaca spreadsheet yang SETIA (styles.xml) dan pembaca docx (mammoth)
+// di-mock supaya tes bisa memastikan JALUR mana yang dipakai modal — bukan
+// kualitas render pustakanya (itu sudah dikunci di factory.test.ts).
+vi.mock('../lib/cv-template-factory/preview', () => ({
+  xlsxPreviewHtml: vi.fn(async () => '<table id="cv-preview-table"><tr><td>NAMA LENGKAP</td></tr></table>'),
+}));
+vi.mock('mammoth', () => ({
+  convertToHtml: vi.fn(async () => ({ value: '<p>HALO DUNIA</p>', messages: [] })),
+}));
 
 const openSpy = vi.fn();
 vi.stubGlobal('open', openSpy);
@@ -28,11 +39,20 @@ function renderAt(url: string, extra: Record<string, unknown> = {}) {
   return render(<DocumentPreviewModal {...baseProps} url={url} onClose={vi.fn()} {...extra} />);
 }
 
+/** Berkas "ada" di jaringan — tanpa ini jsdom mencoba DNS sungguhan. */
+function stubFetchOk() {
+  const blob = { arrayBuffer: async () => new ArrayBuffer(8) };
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, blob: async () => blob })));
+}
+
 describe('DocumentPreviewModal (B03)', () => {
   beforeEach(() => {
     openSpy.mockReset();
+    // Dipasang ulang tiap tes: `afterEach` melepas SEMUA stub global (fetch,
+    // open) supaya berkas ini tidak bocor ke tes lain.
+    vi.stubGlobal('open', openSpy);
   });
-  afterEach(() => cleanup());
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it('isDriveFolder: link folder Google Drive terdeteksi', () => {
     expect(isDriveFolder('https://drive.google.com/drive/folders/1AbC')).toBe(true);
@@ -108,10 +128,18 @@ describe('DocumentPreviewModal (B03)', () => {
     expect(frame.src).toContain(encodeURIComponent('https://x.supabase.co/storage/ktp.pdf'));
   });
 
-  it('Office (docx) → MS Office viewer + fallback timer', () => {
+  it('docx → dirender sendiri (mammoth), BUKAN diserahkan ke Microsoft', async () => {
+    // Terukur 2026-11-16: iframe ke `view.officeapps.live.com` berhenti di
+    // "We're fetching your file…" untuk berkas Cloudinary dan tidak pernah
+    // selesai — pratinjau .docx tidak pernah tampil.
+    stubFetchOk();
     renderAt('https://x.supabase.co/storage/kontrak.docx');
+    expect(document.querySelector('iframe')).toBeNull();
+
+    await waitFor(() => expect(document.querySelector('iframe[srcdoc]')).toBeTruthy(), { timeout: 4000 });
     const frame = document.querySelector('iframe') as HTMLIFrameElement;
-    expect(frame.src).toContain('https://view.officeapps.live.com/op/embed.aspx?src=');
+    expect(frame.getAttribute('src') || '').not.toContain('officeapps.live.com');
+    expect(frame.getAttribute('srcdoc')).toContain('HALO DUNIA');
   });
 
   it('tipe tak dikenal (.zip) → pesan via key + tombol Unduh (anti auto-download)', () => {
@@ -322,5 +350,38 @@ describe('DocumentPreviewModal — batas waktu 8 detik bukan kegagalan', () => {
 
     expect(screen.queryByText('ui.preview_load_failed')).toBeNull();
     expect(screen.queryByText('ui.preview_slow')).toBeNull();
+  });
+});
+
+// ==========================================
+// 2026-11-16 — "kalau excel kek kemarin kotor gak kek aslinya"
+//
+// Pratinjau .xlsx memakai `XLSX.utils.sheet_to_html` + `td,th{border:1px solid}`
+// di pembungkusnya. SheetJS edisi gratis hanya membawa `fill` dari `styles.xml`,
+// jadi hasilnya grid seragam di seluruh berkas — kertas grafik, bukan form:
+// merge hilang, lebar kolom salah, teks berhamburan ke tepi.
+//
+// Repo ini sudah punya pembaca yang benar (`xlsxPreviewHtml`: border per sisi,
+// merge → rowspan/colspan, lebar kolom, font, format angka) untuk pratinjau
+// template CV. Tes ini mengunci bahwa modal memakai jalur itu, dan bahwa
+// pembatas grid lama tidak kembali.
+// ==========================================
+describe('DocumentPreviewModal — spreadsheet setia pada berkasnya', () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it('.xlsx dirender lewat pembaca styles.xml, tanpa garis seragam tiap sel', async () => {
+    stubFetchOk();
+    renderAt('https://res.cloudinary.com/x/raw/upload/v1/efendi_cv.xlsx');
+
+    await waitFor(() => expect(document.querySelector('iframe[srcdoc]')).toBeTruthy(), { timeout: 4000 });
+    const doc = (document.querySelector('iframe') as HTMLIFrameElement).getAttribute('srcdoc') || '';
+
+    expect(vi.mocked(xlsxPreviewHtml), 'pembaca styles.xml tidak dipakai').toHaveBeenCalled();
+    expect(doc).toContain('id="cv-preview-table"');
+    expect(doc, 'garis seragam tiap sel = kertas grafik').not.toContain('border:1px solid #cbd5e1');
   });
 });

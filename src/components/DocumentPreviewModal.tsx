@@ -13,6 +13,9 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
 import { t } from '../store/i18n';
+// Modul SPESIFIK, bukan `../lib/cv-template-factory`: index-nya menarik factory →
+// renderers → exceljs, dan itu akan ikut ke chunk modal ini.
+import { xlsxPreviewHtml } from '../lib/cv-template-factory/preview';
 
 interface Props {
   url: string;
@@ -101,18 +104,45 @@ function isExcel(url: string): boolean {
   return /\.(csv|xls|xlsx|xlsm)(\?.*)?$/i.test(url);
 }
 
-function isOffice(url: string): boolean {
-  return /\.(doc|docx|ppt|pptx|odt|ods|odp)(\?.*)?$/i.test(url);
+/** Word yang BISA dibaca browser. `.doc` (biner lama) tidak — jatuh ke fallback. */
+function isDocx(url: string): boolean {
+  return /\.docx(\?.*)?$/i.test(url);
+}
+
+/* CATATAN Office tanpa pembaca di browser — `.doc` biner, `.ppt/.pptx`,
+   `.odt/.ods/.odp`: dulu jenis-jenis ini diserahkan ke
+   `view.officeapps.live.com`, dan pratinjaunya TIDAK PERNAH jadi. Terukur
+   2026-11-16 pada `.docx` kandidat asli: iframe-nya berhenti di halaman
+   Microsoft "We're fetching your file…" dan tetap di situ setelah 11 detik,
+   karena Microsoft harus mengambil berkasnya sendiri dari Cloudinary. Pratinjau
+   yang menggantung selamanya lebih buruk daripada pesan jujur "tidak bisa
+   dipratinjau" + tombol Unduh — jadi tidak ada lagi cabang iframe untuk jenis
+   ini. `.docx` sendiri kini dirender di klien (mammoth). */
+
+/**
+ * Jenis berkas yang dirender DI KLIEN, atau '' kalau bukan urusan kita.
+ *
+ * `mime` diutamakan untuk URL `blob:` (berkas yang baru dipilih pengguna): URL
+ * seperti itu tidak punya ekstensi, jadi `isExcel`/`isDocx` selalu meleset.
+ */
+type RenderKind = 'sheet' | 'docx' | '';
+
+const SHEET_MIME = /spreadsheetml\.sheet|ms-excel|text\/csv/i;
+const DOCX_MIME = /wordprocessingml\.document/i;
+
+function renderKind(url: string, mime?: string): RenderKind {
+  if (mime) {
+    if (SHEET_MIME.test(mime)) return 'sheet';
+    if (DOCX_MIME.test(mime)) return 'docx';
+  }
+  if (isExcel(url)) return 'sheet';
+  if (isDocx(url)) return 'docx';
+  return '';
 }
 
 // Google Docs Viewer for PDFs (better mobile compatibility than native iframe)
 function getPdfViewerUrl(url: string): string {
   return 'https://docs.google.com/gview?url=' + encodeURIComponent(url) + '&embedded=true';
-}
-
-// MS Office Viewer for Office docs
-function getOfficeViewerUrl(url: string): string {
-  return 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(url);
 }
 
 // Drive folder links cannot be previewed inline — legacy bukaPreviewDokumen
@@ -159,53 +189,131 @@ export function drivePreviewUrl(url: string): string {
   return id ? `https://drive.google.com/file/d/${id}/preview` : '';
 }
 
-// Client-side Excel/CSV rendering via SheetJS
-async function renderExcelToHtml(url: string): Promise<string | null> {
+/**
+ * Satu berkas dari storage/CDN, dengan batas waktu.
+ *
+ * Tanpa `signal` host yang menggantung membuat modal berputar selamanya —
+ * `try/catch` tidak pernah jalan selama `fetch` masih pending
+ * (2026-10-29, `verify:fetch-boundary`).
+ */
+const FETCH_MS = 20_000;
+
+/**
+ * Satu pintu untuk kegagalan render. Modal tetap berakhir di keadaan
+ * "tidak bisa dipratinjau" + Unduh, tetapi konsol harus bisa menjelaskan
+ * kenapa — satu tempat, supaya tidak ada `console` baru di tiap cabang.
+ */
+function renderFailed(what: string, e: unknown): null {
+  console.error('[Preview]', what, e);
+  return null;
+}
+
+async function fetchDocBlob(url: string): Promise<Blob | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_MS) });
+    if (!res.ok) return null;
+    return await res.blob();
+  } catch (e) {
+    return renderFailed('fetch gagal', e);
+  }
+}
+
+function esc(s: string): string {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Dokumen pembungkus untuk hasil render spreadsheet.
+ *
+ * ⚠ JANGAN menambah `border` di `#cv-preview-table`. Versi lama menaruh
+ * `td, th { border:1px solid #cbd5e1 }` di sini DAN memakai
+ * `XLSX.utils.sheet_to_html`, yang tidak membawa border dari `styles.xml` —
+ * hasilnya grid seragam di seluruh berkas: "kertas grafik", bukan form.
+ * Pemilik 2026-11-16: *"kalau excel kek kemarin kotor gak kek aslinya"*.
+ * Border sekarang datang per sel dari `xlsxPreviewHtml`.
+ */
+function sheetDocument(tableHtml: string, nama: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(nama)}</title><style>
+html,body{margin:0;background:#fff}
+body{padding:14px 16px 24px;font-family:Arial,Helvetica,sans-serif}
+.cap{margin:0 0 10px;font:600 12px system-ui,-apple-system,sans-serif;color:#64748b}
+.wrap{overflow:auto}
+#cv-preview-table{border-collapse:collapse;table-layout:fixed;background:#fff;color:#111}
+#cv-preview-table td{overflow:hidden}
+/* Fallback SheetJS (.xls biner / .csv): tabel DATA, bukan form — garis tipis wajar. */
+.data{border-collapse:collapse;background:#fff;color:#111;font-size:12px}
+.data td,.data th{border:1px solid #e2e8f0;padding:4px 8px;white-space:nowrap}
+.data th{background:#f1f5f9;font-weight:700}
+</style></head><body><p class="cap">${esc(nama)}</p><div class="wrap">${tableHtml}</div></body></html>`;
+}
+
+/**
+ * `.xlsx` → `xlsxPreviewHtml` (membaca `styles.xml`: border per sisi, merge,
+ * lebar kolom, font, format angka). `.xls`/`.csv` → SheetJS, karena keduanya
+ * tidak membawa styles.xml yang bisa dibaca.
+ */
+async function renderSheetToHtml(url: string): Promise<string | null> {
+  const nama = decodeURIComponent(url.split('/').pop() || 'spreadsheet');
+  const blob = await fetchDocBlob(url);
+  if (!blob) return null;
+
+  if (/\.(xlsx|xlsm)(\?.*)?$/i.test(url)) {
+    try {
+      const table = await xlsxPreviewHtml(blob);
+      if (table) return sheetDocument(table, nama);
+    } catch (e) {
+      renderFailed('xlsx render gagal', e);
+    }
+  }
+
   try {
     const XLSX = await loadXlsx();
     if (!XLSX) return null;
-
-    // Bounded: this is a storage/CDN blob, and without a timer a stalled host
-    // left the preview modal spinning forever — the `try/catch` never runs
-    // while `fetch` is pending. On timeout it returns null, which the modal
-    // already renders as "no preview" (2026-10-29, `verify:fetch-boundary`).
-    const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
-    if (!res.ok) return null;
-    
-    const buf = await res.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array' });
-    if (!wb || !wb.SheetNames || !wb.SheetNames.length) return null;
-    
-    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const wb = XLSX.read(new Uint8Array(await blob.arrayBuffer()), { type: 'array' });
+    const sheet = wb?.Sheets?.[wb.SheetNames?.[0] ?? ''];
     if (!sheet) return null;
-    
-    const html = XLSX.utils.sheet_to_html(sheet);
-    const nama = decodeURIComponent(url.split('/').pop() || 'spreadsheet');
-    
-    return `
-      <!doctype html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>${nama}</title>
-        <style>
-          body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 16px; font-size: 13px; }
-          table { border-collapse: collapse; background: #fff; color: #0f172a; min-width: 60%; }
-          td, th { border: 1px solid #cbd5e1; padding: 6px 10px; white-space: nowrap; }
-          th { background: #e2e8f0; position: sticky; top: 0; font-weight: 700; }
-          tr:nth-child(even) td { background: #f8fafc; }
-          td[data-t] { text-align: center; }
-        </style>
-      </head>
-      <body>
-        <div style="margin-bottom:10px;color:#94a3b8;font-size:12px">📊 ${nama}</div>
-        ${html}
-      </body>
-      </html>
-    `;
+    return sheetDocument(XLSX.utils.sheet_to_html(sheet), nama);
   } catch (e) {
-    console.error('[Preview] Excel render failed:', e);
-    return null;
+    return renderFailed('sheet render gagal', e);
+  }
+}
+
+/** Halaman putih untuk hasil mammoth — bentuk terdekat dengan Word-nya. */
+function docxDocument(bodyHtml: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:#e2e8f0}
+.page{background:#fff;color:#111;max-width:820px;margin:16px auto;padding:26px 30px;
+box-shadow:0 1px 3px rgba(15,23,42,.25);font:14px/1.5 Arial,Helvetica,sans-serif}
+.page p{margin:0 0 6px}
+.page table{border-collapse:collapse;width:100%;margin:0 0 10px}
+/* mammoth membuang border/lebar asli Word. Form CV berupa tabel, jadi garis
+   tipis adalah pendekatan terdekat — tanpa itu semua sel menyatu. */
+.page td,.page th{border:1px solid #94a3b8;padding:4px 6px;vertical-align:top}
+.page img{max-width:100%;height:auto}
+/* mammoth juga membuang UKURAN gambar: pas foto 600×800 di dalam sel 90 pt
+   akan mengisi seluruh lebar sel dan mendorong form keluar layar (terlihat
+   2026-11-16). Batas tinggi mengembalikannya ke ukuran pas foto. */
+.page td img,.page th img{max-width:100%;max-height:150px;width:auto;height:auto}
+</style></head><body><div class="page">${bodyHtml}</div></body></html>`;
+}
+
+/**
+ * `.docx` → HTML di klien lewat mammoth (sudah dipakai `loadDocxTemplate`).
+ *
+ * KENAPA TIDAK LAGI ke Microsoft (2026-11-16): iframe `view.officeapps.live.com`
+ * berhenti di "We're fetching your file…" untuk berkas Cloudinary — pratinjau
+ * `.docx` tidak pernah tampil, padahal berkasnya sehat (200, MIME benar).
+ */
+async function renderDocxToHtml(url: string): Promise<string | null> {
+  const blob = await fetchDocBlob(url);
+  if (!blob) return null;
+  try {
+    const mammoth = await import('mammoth');
+    const out = await mammoth.convertToHtml({ arrayBuffer: await blob.arrayBuffer() });
+    const body = String(out?.value || '');
+    return body.trim() ? docxDocument(body) : null;
+  } catch (e) {
+    return renderFailed('docx render gagal', e);
   }
 }
 
@@ -233,7 +341,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
    * lewat Google Docs Viewer memang bisa lebih dari 8 detik di jaringan lambat.
    */
   const [slow, setSlow] = useState(false);
-  const [excelHtml, setExcelHtml] = useState<string | null>(null);
+  const [renderedHtml, setRenderedHtml] = useState<string | null>(null);
   // MEASURED 2026-10-11 on production `share?job=TG591ASJ`, in Chromium, with a
   // HAR-level timeline:
   //
@@ -256,12 +364,15 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
   // `application/pdf` (the JFT/SSW siblings) renders inline and so never showed
   // the bug.
   //
-  // `excelPending` is what closes the race: while a client-side spreadsheet
-  // render is outstanding, show the spinner and DO NOT mount the iframe. It is
-  // initialised from `isExcel(url)` so the very first paint after the click is
-  // already holding back, rather than waiting for an effect that runs a tick too
-  // late.
-  const [excelPending, setExcelPending] = useState(() => isExcel(url));
+  // `renderPending` is what closes the race: while a client-side render is
+  // outstanding, show the spinner and DO NOT mount the iframe. It is
+  // initialised from the URL so the very first paint after the click is already
+  // holding back, rather than waiting for an effect that runs a tick too late.
+  //
+  // Sejak 2026-11-16 gerbang yang sama juga menahan `.docx`: mammoth butuh
+  // waktu membaca ZIP-nya, dan iframe `src={url}` untuk `.docx` akan membuat
+  // browser MENGUNDUH berkasnya (MIME-nya bukan yang bisa dirender inline).
+  const [renderPending, setRenderPending] = useState(() => renderKind(url, mime) !== '');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Escape is handled by `useOverlay` below, on the capture phase and with
@@ -274,45 +385,45 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
   // unmounted the frame — see the `slow` note above. A timeout is not evidence
   // of failure, so it only reveals whatever has painted and offers the download.
   //
-  // `excelPending` is excluded on purpose: while the client-side spreadsheet
-  // render is in flight the iframe is deliberately NOT mounted (anti
-  // auto-download), so the 8 s would always elapse and warn about a file that is
-  // still being parsed. That path has its own 20 s fetch bound and its own
-  // failure state ("tidak bisa dipratinjau" + Unduh).
+  // `renderPending` is excluded on purpose: while the client-side render is in
+  // flight the iframe is deliberately NOT mounted (anti auto-download), so the
+  // 8 s would always elapse and warn about a file that is still being parsed.
+  // That path has its own 20 s fetch bound and its own failure state
+  // ("tidak bisa dipratinjau" + Unduh).
   useEffect(() => {
-    if (!loading || excelPending) return;
+    if (!loading || renderPending) return;
     const timeout = setTimeout(() => {
       setLoading(false);
       setSlow(true);
     }, 8000);
     return () => clearTimeout(timeout);
-  }, [loading, excelPending]);
+  }, [loading, renderPending]);
 
-  // Excel/CSV client-side rendering (from legacy preview.ts)
+  // Render di klien: spreadsheet (.xlsx/.xls/.csv) dan Word (.docx).
   useEffect(() => {
-    if (!isExcel(url)) return;
+    const kind = renderKind(url, mime);
+    if (!kind) return;
     setLoading(true);
-    setExcelPending(true);
-    renderExcelToHtml(url).then((html) => {
+    setRenderPending(true);
+    (kind === 'sheet' ? renderSheetToHtml(url) : renderDocxToHtml(url)).then((html) => {
       if (html) {
-        setExcelHtml(html);
+        setRenderedHtml(html);
         setLoading(false);
       } else {
-        // Render failed (SheetJS CDN blocked, or the file is not really a
-        // spreadsheet). Release the gate BEFORE flipping to the iframe
-        // fallback — leaving `excelPending` true would trap the user on a
-        // spinner forever, which is a worse failure than a download.
+        // Render failed (berkas bukan xlsx asli, jaringan putus, atau pustaka
+        // gagal dimuat). Release the gate BEFORE flipping to the fallback —
+        // leaving `renderPending` true would trap the user on a spinner
+        // forever, which is a worse failure than a download.
         //
         // `loading` is cleared here too: the spinner is absolutely positioned
         // over the content area (`inset-0`), so leaving it up would hide the
-        // iframe fallback that is about to render. The 8s timeout effect only
-        // clears `loading` on a stuck load, which is a different case.
+        // fallback that is about to render.
         setLoading(false);
         setError(false);
       }
-      setExcelPending(false);
+      setRenderPending(false);
     });
-  }, [url]);
+  }, [url, mime]);
 
   // Drive folder fallback (parity legacy bukaPreviewDokumen)
   useEffect(() => {
@@ -374,13 +485,15 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
       );
     }
 
-    if (isExcel(url) && excelHtml) {
-      // Client-side rendered Excel (from legacy preview.ts)
+    if (renderKind(url, mime) && renderedHtml) {
+      // Hasil render di klien: spreadsheet (xlsxPreviewHtml/SheetJS) atau docx
+      // (mammoth). srcDoc, bukan src — berkasnya tidak pernah diserahkan ke
+      // browser, jadi tidak ada unduhan tak sengaja.
       return (
         <iframe
           ref={iframeRef}
-          srcDoc={excelHtml}
-          class="w-full h-full border-0 rounded-lg"
+          srcDoc={renderedHtml}
+          class="w-full h-full border-0 rounded-lg bg-white"
           onLoad={handleLoad}
           onError={handleError}
           title={title}
@@ -403,19 +516,11 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
     // button. An explicit click is the only way this modal may hand a file to
     // the browser — do not reintroduce an iframe src pointing at a document
     // URL here.
-
-    if (isOffice(url)) {
-      return (
-        <iframe
-          ref={iframeRef}
-          src={getOfficeViewerUrl(url)}
-          class="w-full h-full border-0 rounded-lg"
-          onLoad={handleLoad}
-          onError={handleError}
-          title={title}
-        />
-      );
-    }
+    //
+    // ⚠ SAMA untuk Office: tidak ada lagi iframe ke `view.officeapps.live.com`.
+    // Terukur 2026-11-16 — halaman Microsoft berhenti di "We're fetching your
+    // file…" dan tidak pernah selesai untuk berkas Cloudinary, jadi `.doc`,
+    // `.pptx`, `.odt` dst. berhenti di keadaan jujur di bawah (pesan + Unduh).
 
     // Fallback: unsupported file type (from legacy preview.ts)
     const ext = url.match(/\.([a-z0-9]+)([?#].*)?$/i)?.[1] || '';
@@ -509,7 +614,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
                 )}
               </div>
             </div>
-          ) : excelPending ? null : renderContent()}
+          ) : renderPending ? null : renderContent()}
         </div>
       </div>
     </div>
