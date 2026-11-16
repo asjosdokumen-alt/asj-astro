@@ -309,6 +309,7 @@ describe('rirekisho-firma · bahasa kolom (2026-11-16)', () => {
       { hubungan: 'AYAH', nama: 'KATSUJI', katakana: 'カツジ', usia: '53', pekerjaan: 'PETANI', gaji: '1500000', tinggal: 'SERUMAH' },
       { hubungan: 'KAKAK', nama: 'APUMA SAFRUDIN', katakana: 'アプマ・サフルディン', usia: '29', pekerjaan: 'PELAYAN / WAITER', gaji: '1700000', tinggal: 'SERUMAH' },
     ];
+    d.sertifikasi = { ...d.sertifikasi, lama_belajar_jp: '6 bulan' };
     return d;
   };
 
@@ -342,14 +343,19 @@ describe('rirekisho-firma · bahasa kolom (2026-11-16)', () => {
     expect(c.L25).toBe('¥ 15.455');
   });
 
-  it('日本語学習期間: rentang tanggal dari baris LPK, bukan durasi', () => {
-    expect(buildValues(lengkap()).L31).toBe('2025年8月～2026年2月');
+  it('日本語学習期間: durasi di K31, rentang tanggal di L31', () => {
+    const c = buildValues(lengkap());
+    // Pemilik 2026-11-16: `6ヶ月` TETAP dicetak, rentangnya diisi di sebelahnya.
+    expect(c.K31).toBe('6ヶ月');
+    expect(c.L31).toBe('2025年8月～2026年2月');
   });
 
-  it('tanpa baris LPK, 学習期間 jatuh ke durasi (sel kosong lebih buruk)', () => {
+  it('tanpa baris LPK, 学習期間 hanya durasi di sel lebar (K31 dikosongkan)', () => {
     const d = kandidat();
     d.sertifikasi = { ...d.sertifikasi, lama_belajar_jp: '6 bulan' };
-    expect(buildValues(d).L31).toBe('6ヶ月');
+    const c = buildValues(d);
+    expect(c.K31).toBe('');
+    expect(c.L31).toBe('6ヶ月');
   });
 });
 

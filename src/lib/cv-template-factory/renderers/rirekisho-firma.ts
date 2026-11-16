@@ -52,13 +52,15 @@
  *      dari ejaan Latin), 職業 dicetak Jepang (`PETANI` → 農家).
  *   4. 月収 keluarga DIKONVERSI ke yen (`1500000円` → `¥ 13.636`). Dulu angka
  *      rupiah hanya ditempeli `円`, jadi gaji ayah tercetak 110x lipat.
- *   5. 日本語学習期間 berisi RENTANG tanggal (`2025年8月～2026年2月`), bukan
- *      durasi `6ヶ月` — durasi tidak mengatakan kapan belajarnya.
+ *   5. 日本語学習期間: DURASI tetap dicetak (`6ヶ月`), dan RENTANG tanggal
+ *      belajar (`2025年8月～2026年2月`) diisi di sel sebelahnya — dulu sel itu
+ *      kosong. Durasi menjawab "berapa lama", rentang menjawab "kapan".
  *
- * Kenapa rentangnya di `L31` dan bukan di sel sempit `K31` (yang dilingkari
- * pemilik): `K31` hanya 48 px dan `wrapText="1"`, jadi teks 14 karakter di
- * sana dipotong Excel menjadi 2-3 baris yang tidak terbaca. `L31:P31` adalah
- * sel NILAI resmi baris itu (merge 5 kolom), dan rentangnya kini terbaca utuh.
+ * Urutan sel di baris 31 (keputusan pemilik 2026-11-16, dikoreksi setelah
+ * tangkapan layar kedua): `I31:J31` label → `K31` durasi → `L31:P31` rentang.
+ * `K31` hanya 48 px, jadi durasi 3 karakter muat di sana sedangkan rentang 14
+ * karakter akan terpotong 2-3 baris oleh `wrapText`; karena itu rentangnya
+ * duduk di sel NILAI yang lebar (merge 5 kolom), bukan di `K31`.
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { RIREKISHO_FIRMA_BASE64 } from '../templates/rirekisho-firma.b64';
@@ -390,12 +392,17 @@ export function buildValues(data: CandidateData): Record<string, string> {
   /* Baris 31-33: kolom kedua tiap baris (G/H, I/J, K) dulu dibiarkan kosong.
      Sekarang diisi dari kolom yang memang disediakan untuknya. */
   cells.D32 = bersih(data.sertifikasi.bahasa) || bersih(data.sertifikasi.level_bahasa_jepang);
-  /* 日本語学習期間: RENTANG tanggal dari baris LPK (`2025年8月～2026年2月`).
-     Durasi (`6ヶ月`) hanya dipakai kalau baris LPK tidak ada — lihat
-     `rentangBelajar`. */
-  cells.L31 =
-    rentangBelajar((data.pendidikan || []) as Record<string, unknown>[]) ||
-    durasiJp(data.sertifikasi.lama_belajar_jp);
+  /* 日本語学習期間: DURASI (`6ヶ月`) di `K31` — sel sempit di kanan label, dan
+     RENTANG tanggal dari baris LPK (`2025年8月～2026年2月`) di `L31:P31`.
+     Pemilik 2026-11-16: *"6 bulannya … sebelahnya rentang belajarnya itu
+     kosong"* — dua-duanya harus tercetak. Urutannya durasi dulu karena rentang
+     14 karakter tidak muat di `K31` (48 px, `wrapText`), sedangkan `6ヶ月` muat.
+     Tanpa baris LPK, rentangnya kosong dan durasinya pindah ke sel lebar supaya
+     tidak menggantung di kolom sempit. */
+  const durasiBelajar = durasiJp(data.sertifikasi.lama_belajar_jp);
+  const rentang = rentangBelajar((data.pendidikan || []) as Record<string, unknown>[]);
+  cells.K31 = rentang ? durasiBelajar : '';
+  cells.L31 = rentang || durasiBelajar;
   cells.L32 = bersih(data.identitas.negara_lain);
   cells.K33 = bersih(data.sertifikasi.catatan_cv);
   const ken = data.kenalan_jepang;
