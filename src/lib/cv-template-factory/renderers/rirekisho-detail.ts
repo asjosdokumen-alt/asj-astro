@@ -72,10 +72,30 @@
  * contoh nilainya `20 歳` untuk orang yang lahir 2005-10-28 — sudah basi saat
  * berkasnya dikirim. Umur yang tersimpan sebagai teks tidak pernah menua
  * sendiri, dan CV yang menyebut umur salah lebih buruk daripada CV tanpa umur.
+ *
+ * REVISI 2026-11-16 — GAYA TULIS DISAMAKAN DENGAN CV CONTOH PEMILIK
+ * ----------------------------------------------------------------
+ * Pemilik mengirim dua tangkapan layar CV yang sudah dirapikan tangan dan
+ * meminta template ini mengikuti cara penulisannya:
+ *
+ *   • 現住所 RINGKAS: `BUNGKAL - PONOROGO - JAWA TIMUR` (kecamatan - kabupaten
+ *     - provinsi), bukan alamat RT/RW lengkap. → `alamatRingkas()`
+ *   • Semua kolom berbahasa Jepang: 職種 (`土木工事`), 職業 keluarga (`無職`,
+ *     `主婦`), 専門 (`学生`), dan jenjang memakai `高校` (bukan 高等学校).
+ *   • Kolom panjang ditulis PENDEK: 長所 `勤勉で頑張り屋`, 短所 `心配がち`,
+ *     bukan paragraf. → `ringkas()`
+ *   • 年齢 keluarga tanpa satuan (`71`, bukan `71 歳`); 氏名 keluarga nama
+ *     Indonesia huruf besar, bukan katakana.
+ *   • 個人収入 / 貯金額 ditulis dalam 円 / 万円. → `uangJp()`
+ *
+ * Yang TIDAK diubah: peta sel, geometri, dan aturan "jangan mengarang" — sel
+ * yang tidak punya data tetap kosong.
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { RIREKISHO_DETAIL_BASE64 } from '../templates/rirekisho-detail.b64';
 import { isGood, batasiRiwayatSekolah, isLpkTingkat, kanjiHubunganDari } from '../../helpers_cv';
+import { jpTerm } from '../../cv-jp-terms';
+import { PROVINSI } from '../../opsi-form';
 import {
   buildXlsxForm,
   birthDate,
@@ -136,6 +156,118 @@ function kapital(v: unknown): string {
   return bersih(v).toUpperCase();
 }
 
+/* ── RINGKAS: gaya tulis template ini (pemilik, 2026-11-16) ─────────────────
+ *
+ * Pemilik mengirim CV contoh yang sudah dirapikan tangan dan meminta tiga hal:
+ *
+ *   1. 現住所 ditulis RINGKAS — kecamatan - kabupaten - provinsi
+ *      (`BUNGKAL - PONOROGO - JAWA TIMUR`), bukan alamat lengkap ber-RT/RW.
+ *   2. SEMUA kolom berbahasa Jepang: 続柄, 職業 keluarga, 職種, 長所/短所.
+ *   3. Kolom panjang (長所・短所・志望動機・帰国後) ditulis PENDEK, bukan
+ *      paragraf. Contoh pemilik: `勤勉で頑張り屋` / `心配がち`.
+ *
+ * Karena renderer tidak boleh memanggil penerjemah saat mencetak, aturannya:
+ * kolom `*_jp` dari database SELALU menang, lalu teksnya DIPENDEKKAN. Kalau
+ * terjemahannya belum ada, teks Indonesia dicetak huruf besar seperti sebelumnya
+ * — memotong kalimat Indonesia di tengah kata lebih buruk daripada membiarkannya
+ * utuh, jadi pemotongan hanya berlaku untuk teks Jepang.
+ */
+
+/** `BUNGKAL - PONOROGO - JAWA TIMUR` dari alamat lengkap. */
+export function alamatRingkas(alamat: unknown): string {
+  const asli = kapital(alamat).replace(/\s+/g, ' ').trim();
+  if (!asli) return '';
+  /* Kode pos dibuang lebih dulu: `PROV. JAWA TIMUR 63462` membuat regex
+     provinsi menelan angka posnya. */
+  const t = asli.replace(/\b\d{5}\b/g, ' ').replace(/\s+,/g, ',').replace(/\s+/g, ' ').trim();
+
+  const segmen = (label: RegExp): string => {
+    for (const s of t.split(',')) {
+      const m = label.exec(s.trim());
+      if (m?.[1]) return bersih(m[1]);
+    }
+    return '';
+  };
+
+  let prov = segmen(/^PROV(?:INSI)?\.?\s+(.+)$/);
+  let kab = segmen(/^(?:KAB(?:UPATEN)?|KOTA)\.?\s+(.+)$/);
+  let kec = segmen(/^KEC(?:AMATAN)?\.?\s+(.+)$/);
+  const desa = segmen(/^(?:DESA|KEL(?:URAHAN)?)\.?\s+(.+)$/);
+
+  /* Alamat tanpa koma: `… GANDUKEPUH SUKOREJO KAB PONOROGO JAWA TIMUR 63453`.
+     Provinsi dicari dari daftar resmi (yang terpanjang menang, supaya
+     `DKI JAKARTA` tidak kalah oleh `JAKARTA`). */
+  if (!prov) {
+    prov =
+      PROVINSI.map(([v]) => String(v))
+        .filter((v) => new RegExp(`\\b${v}\\b`).test(t))
+        .sort((a, b) => b.length - a.length)[0] ?? '';
+  }
+  if (!kab) kab = /\bKAB(?:UPATEN)?\.?\s+([A-Z][A-Z']*)/.exec(t)?.[1] ?? '';
+  if (!kec) kec = /\bKEC(?:AMATAN)?\.?\s+([A-Z][A-Z']*)/.exec(t)?.[1] ?? '';
+  if (!kec && kab) {
+    /* Tanpa label KEC: kecamatan adalah kata tepat sebelum `KAB`
+       (`… GANDUKEPUH SUKOREJO KAB PONOROGO` → SUKOREJO). */
+    kec = new RegExp(`([A-Z][A-Z']*)\\s+KAB(?:UPATEN)?\\.?\\s+${kab}`).exec(t)?.[1] ?? '';
+  }
+
+  const bagian = [kec || desa, kab, prov].filter(Boolean);
+  return bagian.length ? bagian.join(' - ') : asli;
+}
+
+/** Teks Jepang? Huruf Latin tidak dipotong — lihat catatan di atas. */
+function teksJp(v: string): boolean {
+  return /[\u3040-\u30ff\u4e00-\u9fff]/.test(v);
+}
+
+/**
+ * Pendekkan jawaban panjang jadi satu klausa.
+ *
+ * `potongKlausa` = true untuk 長所/短所 (satu sifat saja, seperti contoh
+ * pemilik); false untuk 志望動機/帰国後, yang memang satu kalimat utuh dan
+ * hanya perlu dibuang kalimat keduanya.
+ */
+export function ringkas(v: unknown, maks = 24, potongKlausa = true): string {
+  let t = bersih(v).replace(/\s+/g, ' ');
+  if (!t) return '';
+  t = t.split(potongKlausa ? /[、。]|が、|けど、|ので、/ : /[。]/)[0].trim();
+  /* `〜です` di ujung klausa dibuang supaya sel 長所/短所 berbentuk frasa
+     (`物忘れが多い`), bukan kalimat sopan yang terpotong. `ます` TIDAK dibuang:
+     menyisakan batang kata kerja (`〜あり`) lebih buruk daripada membiarkannya. */
+  t = t.replace(/(です|でした)$/, '').replace(/[、,.\s]+$/, '');
+  if (t.length > 0) {
+    /* Teks Jepang dipotong di `maks` (tidak ada spasi untuk dipotong rapi);
+       teks Latin hanya dipotong kalau benar-benar kepanjangan, dan selalu di
+       batas kata — memotong "DISCIPLIN KERJA KE" di tengah kata lebih buruk
+       daripada satu kalimat utuh. */
+    const batas = teksJp(t) ? maks : Math.max(maks, 40);
+    if (t.length > batas) {
+      const sp = t.lastIndexOf(' ', batas);
+      t = (sp >= 8 ? t.slice(0, sp) : t.slice(0, batas)).trim();
+    }
+  }
+  return t;
+}
+
+/**
+ * 個人収入 / 貯金額目標 dalam bentuk yang dibaca klien Jepang.
+ *
+ * `1jt` (= 1 juta rupiah) ≈ ¥10.000 ≈ 1万円, jadi angka "jt/juta" ditulis
+ * `… 万円` — persis seperti CV contoh pemilik (`300jt` → `300 万円`). Angka
+ * tanpa satuan dianggap sudah yen dan hanya diberi pemisah ribuan.
+ */
+export function uangJp(v: unknown, unit: '円' | '万円'): string {
+  const asli = bersih(v);
+  if (!asli) return '';
+  const t = asli.toLowerCase().replace(/rp\.?/g, '').replace(/\s+/g, '');
+  const m = /^(\d+(?:[.,]\d+)?)(jt|juta|million|万|万円)?/.exec(t);
+  if (!m) return asli.toUpperCase();
+  const n = Number(m[1].replace(',', '.'));
+  if (!Number.isFinite(n)) return asli.toUpperCase();
+  if (m[2]) return `${n} 万円`;
+  return `${n.toLocaleString('id-ID')} ${unit}`;
+}
+
 /** Tahun saja (`2012-07` → `2012`). Kolom 開始年/終了年 di 学歴 hanya tahun. */
 function tahunSaja(v: unknown): string {
   const t = bersih(v);
@@ -174,24 +306,24 @@ function tahunBulanAkhir(v: unknown): string {
  * Jenjang sekolah dalam kosakata template ini.
  *
  * `tingkatSekolahJp` di helpers_cv memetakan SMK → 専門学校 dan SMA → 高校,
- * sedangkan form ini menulis **高等学校** untuk SMK (`SMKN 2 JIWAN` di berkas
- * contoh). Memakai helper itu akan menghasilkan isi yang berbeda dari form
- * cetak, jadi pemetaannya ditulis di sini.
+ * sedangkan form ini mencetak **高校** untuk SMK — lihat CV contoh yang dikirim
+ * pemilik 2026-11-16 (`SMKN 1 SLAHUNG` → 高校). Versi sebelumnya menulis
+ * 高等学校; pemilik menandai bentuk itu bukan gaya template ini, jadi seluruh
+ * cabang di bawah bermuara ke 高校.
  */
 function tingkatJp(v: unknown): string {
   const t = bersih(v).toUpperCase();
   if (!t) return '';
   /* Nilai yang SUDAH Jepang dikembalikan apa adanya dalam bentuk baku.
      Database sempat menyimpan `小学校`/`中学校`/`高校` (diperbaiki migrasi 044,
-     tapi data lama bisa muncul lagi lewat impor), dan tanpa cabang ini `高校`
-     tercetak `高校` sedangkan form memakai `高等学校`. */
+     tapi data lama bisa muncul lagi lewat impor). */
   if (/小学校/.test(t)) return '小学校';
   if (/中学校/.test(t)) return '中学校';
-  if (/高校|高等/.test(t)) return '高等学校';
+  if (/高校|高等/.test(t)) return '高校';
   if (/大学/.test(t)) return '大学';
   if (/^SD|DASAR|^MI\b/.test(t)) return '小学校';
   if (/^SMP|PERTAMA|^MTS/.test(t)) return '中学校';
-  if (/^SMA|^SMK|ATAS|^MA\b|ALIYAH|KEJURUAN/.test(t)) return '高等学校';
+  if (/^SMA|^SMK|ATAS|^MA\b|ALIYAH|KEJURUAN/.test(t)) return '高校';
   if (/UNIVERSITAS|SARJANA|DIPLOMA|^D[234]|^S[12]\b/.test(t)) return '大学';
   return t;
 }
@@ -301,7 +433,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
   cells.C5 = kanaJp(id.katakana);
   cells.C6 = kapital(id.nama_lengkap);
   cells.C7 = birthDate(id.tgl_lahir);
-  cells.C8 = kapital(id.alamat);
+  /* 現住所 — RINGKAS: kecamatan - kabupaten - provinsi. Pemilik 2026-11-16:
+     *"alamat model desa-kota/kab - provinsi"*; CV contohnya menulis
+     `BUNGKAL - PONOROGO - JAWA TIMUR`, bukan alamat RT/RW lengkap. */
+  cells.C8 = alamatRingkas(id.alamat);
   cells.G5 = agamaJp(id.agama);
   cells.G6 = maritalJp(id.status_nikah);
   cells.G7 = umurDari(id.tgl_lahir, id.umur);
@@ -328,8 +463,11 @@ export function buildValues(data: CandidateData): Record<string, string> {
   cells.I12 = adaTidak(medis.tato);
   cells.E13 = adaTidak(medis.rokok);
   cells.I13 = adaTidak(medis.alkohol);
-  cells.C14 = kapital(wwn.kelebihan);
-  cells.H14 = kapital(wwn.kekurangan);
+  /* 長所 / 短所 — PENDEK, satu sifat. CV contoh pemilik: `勤勉で頑張り屋` dan
+     `心配がち`, bukan paragraf. Kolom `*_jp` menang; teks Indonesia hanya
+     dipotong kalau sudah Jepang (lihat `ringkas`). */
+  cells.C14 = kapital(ringkas(wwn.kelebihan_jp || wwn.kelebihan, 20));
+  cells.H14 = kapital(ringkas(wwn.kekurangan_jp || wwn.kekurangan, 20));
   /* 集団生活経験 = pernah tinggal bersama di asrama/kursus. Diturunkan dari
      `tinggal_kursus_tahun` (angka tahun), bukan dari kolom 有/無 yang tidak ada.
      Kosong kalau kolomnya kosong — bukan ditebak. */
@@ -345,12 +483,23 @@ export function buildValues(data: CandidateData): Record<string, string> {
      sengaja dibiarkan kosong. */
   cells.F15 = adaTidak(wwn.bisa_memasak);
   /* 個人収入 — `D17` adalah satu-satunya sel bebas di baris itu; template
-     aslinya tidak punya tempat jawaban (`E17` sudah label berikutnya). */
-  cells.D17 = kapital(wwn.penghasilan);
+     aslinya tidak punya tempat jawaban (`E17` sudah label berikutnya).
+     Angka rupiah yang ditulis "jt/juta" diterjemahkan ke 万円 (`uangJp`). */
+  cells.D17 = uangJp(wwn.penghasilan, '円');
   cells.D16 = golDarah(id.golongan_darah);
-  cells.F16 = kapital(wwn.motivasi_ke_jepang) || kapital(wwn.tujuan_ke_jepang);
-  cells.F17 = kapital(wwn.tabungan);
-  cells.F18 = kapital(wwn.rencana_pulang);
+  /* 志望動機 / 帰国後の仕事 — kolom Jepang menang, lalu dipendekkan jadi SATU
+     kalimat (CV contoh: `日本の技術と日本人の働き方を学びたくて、お金を貯めたい`). */
+  cells.F16 = kapital(
+    ringkas(
+      wwn.motivasi_ke_jepang_jp || wwn.motivasi_ke_jepang || wwn.tujuan_ke_jepang_jp || wwn.tujuan_ke_jepang,
+      40,
+      false,
+    ),
+  );
+  cells.F17 = uangJp(wwn.tabungan, '万円');
+  cells.F18 = kapital(
+    ringkas(wwn.rencana_pulang_jp || wwn.rencana_pulang, 40, false),
+  );
   {
     const visa = bersih(id.visa_jepang);
     /* Kosong → `無`, bukan kosong. Kolom ini bertanya "pernah mengajukan izin
@@ -375,18 +524,21 @@ export function buildValues(data: CandidateData): Record<string, string> {
   for (let i = 0; i < EDU_ROWS; i++) {
     const row = EDU_START + i;
     const p = edu[i] || {};
+    const sekolah = kapital(p.sekolah ?? p.nama_sekolah ?? p.sekolah_id);
     // 学歴 memakai TAHUN saja (`2012`), bukan 年月 — lihat berkas contoh.
     cells[`A${row}`] = tahunSaja(p.masuk ?? p.tahun_masuk);
     cells[`B${row}`] = tahunSaja(p.lulus ?? p.tahun_lulus);
-    cells[`C${row}`] = kapital(p.sekolah ?? p.nama_sekolah ?? p.sekolah_id);
+    cells[`C${row}`] = sekolah;
     /* Kolom G berjudul 免許・資格, tapi di template contoh isinya TINGKAT
-       sekolah (小学校 / 中学校 / 高等学校). Yang diikuti labelnya adalah
-       isinya, jadi `tingkat` yang dipakai. */
+       sekolah (小学校 / 中学校 / 高校). Yang diikuti labelnya adalah isinya,
+       jadi `tingkat` yang dipakai. */
     cells[`G${row}`] = tingkatJp(p.tingkat);
-    /* 専門 kosong ditulis `-`, seperti berkas contoh (SD/SMP tidak punya
-       jurusan). Sel kosong di tengah tabel terbaca seperti kolom yang lupa
-       diisi, bukan seperti "tidak ada". */
-    cells[`I${row}`] = kapital(p.jurusan ?? p.jurusan_id) || '-';
+    /* 専門 — CV contoh pemilik 2026-11-16 menulis `学生` di KETIGA baris
+       sekolah (SD, SMP, SMK), termasuk SMK yang jelas punya jurusan. Artinya
+       kolom ini dibaca sebagai status saat menempuh, bukan nama jurusan;
+       menaruh `自動車整備` di sini akan berbeda dari form yang dipakai
+       percetakan. Baris tanpa sekolah tetap kosong — bukan `学生` karangan. */
+    cells[`I${row}`] = sekolah ? '学生' : '';
   }
 
   /* ── pekerjaan (26-29): 2 baris ───────────────────────────────────────── */
@@ -398,27 +550,32 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`B${row}`] = tahunBulanAkhir(p.keluar ?? p.tahun_keluar);
     cells[`C${row}`] = kapital(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
     /* G27:J27 satu kolom lebar berjudul 職歴 (isi pekerjaannya), bukan jabatan.
-       Contoh: `Pemilahan dan penataan barang`, `PKL MEKANIK`. */
-    cells[`G${row}`] = kapital(p.jabatan ?? p.jenis ?? p.jabatan_id);
+       Contoh: `Pemilikan dan penataan barang`. CV contoh pemilik 2026-11-16
+       menulisnya dalam bahasa Jepang (`土木工事`, `販売(料理)`), jadi kolom
+       `*_jp` diutamakan lalu kamus `jpTerm` dipakai sebagai jaring. */
+    const posisi = jpTerm(p.jabatan_jp || p.jabatan || p.jenis_jp || p.jenis || p.jabatan_id);
+    cells[`G${row}`] = posisi ? (teksJp(posisi) ? posisi : kapital(posisi)) : '';
   }
 
   /* ── keluarga (30-37): 5 baris ────────────────────────────────────────── */
   for (let i = 0; i < FAM_ROWS; i++) {
     const row = FAM_START + i;
     const p = (data.keluarga[i] || {}) as Record<string, unknown>;
-    /* 氏名: utamakan KATAKANA. Nama orang Jepang ditulis kana, dan tombol
-       Terjemahkan sudah menghasilkan `keluarga[i].katakana` — tetapi sebelum
-       migrasi 046 nilainya tidak punya kolom, jadi selalu hilang dan sel ini
-       mencetak nama Latin. Jatuh ke `nama` bila terjemahannya belum ada, dan
-       hanya bila isinya benar-benar huruf Jepang (jangan cetak "-" atau teks
-       Latin yang nyasar). */
+    /* 氏名: nama Indonesia HURUF BESAR — CV contoh pemilik 2026-11-16 menulis
+       `SOINEM` / `SUGENG PURWANTO` / `MISNAYANTI`, bukan katakana. Katakana
+       hanya dipakai kalau kolom nama Latinnya kosong, supaya baris yang hanya
+       punya terjemahan tidak hilang. */
     const kt = bersih(p.katakana);
-    cells[`A${row}`] = /[ぁ-ヿ一-龯]/.test(kt) ? kt : kapital(p.nama);
+    cells[`A${row}`] = kapital(p.nama) || (/[ぁ-ヿ一-龯]/.test(kt) ? kt : '');
     /* 続柄 ditulis KANJI (父/母/兄/…). Database menyimpannya dalam bahasa
        Indonesia (`AYAH`, `KAKAK LAKI-LAKI`), dan form cetak berbahasa Jepang. */
     cells[`D${row}`] = hubunganJp(p);
-    cells[`E${row}`] = satuan(p.usia ?? p.umur, '歳');
-    cells[`F${row}`] = kapital(p.pekerjaan);
+    /* 年齢 tanpa satuan: CV contoh menulis `71`, bukan `71 歳`. */
+    cells[`E${row}`] = bersih(p.usia ?? p.umur).replace(/[^\d]/g, '');
+    /* 職業 dalam bahasa Jepang (`無職`, `主婦`, `販売(料理)`), bukan huruf besar
+       Indonesia. `pekerjaan_jp` menang; kamus hanya jaring. */
+    const kerja = jpTerm(p.pekerjaan_jp || p.pekerjaan);
+    cells[`F${row}`] = kerja ? (teksJp(kerja) ? kerja : kapital(kerja)) : '';
     // Kolom I tidak ditulis per baris — lihat `I32` di bawah.
   }
 

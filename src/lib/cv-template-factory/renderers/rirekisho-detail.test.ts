@@ -110,13 +110,45 @@ describe('rirekisho-detail · identitas (baris 5-9)', () => {
           nama_lengkap: 'BUDI SANTOSO',
           katakana: 'ブディ・サントソ',
           tgl_lahir: '2005-10-28',
-          alamat: 'JL. MAWAR 3, MAGETAN',
+          alamat: 'JL. MAWAR 3, KEC. BABADAN, KAB. PONOROGO, PROV. JAWA TIMUR 63491',
         },
       }),
     );
     expect(v.C5).toBe('ブディ・サントソ');
     expect(v.C6).toBe('BUDI SANTOSO');
     expect(v.C7).toBe('2005年10月28日');
+    // 現住所 RINGKAS: kecamatan - kabupaten - provinsi (permintaan pemilik 2026-11-16).
+    expect(v.C8).toBe('BABADAN - PONOROGO - JAWA TIMUR');
+  });
+
+  it('alamat lengkap ber-RT/RW diringkas jadi tiga bagian, kode pos dibuang', () => {
+    /* CV contoh pemilik: `BUNGKAL - PONOROGO - JAWA TIMUR` dari alamat
+       `DUKUH BUGIS RT 001 RW 001, DESA BEKARE, KEC. BUNGKAL, KAB. PONOROGO,
+       PROV. JAWA TIMUR 63462`. */
+    const v = buildValues(
+      kandidat({
+        identitas: {
+          alamat:
+            'DUKUH BUGIS RT 001 RW 001, DESA BEKARE, KEC. BUNGKAL, KAB. PONOROGO, PROV. JAWA TIMUR 63462',
+        },
+      }),
+    );
+    expect(v.C8).toBe('BUNGKAL - PONOROGO - JAWA TIMUR');
+  });
+
+  it('alamat tanpa koma tetap terbaca: kecamatan diambil dari kata sebelum KAB', () => {
+    const v = buildValues(
+      kandidat({
+        identitas: {
+          alamat: 'DUKUH NGUJUNG RT 001 RW 001 GANDUKEPUH SUKOREJO KAB PONOROGO JAWA TIMUR 63453',
+        },
+      }),
+    );
+    expect(v.C8).toBe('SUKOREJO - PONOROGO - JAWA TIMUR');
+  });
+
+  it('alamat yang tidak berpola tetap dicetak apa adanya (huruf besar)', () => {
+    const v = buildValues(kandidat({ identitas: { alamat: 'JL. MAWAR 3, MAGETAN' } }));
     expect(v.C8).toBe('JL. MAWAR 3, MAGETAN');
   });
 
@@ -172,8 +204,41 @@ describe('rirekisho-detail · personalia (baris 11-20)', () => {
     expect(v.C14).toBe('TEKUN');
     expect(v.H14).toBe('PEMALU');
     expect(v.F16).toBe('INGIN BELAJAR');
-    expect(v.F17).toBe('200万円');
+    expect(v.F17).toBe('200 万円');
     expect(v.F18).toBe('USAHA TANI');
+  });
+
+  it('kolom Jepang menang, dan 長所/短所 dipotong jadi SATU sifat', () => {
+    /* Pemilik 2026-11-16: `勤勉で頑張り屋` / `心配がち` — pendek, bukan
+       paragraf. Sumbernya kolom `*_jp`; klausa kedua dibuang. */
+    const v = buildValues(
+      kandidat({
+        wawancara: {
+          kelebihan: 'Disiplin kerja keras',
+          kelebihan_jp: '規律正しく、努力家です。',
+          kekurangan: 'Pelupa',
+          kekurangan_jp: '物忘れが多いですが、メモを取るようにしています。',
+        },
+      }),
+    );
+    expect(v.C14).toBe('規律正しく');
+    expect(v.H14).toBe('物忘れが多い');
+  });
+
+  it('tanpa terjemahan Jepang, teks Indonesia TIDAK dipotong di tengah kata', () => {
+    const v = buildValues(
+      kandidat({ wawancara: { kelebihan: 'Disiplin kerja keras dan jujur' } }),
+    );
+    expect(v.C14).toBe('DISIPLIN KERJA KERAS DAN JUJUR');
+  });
+
+  it('個人収入 / 貯金額 ditulis dalam 円 / 万円', () => {
+    /* `1jt` (1 juta rupiah) ≈ ¥10.000 ≈ 1万円 — CV contoh pemilik menulis
+       `300jt` sebagai `300 万円`, dan `20.000 円` untuk penghasilan. */
+    expect(buildValues(kandidat({ wawancara: { tabungan: '300jt+-' } })).F17).toBe('300 万円');
+    expect(buildValues(kandidat({ wawancara: { tabungan: '50 juta' } })).F17).toBe('50 万円');
+    expect(buildValues(kandidat({ wawancara: { penghasilan: '20000' } })).D17).toBe('20.000 円');
+    expect(buildValues(kandidat({ wawancara: { penghasilan: '3 juta' } })).D17).toBe('3 万円');
   });
 
   it('menjawab 有/無 hanya kalau datanya ada', () => {
@@ -214,17 +279,29 @@ describe('rirekisho-detail · pendidikan (3 baris), pekerjaan (2 baris), keluarg
         pendidikan: [
           { masuk: '2012', lulus: '2018', sekolah: 'SDN 1', tingkat: '小学校' },
           { masuk: '2018', lulus: '2021', sekolah: 'SMPN 2', tingkat: '中学校' },
-          { masuk: '2021', lulus: '2024', sekolah: 'SMKN 3', tingkat: '高等学校', jurusan: 'OTOMOTIF' },
+          { masuk: '2021', lulus: '2024', sekolah: 'SMKN 3', tingkat: 'SMK', jurusan: 'OTOMOTIF' },
         ],
       }),
     );
     expect(v.C23).toBe('SDN 1');
     expect(v.G23).toBe('小学校');
     expect(v.C25).toBe('SMKN 3');
-    expect(v.I25).toBe('OTOMOTIF');
+    /* 専門 = 学生, bukan nama jurusan — CV contoh pemilik 2026-11-16 menulis
+       `学生` bahkan untuk baris SMK yang punya jurusan. */
+    expect(v.G25).toBe('高校');
+    expect(v.I25).toBe('学生');
     // Tidak ada yang ditulis ke baris 26 — itu judul 職歴.
     expect(v.C26).toBeUndefined();
     expect(v.A26).toBeUndefined();
+  });
+
+  it('baris pendidikan kosong tidak diberi 学生 karangan', () => {
+    const v = buildValues(
+      kandidat({ pendidikan: [{ masuk: '2012', lulus: '2018', sekolah: 'SDN 1', tingkat: 'SD' }] }),
+    );
+    expect(v.C23).toBe('SDN 1');
+    expect(v.C24).toBe('');
+    expect(v.I24).toBe('');
   });
 
   it('LPK TIDAK masuk 学歴, sehingga SD/SMP/SMK tetap tampil', () => {
@@ -276,9 +353,19 @@ describe('rirekisho-detail · pendidikan (3 baris), pekerjaan (2 baris), keluarg
       }),
     );
     expect(v.C28).toBe('SHOPEE');
-    expect(v.G28).toBe('GUDANG');
+    // 職種 dalam bahasa Jepang — CV contoh pemilik: `土木工事`, `販売(料理)`.
+    expect(v.G28).toBe('倉庫作業');
     expect(v.C29).toBe('NASI PADANG');
     expect(v.C30).toBeUndefined(); // baris 30 = judul 家族
+  });
+
+  it('職種 memakai kolom Jepang bila sudah diterjemahkan', () => {
+    const v = buildValues(
+      kandidat({
+        pekerjaan: [{ masuk: '2022-08', perusahaan: 'CV BERKAH MANDIRI', jabatan: 'PEKERJA BANGUNAN', jabatan_jp: '土木工事' }],
+      }),
+    );
+    expect(v.G28).toBe('土木工事');
   });
 
   it('pekerjaan yang masih berjalan ditulis 現在に至る, bukan kosong', () => {
@@ -293,19 +380,22 @@ describe('rirekisho-detail · pendidikan (3 baris), pekerjaan (2 baris), keluarg
     expect(v.B28).toBe('現在に至る');
   });
 
-  it('nama keluarga memakai katakana bila sudah diterjemahkan', () => {
+  it('nama keluarga memakai nama Latin huruf besar; katakana hanya bila nama kosong', () => {
+    /* CV contoh pemilik 2026-11-16 menulis `SOINEM` / `SUGENG PURWANTO` /
+       `MISNAYANTI` — nama Indonesia, bukan katakana. Katakana tetap dipakai
+       kalau kolom nama Latinnya kosong, supaya baris itu tidak hilang. */
     const v = buildValues(
       kandidat({
         keluarga: [
           { nama: 'SOIRIN', katakana: 'ソイリン', hubungan: '父' },
           { nama: 'INDAH', katakana: '', hubungan: '母' },
-          { nama: 'BUDI', katakana: '-', hubungan: '兄' },
+          { nama: '', katakana: 'ブディ', hubungan: '兄' },
         ],
       }),
     );
-    expect(v.A32).toBe('ソイリン'); // sudah diterjemahkan
-    expect(v.A33).toBe('INDAH');    // belum -> jatuh ke nama Latin
-    expect(v.A34).toBe('BUDI');     // '-' bukan terjemahan -> jatuh ke nama Latin
+    expect(v.A32).toBe('SOIRIN'); // nama Latin menang
+    expect(v.A33).toBe('INDAH');
+    expect(v.A34).toBe('ブディ');  // nama kosong -> jatuh ke katakana
   });
 
   it('keluarga mengisi A/D/E/F dan TIDAK menyentuh kolom I', () => {
@@ -313,14 +403,17 @@ describe('rirekisho-detail · pendidikan (3 baris), pekerjaan (2 baris), keluarg
       kandidat({
         keluarga: [
           { nama: 'SLAMET', hubungan: '父', usia: '45', pekerjaan: 'SATPAM' },
-          { nama: 'INDAH', hubungan: '母', usia: '45', pekerjaan: 'IRT' },
+          { nama: 'INDAH', hubungan: '母', usia: '45', pekerjaan: 'IBU RUMAH TANGGA' },
         ],
       }),
     );
     expect(v.A32).toBe('SLAMET');
     expect(v.D32).toBe('父');
-    expect(v.E32).toBe('45 歳');
-    expect(v.F32).toBe('SATPAM');
+    // 年齢 tanpa satuan — CV contoh menulis `71`, bukan `71 歳`.
+    expect(v.E32).toBe('45');
+    // 職業 dalam bahasa Jepang, bukan huruf besar Indonesia.
+    expect(v.F32).toBe('警備員');
+    expect(v.F33).toBe('主婦');
     /* `I32` = 在日親戚 untuk baris pertama — `無` kalau tidak ada kenalan di
        Jepang, seperti berkas contoh. */
     expect(v.I32).toBe('無');
@@ -348,7 +441,7 @@ describe('rirekisho-detail · pendidikan (3 baris), pekerjaan (2 baris), keluarg
     );
     expect(v.D15).toBe('有');
     expect(v.F15).toBe('有');
-    expect(v.D17).toBe('3 JUTA');
+    expect(v.D17).toBe('3 万円');
     expect(v.I34).toBe('賛成');
   });
 
@@ -460,7 +553,7 @@ describe('rirekisho-detail · render penuh: nilai benar-benar masuk ke sel', () 
     expect(baca('C5')).toBe('ブディ・サントソ');
     expect(baca('C8')).toBe('JL. MAWAR 3');
     expect(baca('A32')).toBe('SLAMET');
-    expect(baca('E32')).toBe('45 歳');
+    expect(baca('E32')).toBe('45');
     expect(baca('A40')).toBe('CATATAN UJI');
   }, 20000);
 
