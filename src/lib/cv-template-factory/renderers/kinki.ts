@@ -19,11 +19,11 @@
  *          F13 宗教, M14 血液型, F14 飲酒, M15 利き手, F15 煙草,
  *          M16/M17 視力, F16 刺青, F17 スポーツ, M18 色覚異常, F18 趣味
  *   19-25  pendidikan: E20/F21 = 専門 (mulai/selesai), I20 期間, K20 地域,
- *          N20 国公私, P20 学校名, X20 専攻; E22/F23/I22/N22/P22/X22 =
+ *          N20 国公私, P20 学校名, X20 専攻; E22/F23/I22/K22/N22/P22/X22 =
  *          日本語学校; F24 具体的な修学内容
  *   26-34  tiga blok kerja (2 baris per pekerjaan): B jenis, E mulai,
- *          F selesai, I 期間, N 業種, R 職種, X 月収, AA 備考; F33 仕事内容
- *   35-36  できる作業 — 12 kotak centang + catatan その他 di Y36
+ *          F selesai, I 期間, K 地域, N 業種, R 職種, X 月収, AA 備考; F33 仕事内容
+ *   35-36  できる作業 — 12 kotak centang, その他 Y36, 高所作業 OK di AD35
  *   37-44  keluarga (B 続柄, D 年齢, F 職業, K 月収, N 同居, P 別居) +
  *          日本語能力 U38-U40, 英語 R42, その他外国語 U42, 集団生活 Y42,
  *          自動車運転経験 R44, 結婚の予定 Y44, 緊急連絡先 Y38/AA38, 親族 Y40
@@ -31,6 +31,28 @@
  *          計算テスト R46, 目標貯金 Y46, 就業希望年数 Y48, 満了後 Y50,
  *          体力試験 AC52/AC53
  *   51-53  MBTI: R48 nama tipe, V49..V53 lima axis, B51/F51 rumus
+ *
+ * BAHASA & SATUAN — KEPUTUSAN PEMILIK 2026-11-16
+ * ----------------------------------------------
+ * Pemilik mengirim CV hasil generate dengan enam catatan. Semuanya soal BAHASA,
+ * SATUAN, dan ATURAN PENGISIAN — bukan tata letak:
+ *
+ *   1. 地域 (`K20`/`K22`/`K27`…) dalam bahasa Jepang. Dulu `PONOROGO` mentah,
+ *      dan baris 日本語学校 dibiarkan kosong. Sumbernya `KOTA`/`PROVINSI`
+ *      (`opsi-form.ts`) — lihat `wilayahJp`.
+ *   2. 備考 (`AA`) = bidang dalam bahasa Jepang (`Manufaktur` → 製造業); teks
+ *      yang tak dikenal diturunkan dari 職種 (lihat `bidangJp`).
+ *   3. 具体的な仕事内容 (`F33`) seluruhnya Jepang: nama perusahaan memakai
+ *      `perusahaan_jp`, bukan ejaan Latin.
+ *   4. 学習状況 (`U40`) diturunkan dari sertifikat: N5合格 → N4勉強中. `なし`
+ *      TIDAK pernah dicetak — nilai itu bukan pilihan dropdown U40.
+ *   5. 実習満了後の希望 (`Y50`): kalimat 将来の夢 yang menyebut pulang kampung
+ *      DAN membuka usaha → `母国で独立起業希望`.
+ *   6. できる作業: その他 (`X35`) SELALU dicentang, 高所作業 (`AD35`) selalu
+ *      `OK`, dan kotak lain mengikuti jurusan sekolah + pengalaman kerja + SIM.
+ *   7. Semua tanggal 年月 sampai HARI, selalu tanggal 1 (`2024年8月1日`).
+ *      Database hanya menyimpan tahun+bulan; blok 学歴 sudah begitu sejak dulu,
+ *      blok 職歴 belum — satu form dengan dua bentuk tanggal.
  *
  * MBTI
  * ----
@@ -60,6 +82,8 @@ import { KINKI_BASE64 } from '../templates/kinki.b64';
 import { isGood, isLpkTingkat, kouritsuSekolah, sortEdu } from '../../helpers_cv';
 import { isCurrent } from '../../cvPeriod';
 import { inferMbti, mbtiFromCode } from '../mbti';
+import { jpTerm, sudahJp } from '../../cv-jp-terms';
+import { KOTA, PROVINSI } from '../../opsi-form';
 import { buildXlsxForm, cvFileName, durasiJp, excelSerial, kanaJp, negatif, s, yearMonth, type PhotoBox } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
@@ -334,35 +358,56 @@ function jenisKerjaJp(v: unknown): string {
 }
 
 /**
- * 試験合格 (U39) — dropdown: `なし, N5合格 … N1合格`.
+ * Level tertinggi yang benar-benar LULUS, dari teks bebas `bahasa` + `jft`.
+ * `0` = tidak ada sertifikat. `5..1` = N5..N1.
  *
- * Kolom `bahasa` menyimpan hasil uji apa adanya. Dua aturan:
- *   1. **JFT-BASIC A2 setara N5–N4** (keputusan pemilik 2026-11-12: *"kalau
- *      lulus JFT A2, N5 lulus dong"*). Yang diklaim **N5** — mengklaim N4 akan
- *      melebih-lebihkan kemampuan kandidat di form resmi.
- *   2. JLPT (`JLPT N3`, `N4 LULUS`, …) → `N{n}合格`. Kolom ini mencatat
- *      sertifikat yang DIMILIKI, jadi levelnya sendiri sudah berarti lulus.
- * Selain itu `なし` — termasuk JFT-BASIC A1 dan "BELUM TES".
+ * Dipakai DUA sel sekaligus (U39 試験合格 dan U40 学習状況) supaya keduanya
+ * tidak pernah berbeda pendapat — dulu U40 dihitung dari kolom lain, dan hasilnya
+ * `なし` di sebelah `N5合格` (keluhan pemilik 2026-11-16).
+ *
+ * ATURAN `レベル` (2026-11-16): token `N4レベル` / `N4 LEVEL` berarti **sedang di
+ * level itu**, bukan lulus. Versi lama mengambil angka N pertama dari seluruh
+ * teks, jadi kandidat yang menulis "N4レベル N5 LULUS" tercetak `N4合格` —
+ * melebih-lebihkan satu tingkat di form resmi.
+ */
+function levelLulusJp(bahasa: unknown, jft: unknown): number {
+  const t = `${s(bahasa)} ${s(jft)}`.toUpperCase();
+  // JFT-BASIC A2 setara N5–N4; yang diklaim N5 (klaim terendah, jujur).
+  if (/JFT[-\s]?BASIC/.test(t) && /\bA2\b/.test(t)) return 5;
+  let best = 0;
+  for (const m of t.matchAll(/N([1-5])/g)) {
+    const after = t.slice((m.index ?? 0) + 2, (m.index ?? 0) + 8);
+    if (/^\s*(レベル|LEVEL)/.test(after)) continue;
+    const lv = Number(m[1]);
+    best = best === 0 ? lv : Math.min(best, lv);
+  }
+  return best;
+}
+
+/**
+ * 試験合格 (U39) — dropdown: `なし, N5合格 … N1合格`.
+ * JLPT (`JLPT N3`, `N4 LULUS`, …) → `N{n}合格`; selain itu `なし`.
  */
 function lulusUjianJp(bahasa: unknown, jft: unknown): string {
-  const t = `${s(bahasa)} ${s(jft)}`.toUpperCase();
-  if (/JFT[-\s]?BASIC/.test(t) && /\bA2\b/.test(t)) return 'N5合格';
-  const jlpt = /N([1-5])/.exec(t);
-  return jlpt ? `N${jlpt[1]}合格` : 'なし';
+  const lv = levelLulusJp(bahasa, jft);
+  return lv ? `N${lv}合格` : 'なし';
 }
 
 /**
  * 学習状況 (U40) — dropdown: `N5勉強中 … N1勉強中`.
  *
- * Butuh DUA hal: levelnya diketahui, dan statusnya memang "sedang belajar".
- * Kandidat yang sudah 修了 (selesai) tidak boleh dicetak "masih belajar".
+ * Keputusan pemilik 2026-11-16: *"kalau lulus n5 ya otomatis sekarang
+ * N4勉強中 bukan nashi"*. Jadi level yang sedang ditempuh = SATU TINGKAT DI
+ * ATAS sertifikat yang sudah lulus (N5合格 → N4勉強中), dan kalau kolom
+ * `level_bahasa_jepang` menyebut level yang lebih tinggi, level itulah yang
+ * dipakai. `なし` tidak pernah dicetak: nilai itu BUKAN pilihan dropdown U40.
  */
-function belajarJp(status: unknown, level: unknown): string {
-  const lv = /\bN([1-5])\b/.exec(s(level).toUpperCase());
-  if (!lv) return 'なし';
-  const st = s(status).toLowerCase();
-  const sedang = /belajar|勉強|kursus|sekolah|menempuh/.test(st);
-  return sedang ? `N${lv[1]}勉強中` : 'なし';
+function belajarJp(bahasa: unknown, jft: unknown, level: unknown): string {
+  const lulus = levelLulusJp(bahasa, jft);
+  const naik = lulus > 1 ? lulus - 1 : 0;
+  const kolom = Number(/\bN([1-5])\b/.exec(s(level).toUpperCase())?.[1] ?? 0);
+  const target = [naik, kolom].filter((n) => n > 0).sort((a, b) => a - b)[0] ?? 0;
+  return target ? `N${target}勉強中` : '';
 }
 
 /** 続柄 — huruf Jepang saja, sesuai kolom sempit A. */
@@ -419,82 +464,95 @@ function asalJp(alamatJp: string, tempatJp: string): string {
   return `インドネシア${ringkas}`;
 }
 
+/**
+ * 地域 (`K20`/`K22`/`K27`/`K29`/`K31`) — kota/provinsi dalam bahasa Jepang.
+ *
+ * Keputusan pemilik 2026-11-16: *"alamat sekolah alamat kerja kota pakai bahasa
+ * jepang"*. Dulu sel ini mencetak `PONOROGO` mentah, dan baris 日本語学校
+ * dibiarkan kosong sama sekali.
+ *
+ * Sumbernya daftar yang SUDAH ada di form (`KOTA`/`PROVINSI`, `opsi-form.ts`):
+ * labelnya menyimpan katakana/kanji di dalam kurung — `PONOROGO (ポノロゴ)`,
+ * `JAWA TIMUR (東ジャワ)`. Tidak ada penerjemahan karangan: kota yang belum punya
+ * padanan jatuh ke provinsinya, dan kalau provinsinya juga tidak dikenal, nama
+ * aslinya yang dicetak (sel kosong terbaca "belum diisi").
+ */
+function jpDariLabel(label: string): string {
+  const isi = /[（(]([^）)]*)[）)]/.exec(label)?.[1]?.trim() ?? '';
+  return sudahJp(isi) ? isi : '';
+}
+
+function wilayahJp(kota: unknown, provinsi: unknown): string {
+  const k = bersih(kota);
+  if (k) {
+    if (sudahJp(k)) return k;
+    const key = k.toUpperCase().replace(/\s+/g, ' ').trim();
+    const hit = KOTA.find(([v]) => String(v).toUpperCase() === key);
+    const jp = hit ? jpDariLabel(String(hit[1])) : '';
+    if (jp) return jp;
+  }
+  const p = bersih(provinsi);
+  if (p) {
+    if (sudahJp(p)) return p;
+    const key = p.toUpperCase().replace(/\s+/g, ' ').trim();
+    const hit = PROVINSI.find(([v]) => String(v).toUpperCase() === key);
+    const jp = hit ? jpDariLabel(String(hit[1])) : '';
+    if (jp) return jp;
+  }
+  return k;
+}
+
+/**
+ * 備考 (`AA27`/`AA29`/`AA31`) — bidang/industri dalam bahasa Jepang.
+ *
+ * Pemilik 2026-11-16: *"bidangnya bahasa jepang"*. Kolom `bidang` di database
+ * berisi teks bebas Indonesia ("Manufaktur", "Teknik Pemesian") dan dulu
+ * dicetak apa adanya di form klien Jepang.
+ *
+ * Kalau kamus tidak mengenali teksnya (salah ketik, istilah lokal), bidang
+ * DITURUNKAN dari 職種 yang sudah Jepang — mis. 機械オペレーター → 機械加工.
+ * Teks Indonesia TIDAK dicetak sebagai jalan terakhir: sel kosong lebih jujur
+ * daripada kolom berbahasa Indonesia di form resmi.
+ */
+function bidangJp(raw: unknown, jabatanJp: string): string {
+  const t = jpTerm(raw);
+  if (sudahJp(t)) return t;
+  const turunan: [RegExp, string][] = [
+    [/溶接/, '溶接'],
+    [/機械|オペレーター|整備|技術/, '機械加工'],
+    [/調理|キッチン|飲食/, '飲食'],
+    [/接客|販売|レジ|ウェイター|美容/, 'サービス'],
+    [/運転|ドライバー|配達/, '運輸'],
+    [/建設|土木|大工|左官|鉄筋|型枠|重機/, '建設'],
+    [/農業|農家|収穫/, '農業'],
+    [/畜産|養鶏|搾乳/, '畜産'],
+    [/縫製|ミシン|繊維/, '縫製'],
+    [/清掃/, '清掃'],
+  ];
+  for (const [re, label] of turunan) if (re.test(jabatanJp)) return label;
+  return '';
+}
+
 /** 実習満了後の希望 — hanya kalau kalimatnya jelas menyebut tetap bekerja di Jepang. */
 function harapanSetelahJp(rencana: string): string {
-  if (/日本で(も)?(長く)?働きたい|日本で就労|ずっと日本で働/.test(rencana)) return '日本での就労希望';
+  const t = bersih(rencana);
+  if (!t) return '';
+  /* 母国で独立起業 — keputusan pemilik 2026-11-16. Kalimat 将来の夢 yang
+     menyebut pulang kampung DAN membuka usaha sendiri ("帰った後は、インドネシア
+     で養鶏場を作りたい") harus tercetak sebagai harapan, bukan sel kosong. */
+  const pulang = /(母国|帰国|帰った後|帰国後|インドネシア|国に帰|母国へ)/.test(t);
+  const usaha = /(起業|独立|開業|店|会社|農場|養鶏|養豚|事業|ビジネス)/.test(t);
+  if (pulang && usaha) return '母国で独立起業希望';
+  if (/日本で(も)?(長く)?働きたい|日本で就労|ずっと日本で働/.test(t)) return '日本での就労希望';
   return '';
 }
 
 /**
- * Istilah Indonesia → Jepang untuk kolom yang dicetak apa adanya.
- *
- * Database menyimpan banyak kolom dalam bahasa Indonesia; form ini resmi
- * berbahasa Jepang, jadi menulis "PETERNAKAN" di kolom 業種 membuat pemilik
- * harus mengetik ulang kanji-nya sendiri (keluhan 2026-11-12). Kolom `*_jp`
- * dari database SELALU menang; tabel ini hanya jaring kalau kolom itu kosong.
- * Kunci dicocokkan pada teks UPPERCASE yang sudah dibersihkan tanda bacanya.
+ * Istilah Indonesia → Jepang sekarang SATU sumber di `../../cv-jp-terms`
+ * (dipindah 2026-11-16, saat form no. 2 membutuhkan daftar yang sama).
+ * `JP_TERMS`/`jpTerm`/`sudahJp` lokal dihapus dari berkas ini — salinannya
+ * dulu hidup di sini dan di `rirekisho-firma.ts` akan menyimpang diam-diam.
  */
-const JP_TERMS: Record<string, string> = {
-  // keluarga — 職業
-  PETANI: '農家', 'BURUH TANI': '農業労働者', PETERNAK: '畜産家', PETENAK: '畜産家', NELAYAN: '漁師',
-  'IBU RUMAH TANGGA': '主婦', 'RUMAH TANGGA': '主婦', PELAJAR: '学生', MAHASISWA: '大学生',
-  KARYAWAN: '会社員', 'KARYAWAN SWASTA': '会社員', 'KARYAWAN PABRIK': '工場勤務',
-  WIRASWASTA: '自営業', PENGUSAHA: '実業家', PEDAGANG: '商人', PEMILIK: '経営者',
-  GURU: '教師', DOSEN: '大学教授', SOPIR: '運転手', SUPIR: '運転手', SATPAM: '警備員',
-  TUKANG: '職人', BURUH: '労働者', PNS: '公務員', TNI: '軍人', POLRI: '警察官',
-  PENSIUNAN: '退職者', 'TIDAK BEKERJA': '無職', SERABUTAN: '日雇い', PERAWAT: '看護師',
-  'KEPALA DESA': '村長', PEKEBUN: '農園主', 'PETERNAK AYAM': '養鶏業',
-  // 業種
-  PERTANIAN: '農業', PETERNAKAN: '畜産業', PERKEBUNAN: '農園', PERIKANAN: '漁業',
-  KEHUTANAN: '林業', KONSTRUKSI: '建設業', BANGUNAN: '建設業', MANUFAKTUR: '製造業',
-  PABRIK: '製造業', PERDAGANGAN: '商業', JASA: 'サービス業', KULINER: '飲食業',
-  RESTORAN: '飲食業', 'RUMAH MAKAN': '飲食業', HOTEL: 'ホテル業', PARIWISATA: '観光業',
-  TEKSTIL: '繊維業', GARMEN: '縫製業', OTOMOTIF: '自動車業', ELEKTRONIK: '電子業',
-  PERTAMBANGAN: '鉱業', KESEHATAN: '医療', PENDIDIKAN: '教育', TRANSPORTASI: '運輸業',
-  LOGISTIK: '物流業', KOPERASI: '協同組合', BANK: '銀行', ASURANSI: '保険',
-  TEKNOLOGI: 'IT業', INFORMASI: '情報通信業',
-  // 職種
-  OPERATOR: 'オペレーター',
-  STAFF: 'スタッフ', STAF: 'スタッフ', ADMIN: '事務', ADMINISTRASI: '事務',
-  TEKNISI: '技術者', MEKANIK: '整備士', LAS: '溶接工', WELDER: '溶接工', PENGELAS: '溶接工',
-  GUDANG: '倉庫作業', 'JURU MASAK': '調理師', KOKI: '調理師', PELAYAN: '接客', KASIR: 'レジ係',
-  MANDOR: '現場監督', KEPALA: '責任者', SALES: '営業', MARKETING: '営業',
-  PENJAHIT: '縫製作業', PEMANEN: '収穫作業', PENYADAP: '搾乳作業', PETUGAS: '係員',
-  // 専攻
-  MULTIMEDIA: 'マルチメディア', 'TEKNIK KOMPUTER': 'コンピューター技術',
-  'TEKNIK KOMPUTER DAN JARINGAN': 'コンピューターネットワーク', TKJ: 'コンピューターネットワーク',
-  RPL: 'ソフトウェア開発', 'REKAYASA PERANGKAT LUNAK': 'ソフトウェア開発',
-  'TEKNIK OTOMOTIF': '自動車', 'TATA BOGA': '調理', PERHOTELAN: 'ホテル',
-  'BAHASA JEPANG': '日本語', AKUNTANSI: '会計', IPA: '理科', IPS: '社会',
-  'TEKNIK MESIN': '機械', MESIN: '機械', 'TEKNIK ELEKTRO': '電気', ELEKTRO: '電気',
-  KEPERAWATAN: '看護', HUKUM: '法律', EKONOMI: '経済', MANAJEMEN: '経営',
-  DESAIN: 'デザイン', SENI: '芸術', SIPIL: '土木', 'TEKNIK SIPIL': '土木',
-  KIMIA: '化学', FISIKA: '物理', BIOLOGI: '生物', MATEMATIKA: '数学',
-  SEJARAH: '歴史', GEOGRAFI: '地理', SOSIOLOGI: '社会学', PSIKOLOGI: '心理学',
-  KOMUNIKASI: 'コミュニケーション', BISNIS: 'ビジネス',
-};
-
-/** Teks sudah berisi kana/kanji? Kalau ya, jangan diterjemahkan lagi. */
-function sudahJp(v: unknown): boolean {
-  return /[\u3040-\u30ff\u4e00-\u9faf]/.test(s(v));
-}
-
-/**
- * Terjemahkan istilah Indonesia yang lazim; teks Jepang / nama diri dibiarkan.
- * Cocok persis dulu, lalu frasa terpanjang yang terkandung (mis.
- * "PETERNAKAN AYAM" → 畜産業), sisanya teks asli.
- */
-function jpTerm(v: unknown): string {
-  const t = bersih(v);
-  if (!t || sudahJp(t)) return t;
-  const key = t.toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
-  if (JP_TERMS[key]) return JP_TERMS[key];
-  let bestKey = '';
-  for (const k of Object.keys(JP_TERMS)) {
-    if (key.includes(k) && k.length > bestKey.length) bestKey = k;
-  }
-  return bestKey ? JP_TERMS[bestKey] : t;
-}
 
 /**
  * 集団生活年数 — database menyimpan BULAN, bukan tahun (owner 2026-11-12:
@@ -624,8 +682,14 @@ export function buildValues(data: CandidateData): Record<string, string> {
     // yang hanya punya provinsi kehilangan 地域-nya (terukur: `e2e/kinki.test.ts`
     // "identitas, pendidikan..." merah, `expected '' to be 'Jawa Timur'`).
     // Kota menang karena pemilik mengeluh dropdown 022 hanya berisi PROVINSI.
-    cells.K20 = jpTerm(bersih(sma.kota)) || bersih(id.wilayah_sekolah);
-    cells.N20 = kouritsuSekolah(sekolah, sma.status_sekolah);
+    // Sejak 2026-11-16 nilainya BAHASA JEPANG (`wilayahJp`).
+    cells.K20 = wilayahJp(sma.kota, id.wilayah_sekolah);
+    /* 国公私 — diperiksa dari nama sekolah INDONESIA lebih dulu. Sejak 2026-11-16
+       nama Jepang (`sekolah_jp`) yang dicetak di 学校名, dan "ジェナンガン第一国立
+       職業高等学校" tidak memuat kata NEGERI — sekolah negeri tercetak 私立
+       (terukur di pratinjau: SMK NEGERI 1 JENANGAN → 私立). */
+    const smaLatin = bersih(sma.sekolah ?? sma.nama_sekolah ?? sma.sekolah_id);
+    cells.N20 = kouritsuSekolah(smaLatin || sekolah, sma.status_sekolah);
     cells.P20 = sekolah;
     // Strip atas mencetak `専攻` dengan `=X20`. Sel kosong membuatnya `0`, jadi
     // kolom ini memakai `-` seperti sel lain yang memang belum ada isinya.
@@ -641,7 +705,13 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells.E22 = ymd(lpk.masuk ?? lpk.tahun_masuk);
     cells.F23 = isGood(s(lpk.lulus ?? lpk.tahun_lulus)) ? ymd(lpk.lulus ?? lpk.tahun_lulus) : '今まで';
     cells.I22 = durasi(lpk.masuk ?? lpk.tahun_masuk, lpk.lulus ?? lpk.tahun_lulus);
-    cells.N22 = kouritsuSekolah(sekolahLpk, lpk.status_sekolah);
+    /* 地域 baris 日本語学校 — dulu TIDAK PERNAH ditulis, jadi selnya kosong
+       padahal baris di atasnya terisi (pemilik 2026-11-16). */
+    cells.K22 = wilayahJp(lpk.kota, id.wilayah_sekolah);
+    /* 国公私: sama seperti baris 専門 — nama Indonesia dulu, karena nama Jepang
+       LPK (`ASJ日本語学校`) tidak memuat penanda negeri/swasta. */
+    const lpkLatin = bersih(lpk.sekolah ?? lpk.nama_sekolah ?? lpk.sekolah_id);
+    cells.N22 = kouritsuSekolah(lpkLatin || sekolahLpk, lpk.status_sekolah);
     cells.P22 = NAMA_SEKOLAH_JP;
     cells.X22 = '日本語専攻';
   } else {
@@ -671,11 +741,16 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`B${top}`] = sudahJp(p.jenis_jp)
       ? bersih(p.jenis_jp)
       : jenisKerjaJp(bersih(p.jenis_jp) || (p.jenis ?? p.status_kerja));
-    cells[`E${top}`] = ym(masuk);
+    /* 年月: SAMPAI HARI, selalu tanggal 1. Database hanya menyimpan tahun+bulan
+       (`2024-08`), dan pemilik 2026-11-16: *"semua tgl nya sampai day ya kan di
+       db gak ada day, riwayat kerja semua fix tgl 1 sampai tgl 1"*. Sebelum ini
+       blok 学歴 mencetak `2024年8月1日` sementara 職歴 mencetak `2024年8月` —
+       satu form dengan dua bentuk tanggal. */
+    cells[`E${top}`] = ymd(masuk);
     /* 退職年月: `SEKARANG` bukan tanggal — mencetaknya lewat `ym()` menghasilkan
        sel KOSONG, dan CV terbaca seperti riwayat kerja yang datanya hilang.
        Bentuk baku formulir Jepang untuk pekerjaan berjalan: 現在. */
-    cells[`F${bottom}`] = isCurrent(String(keluar ?? '')) ? '現在' : ym(keluar);
+    cells[`F${bottom}`] = isCurrent(String(keluar ?? '')) ? '現在' : ymd(keluar);
     cells[`I${top}`] = durasi(masuk, keluar);
     // 業種 (N) — DIPAKAI UNTUK NAMA PERUSAHAAN. Bukti: 9 CV manual pemilik
     // (Drive, 2026-11-12) mengisi N27 dengan "PT VERONIQUE INDONESIA",
@@ -684,8 +759,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
     // membiarkan AA kosong — kebalikan dari cara pemilik mengisi form.
     const pt = bersih(p.perusahaan_jp) || bersih(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
     cells[`N${top}`] = jpTerm(pt);
-    // 地域 (kota kerja) — kolom `pekerjaan_N_kota`.
-    cells[`K${top}`] = jpTerm(bersih(p.kota));
+    // 地域 (kota kerja) — kolom `pekerjaan_N_kota`, dalam bahasa Jepang.
+    // Ditulis SETELAH `adaKerja` dihitung: tanpa penjagaan itu setiap blok
+    // kosong ikut mencetak provinsi (terukur di pratinjau 2026-11-16: 東ジャワ
+    // muncul di ketiga baris 職歴 padahal hanya satu yang terisi).
     cells[`R${top}`] = jpTerm(bersih(p.jabatan_jp) || (p.jabatan ?? p.jabatan_id));
     // 月収: `Z` sudah berisi teks tetap `万円`. Menulis "2万円" di X membuat
     // sel terbaca "2万円万円" — 9 dari 9 CV manual menulis ANGKA saja di X.
@@ -693,9 +770,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
     // `‐` bila barisnya berisi pekerjaan tetapi gajinya tidak diisi — sama
     // dengan kolom 月収 keluarga. Baris yang benar-benar kosong dibiarkan ''.
     const adaKerja = isGood(pt) || isGood(cells[`R${top}`]) || isGood(ym(masuk));
+    cells[`K${top}`] = adaKerja ? wilayahJp(p.kota, id.wilayah_sekolah) : '';
     cells[`X${top}`] = gaji || (adaKerja ? '‐' : '');
-    // 備考 — industri lalu catatan.
-    cells[`AA${top}`] = bersih(p.catatan_jp) || bersih(p.bidang ?? p.industri) || bersih(p.catatan ?? p.keterangan);
+    // 備考 — bidang/industri dalam bahasa Jepang (pemilik 2026-11-16), lalu
+    // catatan. `bidangJp` menurunkan bidang dari 職種 kalau teksnya tak dikenal.
+    cells[`AA${top}`] =
+      bidangJp(bersih(p.catatan_jp) || bersih(p.bidang ?? p.industri) || bersih(p.catatan ?? p.keterangan), cells[`R${top}`]);
   }
   if (!kerja.length) {
     // `～` bawaan template akan tercetak apa adanya tanpa dua tanggal.
@@ -703,10 +783,15 @@ export function buildValues(data: CandidateData): Record<string, string> {
   }
 
   /* ── 具体的な仕事内容: dirangkai dari blok 職歴 yang terisi ──────────────── */
+  /* Nama perusahaan memakai `perusahaan_jp` lebih dulu: kalimat ini dibaca
+     klien Jepang, dan "Cv.Sumber Pangestu Mandiriでは…" mencampur huruf Latin
+     ke dalam kalimat Jepang (pemilik 2026-11-16: *"penjelasannya bahasa jepang
+     semua"*). Tanpa kolom Jepang, nama aslinya tetap dipakai — nama diri tidak
+     boleh dikarang. */
   cells.F33 = kerja
     .slice(0, JOB_BLOCKS)
     .map((p) => {
-      const pt = bersih(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
+      const pt = bersih(p.perusahaan_jp) || bersih(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
       if (!isGood(pt)) return '';
       const jb = jpTerm(bersih(p.jabatan_jp) || (p.jabatan ?? p.jabatan_id));
       return jb ? `${pt}では${jb}として勤務しました。` : `${pt}で勤務しました。`;
@@ -715,19 +800,45 @@ export function buildValues(data: CandidateData): Record<string, string> {
     .join(' ');
 
   /* ── できる作業 ────────────────────────────────────────────────────────── */
-  /* Bukti dari 9 CV manual pemilik (2026-11-12): kotak yang PERNAH dicentang
-     hanya その他 (X35) — selalu — dan 自動車運転 (F35) bila kandidat punya SIM.
-     Tidak satu pun mencentang kotak keahlian spesifik (土木/大工/溶接/…),
-     walaupun teks keahliannya menyebut pekerjaan itu ("建設作業" pada BUDI).
-     Karena itu pemetaan kata-kunci → kotak DIBUANG: ia mengarang centang yang
-     tidak pernah dipakai pemilik, dan centang itu terbaca sebagai klaim
-     keahlian resmi di form klien. */
+  /* Keputusan pemilik 2026-11-16 (membalik aturan 2026-11-12):
+   *"その他 高所作業 OK selalu centang, untuk box check lainnya tolong
+   sesuaikan dengan pengalaman sekolah dan pengalaman kerjanya dan sim"*.
+   Jadi:
+     • その他 (X35) SELALU dicentang, dan 高所作業 (AD35) selalu `OK`;
+     • kotak lain mengikuti JURUSAN sekolah + pengalaman kerja + SIM.
+   Aturan lama (hanya その他 + 自動車運転) dibuang karena pemilik memintanya
+   sendiri — centang yang tidak pernah dipakai bukan lagi alasan.
+   Pemetaan di bawah sengaja KONSERVATIF: hanya kata yang benar-benar muncul di
+   jurusan/jabatan/bidang yang menyalakan kotak, dan `機械加工` TIDAK punya kotak
+   sendiri di form ini (itu sebabnya その他 selalu dicentang). */
   const boxes = ['F35', 'K35', 'N35', 'Q35', 'T35', 'X35', 'B36', 'F36', 'K36', 'N36', 'Q36', 'T36'];
   for (const c of boxes) cells[c] = '□';
-  if (isGood(keahlian)) {
-    cells.X35 = '■';
-    cells.Y36 = keahlian.slice(0, 18);
-  }
+  const teksKerja = [
+    ...edu.map((p) => `${s(p.jurusan_jp)} ${s(p.jurusan ?? p.jurusan_id)}`),
+    ...kerja.map(
+      (p) =>
+        `${s(p.jabatan_jp)} ${s(p.jabatan ?? p.jabatan_id)} ${s(p.bidang ?? p.industri)} ${s(p.catatan_jp)} ${s(p.catatan)}`,
+    ),
+    keahlian,
+  ]
+    .join(' ')
+    .toLowerCase();
+  const KOTAK: [string, RegExp][] = [
+    ['K35', /左官|しっくい|plaster|plester/],
+    ['N35', /溶接|welding|welder|pengelasan|\blas\b/],
+    ['Q35', /土木|建設|konstruksi|sipil|bangunan/],
+    ['T35', /舗装|aspal|paving/],
+    ['B36', /足場|とび|scaffold/],
+    ['F36', /生コン|beton|concrete/],
+    ['K36', /型枠|bekisting|formwork/],
+    ['N36', /鉄筋|rebar|besi/],
+    ['Q36', /大工|木工|carpentry|kayu/],
+    ['T36', /重機|ユンボ|excavator|alat berat/],
+  ];
+  for (const [addr, re] of KOTAK) if (re.test(teksKerja)) cells[addr] = '■';
+  cells.X35 = '■';
+  cells.AD35 = 'OK';
+  if (isGood(keahlian)) cells.Y36 = keahlian.slice(0, 18);
   if (cells.N4 === 'あり') cells.F35 = '■';
 
   /* ── keluarga + 緊急連絡先 ─────────────────────────────────────────────── */
@@ -778,7 +889,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
   cells.R46 = bersih(data.fisik.tes_hitung);
   cells.Y46 = manYenRp(data.wawancara.tabungan);
   cells.U38 = durasiJp(data.sertifikasi.lama_belajar_jp);
-  cells.U40 = belajarJp(data.sertifikasi.status_belajar_jp, data.sertifikasi.level_bahasa_jepang);
+  /* 学習状況 diturunkan dari SERTIFIKAT yang sudah lulus (bukan dari kolom
+     status): N5合格 → N4勉強中. Pemilik 2026-11-16: *"kalau lulus n5 ya
+     otomatis sekarang N4勉強中 bukan nashi"*. */
+  cells.U40 = belajarJp(data.sertifikasi.bahasa, data.sertifikasi.jft, data.sertifikasi.level_bahasa_jepang);
   /* 英語レベル / その他外国語: `無` saat kolomnya kosong.
      7 dari 9 CV manual pemilik (2026-11-12) menulis `無` — bukan sel kosong.
      Bedanya penting di form resmi: sel kosong terbaca "belum diisi", `無`

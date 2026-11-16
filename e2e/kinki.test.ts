@@ -215,23 +215,24 @@ describe('kinki · peta sel', () => {
     expect(c.F11).toBe('インドネシア東ジャワ州ポノロゴ県');
   });
 
-  it('できる作業 hanya mencentang keahlian yang benar-benar ditulis', () => {
+  it('できる作業: その他 selalu tercentang, kotak lain ikut keahlian', () => {
     const c = buildValues(kandidat());
-    // Baris 35–36 memuat kotak centang keahlian. Fixture menyebut 大工 dan
-    // 整備士 (dua keahlian) → tepat DUA kotak tercentang, sisanya kosong.
-    // 9 CV manual pemilik: HANYA その他 yang dicentang, plus 自動車運転 bila
-    // ada SIM. Kotak keahlian spesifik tidak pernah dipakai.
+    // Keputusan pemilik 2026-11-16 membalik aturan lama: その他 SELALU ■ dan
+    // kotak keahlian menyala dari jurusan/jabatan/keahlian. Fixture menyebut
+    // 大工 → Q36 ikut tercentang.
     const kotak = Object.entries(c).filter(([addr, v]) => /^[B-Y]3[56]$/.test(addr) && v === '■');
-    expect(kotak).toHaveLength(1);
+    expect(kotak.map(([addr]) => addr).sort()).toEqual(['Q36', 'X35']);
     expect(c.X35).toBe('■'); // その他
     expect(c.Y36).toBe('整備士、大工');
+    expect(c.AD35).toBe('OK'); // 高所作業 — selalu OK
   });
 
   it('pekerjaan & keluarga terisi sesuai blok form', () => {
     const c = buildValues(kandidat());
     expect(c.B27).toBe('正社員');
-    expect(c.E27).toBe('2024年6月');
-    expect(c.F28).toBe('2025年6月');
+    // 年月 sampai HARI, selalu tanggal 1 — sama dengan blok 学歴 (2026-11-16).
+    expect(c.E27).toBe('2024年6月1日');
+    expect(c.F28).toBe('2025年6月1日');
     expect(c.I27).toBe('1年');
     expect(c.N27).toBe('PT SAKURA'); // 業種 kolom diisi NAMA PERUSAHAAN
     expect(c.R27).toBe('整備士');
@@ -432,7 +433,8 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
 
   it('identitas, pendidikan, dan placeholder O9/I4/M4', () => {
     const c = buildValues(denganKolom());
-    expect(c.K20).toBe('Jawa Timur');
+    // 地域 dalam bahasa Jepang (2026-11-16): provinsi `Jawa Timur` → 東ジャワ.
+    expect(c.K20).toBe('東ジャワ');
     expect(c.J5).toBe('第25課中');
     expect(c.N5).toBe('8月取得予定');
     expect(c.P10).toBe('ジャカルタから780㎞\n飛行機で1 jam 40 menit');
@@ -441,9 +443,10 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
   it('pekerjaan: 雇用形態 / 業種 / 備考', () => {
     const c = buildValues(denganKolom());
     expect(c.B27).toBe('正社員');
-    // N = perusahaan, AA = 備考 (industri/catatan).
+    // N = perusahaan, AA = 備考 (industri). Sejak 2026-11-16 備考 berbahasa
+    // Jepang: `Manufaktur` → 製造業.
     expect(c.N27).toBe('PT SAKURA');
-    expect(c.AA27).toBe('Manufaktur');
+    expect(c.AA27).toBe('製造業');
   });
 
   it('pekerjaan yang MASIH BERJALAN: 退職年月 = 現在, dan 期間 dihitung sampai bulan ini', () => {
@@ -584,5 +587,95 @@ describe('kinki · 試験合格 memakai kosakata dropdown', () => {
     expect(denganBahasa('A1')).toBe('なし');
     expect(denganBahasa('BELUM TES')).toBe('なし');
     expect(denganBahasa('-')).toBe('なし');
+  });
+});
+
+/* ==========================================
+   2026-11-16 — enam catatan pemilik pada CV hasil generate (template no. 3)
+   ==========================================
+   Semuanya soal BAHASA, SATUAN, dan ATURAN PENGISIAN. Tes di bawah mengunci
+   nilai selnya; geometri template sudah dijaga blok pertama. */
+describe('kinki · bahasa & aturan pengisian (2026-11-16)', () => {
+  const dgn = (patch: Partial<Record<keyof CandidateData, unknown>>): CandidateData =>
+    ({ ...kandidat(), ...patch }) as CandidateData;
+
+  it('地域: kota → katakana, kota tak dikenal → provinsi Jepang', () => {
+    // `KOTA` menyimpan katakana di label: `PONOROGO (ポノロゴ)`.
+    const kota = buildValues(dgn({
+      pendidikan: [{ tingkat: 'SMK', masuk: '2022-07', lulus: '2025-06', sekolah: 'SMKN 1', jurusan: 'TEKNIK OTOMOTIF', kota: 'PONOROGO' }],
+      identitas: { ...kandidat().identitas, wilayah_sekolah: 'Jawa Timur' },
+    }));
+    expect(kota.K20).toBe('ポノロゴ');
+    // Kota tanpa padanan katakana jatuh ke provinsi, bukan mencetak Latin.
+    const lain = buildValues(dgn({
+      pendidikan: [{ tingkat: 'SMK', masuk: '2022-07', lulus: '2025-06', sekolah: 'SMKN 1', kota: 'MAGETAN' }],
+      identitas: { ...kandidat().identitas, wilayah_sekolah: 'Jawa Timur' },
+    }));
+    expect(lain.K20).toBe('東ジャワ');
+  });
+
+  it('地域 baris 日本語学校 (K22) terisi, bukan kosong', () => {
+    const d = kandidat();
+    d.pendidikan = [
+      ...d.pendidikan,
+      { tingkat: 'LPK', masuk: '2025-08', lulus: '2026-02', sekolah: 'LKP AMANAH SAKURA JAPAN', kota: 'PONOROGO' },
+    ];
+    d.identitas = { ...d.identitas, wilayah_sekolah: 'Jawa Timur' };
+    expect(buildValues(d).K22).toBe('ポノロゴ');
+  });
+
+  it('備考: bidang Jepang; teks tak dikenal diturunkan dari 職種', () => {
+    const d = dgn({
+      pekerjaan: [{ masuk: '2024-08', keluar: '2025-01', perusahaan: 'CV SUMBER', jabatan: 'OPERATOR PRODUKSI', bidang: 'Manufaktur' }],
+    });
+    expect(buildValues(d).AA27).toBe('製造業');
+    // "Teknik Pemesisna" (salah ketik di data) tidak dikenal kamus → diturunkan
+    // dari 職種 Jepang, dan yang tercetak tetap bahasa Jepang.
+    const typo = dgn({
+      pekerjaan: [{ masuk: '2024-08', keluar: '2025-01', perusahaan: 'CV SUMBER', jabatan: 'MEKANIK', bidang: 'Teknik Pemesisna' }],
+    });
+    expect(buildValues(typo).AA27).toBe('機械加工');
+  });
+
+  it('具体的な仕事内容 memakai nama perusahaan Jepang', () => {
+    const d = dgn({
+      pekerjaan: [{ masuk: '2024-08', keluar: '2025-01', perusahaan: 'Cv. Sumber Pangestu Mandiri', perusahaan_jp: 'スンパール・バンガストゥ・マンダリ会社', jabatan: 'OPERATOR PRODUKSI' }],
+    });
+    expect(buildValues(d).F33).toBe('スンパール・バンガストゥ・マンダリ会社では製造オペレーターとして勤務しました。');
+  });
+
+  it('学習状況: lulus N5 → N4勉強中, dan `なし` tidak pernah dicetak', () => {
+    const jft = dgn({ sertifikasi: { bahasa: 'JFT-BASIC A2', jft: '233/250' } });
+    expect(buildValues(jft).U39).toBe('N5合格');
+    expect(buildValues(jft).U40).toBe('N4勉強中');
+    // `N4レベル` BUKAN lulus: level saja tidak boleh jadi `N4合格`.
+    const level = dgn({ sertifikasi: { bahasa: 'N4レベル', jft: '' } });
+    expect(buildValues(level).U39).toBe('なし');
+    // Tanpa sertifikat: sel kosong, bukan `なし` (bukan pilihan dropdown U40).
+    const kosong = dgn({ sertifikasi: { bahasa: '', jft: '' } });
+    expect(buildValues(kosong).U40).toBe('');
+  });
+
+  it('実習満了後の希望: pulang + buka usaha → 母国で独立起業希望', () => {
+    const d = kandidat();
+    d.wawancara = { ...d.wawancara, rencana_pulang_jp: '日本から帰った後は、インドネシアで養鶏場を作りたいです。' };
+    expect(buildValues(d).Y50).toBe('母国で独立起業希望');
+    // Kalimat "tetap di Jepang" tetap seperti semula.
+    const jp = kandidat();
+    jp.wawancara = { ...jp.wawancara, rencana_pulang_jp: 'ずっと日本で働きたいと思っています。' };
+    expect(buildValues(jp).Y50).toBe('日本での就労希望');
+  });
+
+  it('できる作業: SIM → 自動車運転, 溶接 → 溶接, その他 + 高所作業 OK selalu', () => {
+    const d = dgn({
+      identitas: { ...kandidat().identitas, sim: 'SIM A' },
+      pekerjaan: [{ masuk: '2024-08', keluar: '2025-01', perusahaan: 'PT LAS', jabatan: 'WELDER', bidang: 'Konstruksi' }],
+    });
+    const c = buildValues(d);
+    expect(c.F35).toBe('■'); // 自動車運転 (SIM)
+    expect(c.N35).toBe('■'); // 溶接
+    expect(c.Q35).toBe('■'); // 土木 (Konstruksi)
+    expect(c.X35).toBe('■'); // その他 — selalu
+    expect(c.AD35).toBe('OK'); // 高所作業 — selalu
   });
 });

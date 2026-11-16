@@ -88,6 +88,10 @@ export const JP_TERMS: Record<string, string> = {
   'TEKNIK OTOMOTIF': '自動車', 'TATA BOGA': '調理', PERHOTELAN: 'ホテル',
   'BAHASA JEPANG': '日本語', AKUNTANSI: '会計', IPA: '理科', IPS: '社会',
   'TEKNIK MESIN': '機械', MESIN: '機械', 'TEKNIK ELEKTRO': '電気', ELEKTRO: '電気',
+  // Pemesinan = machining. Tanpa kunci ini "TEKNIK PEMESINAN" hanya cocok pada
+  // kata "MESIN" dan tercetak 機械 — kurang satu tingkat dari 機械加工.
+  'TEKNIK PEMESINAN': '機械加工', PEMESINAN: '機械加工', PERMESINAN: '機械加工',
+  'TEKNIK PENGELASAN': '溶接', 'TEKNIK PEMBANGKIT': '発電',
   KEPERAWATAN: '看護', HUKUM: '法律', EKONOMI: '経済', MANAJEMEN: '経営',
   DESAIN: 'デザイン', SENI: '芸術', SIPIL: '土木', 'TEKNIK SIPIL': '土木',
   KIMIA: '化学', FISIKA: '物理', BIOLOGI: '生物', MATEMATIKA: '数学',

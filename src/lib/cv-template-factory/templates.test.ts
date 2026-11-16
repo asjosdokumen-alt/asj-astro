@@ -246,8 +246,9 @@ describe('form KINKI — peta sel template final 2026-11-12', () => {
     // 雇用形態 memakai kosakata dropdown template (commit aef01f2): KONTRAK
     // masuk sebagai 非正社員 — `契約社員` tidak ada di daftar template.
     expect(v.B27).toBe('非正社員');
-    expect(v.E27).toBe('2024年8月');
-    expect(v.F28).toBe('2025年1月');
+    // 年月 sampai HARI, selalu tanggal 1 — sama dengan blok 学歴 (2026-11-16).
+    expect(v.E27).toBe('2024年8月1日');
+    expect(v.F28).toBe('2025年1月1日');
     expect(v.R27).toBe('機械オペレーター');
     // 月収: X = ANGKA saja, `万円` teks tetap di Z (9/9 CV manual pemilik).
     // Rp 2.000.000 → 2 (÷1.000.000, `manYenRp`), bukan 2000 dan bukan "2万円".
@@ -273,7 +274,8 @@ describe('form KINKI — peta sel template final 2026-11-12', () => {
       ...kota,
       pendidikan: [{ ...data.pendidikan[0], kota: '' }, ...data.pendidikan.slice(1)],
     };
-    expect(buildValues(tanpaKota).K20).toBe('Jawa Timur');
+    // 地域 berbahasa Jepang sejak 2026-11-16: provinsi `Jawa Timur` → 東ジャワ.
+    expect(buildValues(tanpaKota).K20).toBe('東ジャワ');
   });
 
 
@@ -305,10 +307,10 @@ describe('form KINKI — peta sel template final 2026-11-12', () => {
     expect(v.R27).toBe('農家');
     expect(v.F38).toBe('主婦');
     // N (業種) = NAMA PERUSAHAAN, bukan industri — bukti 9 CV manual pemilik
-    // (commit cb3ac6e). Industrinya turun ke AA (備考) apa adanya; AA TIDAK
-    // diterjemahkan, dan `e2e/kinki.test.ts` mengunci perilaku itu.
+    // (commit cb3ac6e). Industrinya turun ke AA (備考).
+    // 2026-11-16: 備考 IKUT diterjemahkan (pemilik: "bidangnya bahasa jepang").
     expect(v.N27).toBe('CV SUMBER');
-    expect(v.AA27).toBe('PETERNAKAN');
+    expect(v.AA27).toBe('畜産業');
     // kolom Jepang dari database selalu menang atas tabel terjemahan
     const jp: CandidateData = {
       ...data,
