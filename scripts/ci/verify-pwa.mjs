@@ -16,7 +16,7 @@
  * Run after `astro build`:  node scripts/ci/verify-pwa.mjs
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const failures = [];
@@ -68,6 +68,31 @@ if (!existsSync(SW_DIST)) {
       // admin Excel export imports it.
       !urls.some((u) => /\/pdf-parse\.|\/xlsx\.|\/exceljs\.|\/supabase\.|\/i18n-jp\.|\/AdminPanel\.|\/jszip\./.test(u)),
       'lazy-only chunks (pdf-parse, xlsx, exceljs, supabase, i18n-jp, AdminPanel, jszip) are NOT precached',
+    );
+  }
+
+  // ─── 1a-bis. Godot Web: lazy, but present ────────────────────────────────
+  //
+  // Tiga kegagalan yang tidak terlihat dari halaman: engine tidak ikut build
+  // (game blank), engine ikut precache install (setiap siswa mengunduh 10 MB),
+  // atau `activate` menghapus bucket Godot (siswa mengunduh ulang tiap deploy).
+  const godotWasm = 'dist/godot/index.wasm';
+  const godotPck = 'dist/godot/index.pck';
+  check(existsSync(godotWasm), 'dist/godot/index.wasm exists (Godot Web export)');
+  check(existsSync(godotPck), 'dist/godot/index.pck exists');
+  if (existsSync(godotWasm)) {
+    check(statSync(godotWasm).size > 1_000_000, 'index.wasm is a real engine (> 1 MB)');
+  }
+  check(/const GODOT_CACHE = 'asj-godot-/.test(sw), 'sw.js declares a separate asj-godot-* cache');
+  check(
+    /!k\.startsWith\('asj-godot-'\)/.test(sw),
+    'activate preserves the Godot cache across app updates',
+  );
+  if (m) {
+    const urls = [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+    check(
+      !urls.some((u) => u.startsWith('/godot/')),
+      'Godot engine is NOT in the install precache',
     );
   }
 

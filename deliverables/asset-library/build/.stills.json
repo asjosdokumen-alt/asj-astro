@@ -1,0 +1,778 @@
+[
+  {
+    "id": "00-hero-2x3",
+    "kind": "still",
+    "aspect": "2x3",
+    "path": "2x3/00-hero.webp",
+    "bytes": 68928,
+    "width": 1024,
+    "height": 1536,
+    "source": "deliverables/story-3d/assets/00-hero.png",
+    "focus": {
+      "x": 0.52,
+      "y": 0.42
+    },
+    "grade": "dusk",
+    "label": "Berangkat — potret model — potret 2:3 — web"
+  },
+  {
+    "id": "00-hero-3x2",
+    "kind": "still",
+    "aspect": "3x2",
+    "path": "3x2/00-hero.webp",
+    "bytes": 49362,
+    "width": 1536,
+    "height": 1024,
+    "source": "deliverables/story-3d/assets/wide/00-hero.webp",
+    "focus": {
+      "x": 0.52,
+      "y": 0.42
+    },
+    "grade": "dusk",
+    "label": "Berangkat — potret model — lanskap 3:2 — web"
+  },
+  {
+    "id": "00-hero-9x16",
+    "kind": "still",
+    "aspect": "9x16",
+    "path": "9x16/00-hero.webp",
+    "bytes": 88556,
+    "width": 1080,
+    "height": 1920,
+    "source": "deliverables/story-3d/assets/00-hero.png",
+    "focus": {
+      "x": 0.52,
+      "y": 0.44
+    },
+    "grade": "dusk",
+    "label": "Berangkat — potret model — vertikal 9:16 — reels/tiktok"
+  },
+  {
+    "id": "00-hero-4x5",
+    "kind": "still",
+    "aspect": "4x5",
+    "path": "4x5/00-hero.webp",
+    "bytes": 65912,
+    "width": 1080,
+    "height": 1350,
+    "source": "deliverables/story-3d/assets/00-hero.png",
+    "focus": {
+      "x": 0.52,
+      "y": 0.42
+    },
+    "grade": "dusk",
+    "label": "Berangkat — potret model — feed 4:5 — instagram"
+  },
+  {
+    "id": "00-hero-1x1",
+    "kind": "still",
+    "aspect": "1x1",
+    "path": "1x1/00-hero.webp",
+    "bytes": 60742,
+    "width": 1080,
+    "height": 1080,
+    "source": "deliverables/story-3d/assets/00-hero.png",
+    "focus": {
+      "x": 0.52,
+      "y": 0.42
+    },
+    "grade": "dusk",
+    "label": "Berangkat — potret model — persegi 1:1 — grid/thumbnail"
+  },
+  {
+    "id": "01-daftar-2x3",
+    "kind": "still",
+    "aspect": "2x3",
+    "path": "2x3/01-daftar.webp",
+    "bytes": 57246,
+    "width": 1024,
+    "height": 1536,
+    "source": "public/assets/story/01-daftar.webp",
+    "focus": {
+      "x": 0.56,
+      "y": 0.36
+    },
+    "grade": "warm",
+    "label": "Pendaftaran — mengisi formulir — potret 2:3 — web"
+  },
+  {
+    "id": "01-daftar-3x2",
+    "kind": "still",
+    "aspect": "3x2",
+    "path": "3x2/01-daftar.webp",
+    "bytes": 53872,
+    "width": 1536,
+    "height": 1024,
+    "source": "public/assets/story/wide/01-daftar.webp",
+    "focus": {
+      "x": 0.56,
+      "y": 0.36
+    },
+    "grade": "warm",
+    "label": "Pendaftaran — mengisi formulir — lanskap 3:2 — web"
+  },
+  {
+    "id": "01-daftar-9x16",
+    "kind": "still",
+    "aspect": "9x16",
+    "path": "9x16/01-daftar.webp",
+    "bytes": 68818,
+    "width": 1080,
+    "height": 1920,
+    "source": "public/assets/story/01-daftar.webp",
+    "focus": {
+      "x": 0.56,
+      "y": 0.38
+    },
+    "grade": "warm",
+    "label": "Pendaftaran — mengisi formulir — vertikal 9:16 — reels/tiktok"
+  },
+  {
+    "id": "01-daftar-4x5",
+    "kind": "still",
+    "aspect": "4x5",
+    "path": "4x5/01-daftar.webp",
+    "bytes": 55466,
+    "width": 1080,
+    "height": 1350,
+    "source": "public/assets/story/01-daftar.webp",
+    "focus": {
+      "x": 0.56,
+      "y": 0.36
+    },
+    "grade": "warm",
+    "label": "Pendaftaran — mengisi formulir — feed 4:5 — instagram"
+  },
+  {
+    "id": "01-daftar-1x1",
+    "kind": "still",
+    "aspect": "1x1",
+    "path": "1x1/01-daftar.webp",
+    "bytes": 40346,
+    "width": 1080,
+    "height": 1080,
+    "source": "public/assets/story/01-daftar.webp",
+    "focus": {
+      "x": 0.56,
+      "y": 0.36
+    },
+    "grade": "warm",
+    "label": "Pendaftaran — mengisi formulir — persegi 1:1 — grid/thumbnail"
+  },
+  {
+    "id": "02-latihan-2x3",
+    "kind": "still",
+    "aspect": "2x3",
+    "path": "2x3/02-latihan.webp",
+    "bytes": 54988,
+    "width": 1024,
+    "height": 1536,
+    "source": "public/assets/story/02-latihan.webp",
+    "focus": {
+      "x": 0.6,
+      "y": 0.4
+    },
+    "grade": "warm",
+    "label": "Pelatihan — kelas bahasa — potret 2:3 — web"
+  },
+  {
+    "id": "02-latihan-3x2",
+    "kind": "still",
+    "aspect": "3x2",
+    "path": "3x2/02-latihan.webp",
+    "bytes": 45494,
+    "width": 1536,
+    "height": 1024,
+    "source": "public/assets/story/wide/02-latihan.webp",
+    "focus": {
+      "x": 0.6,
+      "y": 0.4
+    },
+    "grade": "warm",
+    "label": "Pelatihan — kelas bahasa — lanskap 3:2 — web"
+  },
+  {
+    "id": "02-latihan-9x16",
+    "kind": "still",
+    "aspect": "9x16",
+    "path": "9x16/02-latihan.webp",
+    "bytes": 69086,
+    "width": 1080,
+    "height": 1920,
+    "source": "public/assets/story/02-latihan.webp",
+    "focus": {
+      "x": 0.6,
+      "y": 0.42
+    },
+    "grade": "warm",
+    "label": "Pelatihan — kelas bahasa — vertikal 9:16 — reels/tiktok"
+  },
+  {
+    "id": "02-latihan-4x5",
+    "kind": "still",
+    "aspect": "4x5",
+    "path": "4x5/02-latihan.webp",
+    "bytes": 53778,
+    "width": 1080,
+    "height": 1350,
+    "source": "public/assets/story/02-latihan.webp",
+    "focus": {
+      "x": 0.6,
+      "y": 0.4
+    },
+    "grade": "warm",
+    "label": "Pelatihan — kelas bahasa — feed 4:5 — instagram"
+  },
+  {
+    "id": "02-latihan-1x1",
+    "kind": "still",
+    "aspect": "1x1",
+    "path": "1x1/02-latihan.webp",
+    "bytes": 48830,
+    "width": 1080,
+    "height": 1080,
+    "source": "public/assets/story/02-latihan.webp",
+    "focus": {
+      "x": 0.6,
+      "y": 0.4
+    },
+    "grade": "warm",
+    "label": "Pelatihan — kelas bahasa — persegi 1:1 — grid/thumbnail"
+  },
+  {
+    "id": "03-wawancara-2x3",
+    "kind": "still",
+    "aspect": "2x3",
+    "path": "2x3/03-wawancara.webp",
+    "bytes": 47218,
+    "width": 1024,
+    "height": 1536,
+    "source": "public/assets/story/03-wawancara.webp",
+    "focus": {
+      "x": 0.53,
+      "y": 0.43
+    },
+    "grade": "cool",
+    "label": "Wawancara — putih hitam — potret 2:3 — web"
+  },
+  {
+    "id": "03-wawancara-3x2",
+    "kind": "still",
+    "aspect": "3x2",
+    "path": "3x2/03-wawancara.webp",
+    "bytes": 42412,
+    "width": 1536,
+    "height": 1024,
+    "source": "public/assets/story/wide/03-wawancara.webp",
+    "focus": {
+      "x": 0.53,
+      "y": 0.43
+    },
+    "grade": "cool",
+    "label": "Wawancara — putih hitam — lanskap 3:2 — web"
+  },
+  {
+    "id": "03-wawancara-9x16",
+    "kind": "still",
+    "aspect": "9x16",
+    "path": "9x16/03-wawancara.webp",
+    "bytes": 61668,
+    "width": 1080,
+    "height": 1920,
+    "source": "public/assets/story/03-wawancara.webp",
+    "focus": {
+      "x": 0.53,
+      "y": 0.45
+    },
+    "grade": "cool",
+    "label": "Wawancara — putih hitam — vertikal 9:16 — reels/tiktok"
+  },
+  {
+    "id": "03-wawancara-4x5",
+    "kind": "still",
+    "aspect": "4x5",
+    "path": "4x5/03-wawancara.webp",
+    "bytes": 46016,
+    "width": 1080,
+    "height": 1350,
+    "source": "public/assets/story/03-wawancara.webp",
+    "focus": {
+      "x": 0.53,
+      "y": 0.43
+    },
+    "grade": "cool",
+    "label": "Wawancara — putih hitam — feed 4:5 — instagram"
+  },
+  {
+    "id": "03-wawancara-1x1",
+    "kind": "still",
+    "aspect": "1x1",
+    "path": "1x1/03-wawancara.webp",
+    "bytes": 41234,
+    "width": 1080,
+    "height": 1080,
+    "source": "public/assets/story/03-wawancara.webp",
+    "focus": {
+      "x": 0.53,
+      "y": 0.43
+    },
+    "grade": "cool",
+    "label": "Wawancara — putih hitam — persegi 1:1 — grid/thumbnail"
+  },
+  {
+    "id": "04-paspor-2x3",
+    "kind": "still",
+    "aspect": "2x3",
+    "path": "2x3/04-paspor.webp",
+    "bytes": 59928,
+    "width": 1024,
+    "height": 1536,
+    "source": "public/assets/story/04-paspor.webp",
+    "focus": {
+      "x": 0.52,
+      "y": 0.4
+    },
+    "grade": "warm",
+    "label": "Paspor — dokumen — potret 2:3 — web"
+  },
+  {
+    "id": "04-paspor-3x2",
+    "kind": "still",
+    "aspect": "3x2",
+    "path": "3x2/04-paspor.webp",
+    "bytes": 81100,
+    "width": 1536,
+    "height": 1024,
+    "source": "public/assets/story/wide/04-paspor.webp",
+    "focus": {
+      "x": 0.52,
+      "y": 0.4
+    },
+    "grade": "warm",
+    "label": "Paspor — dokumen — lanskap 3:2 — web"
+  },
+  {
+    "id": "04-paspor-9x16",
+    "kind": "still",
+    "aspect": "9x16",
+    "path": "9x16/04-paspor.webp",
+    "bytes": 74750,
+    "width": 1080,
+    "height": 1920,
+    "source": "public/assets/story/04-paspor.webp",
+    "focus": {
+      "x": 0.52,
+      "y": 0.42
+    },
+    "grade": "warm",
+    "label": "Paspor — dokumen — vertikal 9:16 — reels/tiktok"
+  },
+  {
+    "id": "04-paspor-4x5",
+    "kind": "still",
+    "aspect": "4x5",
+    "path": "4x5/04-paspor.webp",
+    "bytes": 57242,
+    "width": 1080,
+    "height": 1350,
+    "source": "public/assets/story/04-paspor.webp",
+    "focus": {
+      "x": 0.52,
+      "y": 0.4
+    },
+    "grade": "warm",
+    "label": "Paspor — dokumen — feed 4:5 — instagram"
+  },
+  {
+    "id": "04-paspor-1x1",
+    "kind": "still",
+    "aspect": "1x1",
+    "path": "1x1/04-paspor.webp",
+    "bytes": 49886,
+    "width": 1080,
+    "height": 1080,
+    "source": "public/assets/story/04-paspor.webp",
+    "focus": {
+      "x": 0.52,
+      "y": 0.4
+    },
+    "grade": "warm",
+    "label": "Paspor — dokumen — persegi 1:1 — grid/thumbnail"
+  },
+  {
+    "id": "05-mcu-2x3",
+    "kind": "still",
+    "aspect": "2x3",
+    "path": "2x3/05-mcu.webp",
+    "bytes": 51664,
+    "width": 1024,
+    "height": 1536,
+    "source": "public/assets/story/05-mcu.webp",
+    "focus": {
+      "x": 0.55,
+      "y": 0.58
+    },
+    "grade": "warm",
+    "label": "MCU — tanda tangan kontrak — potret 2:3 — web"
+  },
+  {
+    "id": "05-mcu-3x2",
+    "kind": "still",
+    "aspect": "3x2",
+    "path": "3x2/05-mcu.webp",
+    "bytes": 59094,
+    "width": 1536,
+    "height": 1024,
+    "source": "public/assets/story/wide/05-mcu.webp",
+    "focus": {
+      "x": 0.55,
+      "y": 0.58
+    },
+    "grade": "warm",
+    "label": "MCU — tanda tangan kontrak — lanskap 3:2 — web"
+  },
+  {
+    "id": "05-mcu-9x16",
+    "kind": "still",
+    "aspect": "9x16",
+    "path": "9x16/05-mcu.webp",
+    "bytes": 64534,
+    "width": 1080,
+    "height": 1920,
+    "source": "public/assets/story/05-mcu.webp",
+    "focus": {
+      "x": 0.55,
+      "y": 0.6
+    },
+    "grade": "warm",
+    "label": "MCU — tanda tangan kontrak — vertikal 9:16 — reels/tiktok"
+  },
+  {
+    "id": "05-mcu-4x5",
+    "kind": "still",
+    "aspect": "4x5",
+    "path": "4x5/05-mcu.webp",
+    "bytes": 52826,
+    "width": 1080,
+    "height": 1350,
+    "source": "public/assets/story/05-mcu.webp",
+    "focus": {
+      "x": 0.55,
+      "y": 0.58
+    },
+    "grade": "warm",
+    "label": "MCU — tanda tangan kontrak — feed 4:5 — instagram"
+  },
+  {
+    "id": "05-mcu-1x1",
+    "kind": "still",
+    "aspect": "1x1",
+    "path": "1x1/05-mcu.webp",
+    "bytes": 47738,
+    "width": 1080,
+    "height": 1080,
+    "source": "public/assets/story/05-mcu.webp",
+    "focus": {
+      "x": 0.55,
+      "y": 0.58
+    },
+    "grade": "warm",
+    "label": "MCU — tanda tangan kontrak — persegi 1:1 — grid/thumbnail"
+  },
+  {
+    "id": "05-terbang-2x3",
+    "kind": "still",
+    "aspect": "2x3",
+    "path": "2x3/05-terbang.webp",
+    "bytes": 66806,
+    "width": 1024,
+    "height": 1536,
+    "source": "deliverables/story-3d/assets/05-terbang.png",
+    "focus": {
+      "x": 0.55,
+      "y": 0.45
+    },
+    "grade": "cool",
+    "label": "Keberangkatan — bandara — potret 2:3 — web"
+  },
+  {
+    "id": "05-terbang-3x2",
+    "kind": "still",
+    "aspect": "3x2",
+    "path": "3x2/05-terbang.webp",
+    "bytes": 42338,
+    "width": 1536,
+    "height": 1024,
+    "source": "deliverables/story-3d/assets/wide/05-terbang.webp",
+    "focus": {
+      "x": 0.55,
+      "y": 0.45
+    },
+    "grade": "cool",
+    "label": "Keberangkatan — bandara — lanskap 3:2 — web"
+  },
+  {
+    "id": "05-terbang-9x16",
+    "kind": "still",
+    "aspect": "9x16",
+    "path": "9x16/05-terbang.webp",
+    "bytes": 85616,
+    "width": 1080,
+    "height": 1920,
+    "source": "deliverables/story-3d/assets/05-terbang.png",
+    "focus": {
+      "x": 0.55,
+      "y": 0.47
+    },
+    "grade": "cool",
+    "label": "Keberangkatan — bandara — vertikal 9:16 — reels/tiktok"
+  },
+  {
+    "id": "05-terbang-4x5",
+    "kind": "still",
+    "aspect": "4x5",
+    "path": "4x5/05-terbang.webp",
+    "bytes": 62984,
+    "width": 1080,
+    "height": 1350,
+    "source": "deliverables/story-3d/assets/05-terbang.png",
+    "focus": {
+      "x": 0.55,
+      "y": 0.45
+    },
+    "grade": "cool",
+    "label": "Keberangkatan — bandara — feed 4:5 — instagram"
+  },
+  {
+    "id": "05-terbang-1x1",
+    "kind": "still",
+    "aspect": "1x1",
+    "path": "1x1/05-terbang.webp",
+    "bytes": 54216,
+    "width": 1080,
+    "height": 1080,
+    "source": "deliverables/story-3d/assets/05-terbang.png",
+    "focus": {
+      "x": 0.55,
+      "y": 0.45
+    },
+    "grade": "cool",
+    "label": "Keberangkatan — bandara — persegi 1:1 — grid/thumbnail"
+  },
+  {
+    "id": "06-tiba-2x3",
+    "kind": "still",
+    "aspect": "2x3",
+    "path": "2x3/06-tiba.webp",
+    "bytes": 80810,
+    "width": 1024,
+    "height": 1536,
+    "source": "public/assets/story/06-tiba.webp",
+    "focus": {
+      "x": 0.47,
+      "y": 0.55
+    },
+    "grade": "dusk",
+    "label": "Tiba di Jepang — kimono — potret 2:3 — web"
+  },
+  {
+    "id": "06-tiba-3x2",
+    "kind": "still",
+    "aspect": "3x2",
+    "path": "3x2/06-tiba.webp",
+    "bytes": 56736,
+    "width": 1536,
+    "height": 1024,
+    "source": "public/assets/story/wide/06-tiba.webp",
+    "focus": {
+      "x": 0.47,
+      "y": 0.55
+    },
+    "grade": "dusk",
+    "label": "Tiba di Jepang — kimono — lanskap 3:2 — web"
+  },
+  {
+    "id": "06-tiba-9x16",
+    "kind": "still",
+    "aspect": "9x16",
+    "path": "9x16/06-tiba.webp",
+    "bytes": 92818,
+    "width": 1080,
+    "height": 1920,
+    "source": "public/assets/story/06-tiba.webp",
+    "focus": {
+      "x": 0.47,
+      "y": 0.57
+    },
+    "grade": "dusk",
+    "label": "Tiba di Jepang — kimono — vertikal 9:16 — reels/tiktok"
+  },
+  {
+    "id": "06-tiba-4x5",
+    "kind": "still",
+    "aspect": "4x5",
+    "path": "4x5/06-tiba.webp",
+    "bytes": 82818,
+    "width": 1080,
+    "height": 1350,
+    "source": "public/assets/story/06-tiba.webp",
+    "focus": {
+      "x": 0.47,
+      "y": 0.55
+    },
+    "grade": "dusk",
+    "label": "Tiba di Jepang — kimono — feed 4:5 — instagram"
+  },
+  {
+    "id": "06-tiba-1x1",
+    "kind": "still",
+    "aspect": "1x1",
+    "path": "1x1/06-tiba.webp",
+    "bytes": 73950,
+    "width": 1080,
+    "height": 1080,
+    "source": "public/assets/story/06-tiba.webp",
+    "focus": {
+      "x": 0.47,
+      "y": 0.55
+    },
+    "grade": "dusk",
+    "label": "Tiba di Jepang — kimono — persegi 1:1 — grid/thumbnail"
+  },
+  {
+    "id": "00-hero-og",
+    "kind": "og",
+    "aspect": "1200x630",
+    "path": "og/00-hero.jpg",
+    "bytes": 51575,
+    "width": 1200,
+    "height": 630,
+    "source": "deliverables/story-3d/assets/wide/00-hero.webp",
+    "label": "Berangkat — potret model — kartu OG 1200×630"
+  },
+  {
+    "id": "01-daftar-og",
+    "kind": "og",
+    "aspect": "1200x630",
+    "path": "og/01-daftar.jpg",
+    "bytes": 58178,
+    "width": 1200,
+    "height": 630,
+    "source": "public/assets/story/wide/01-daftar.webp",
+    "label": "Pendaftaran — mengisi formulir — kartu OG 1200×630"
+  },
+  {
+    "id": "02-latihan-og",
+    "kind": "og",
+    "aspect": "1200x630",
+    "path": "og/02-latihan.jpg",
+    "bytes": 50585,
+    "width": 1200,
+    "height": 630,
+    "source": "public/assets/story/wide/02-latihan.webp",
+    "label": "Pelatihan — kelas bahasa — kartu OG 1200×630"
+  },
+  {
+    "id": "03-wawancara-og",
+    "kind": "og",
+    "aspect": "1200x630",
+    "path": "og/03-wawancara.jpg",
+    "bytes": 54387,
+    "width": 1200,
+    "height": 630,
+    "source": "public/assets/story/wide/03-wawancara.webp",
+    "label": "Wawancara — putih hitam — kartu OG 1200×630"
+  },
+  {
+    "id": "04-paspor-og",
+    "kind": "og",
+    "aspect": "1200x630",
+    "path": "og/04-paspor.jpg",
+    "bytes": 70519,
+    "width": 1200,
+    "height": 630,
+    "source": "public/assets/story/wide/04-paspor.webp",
+    "label": "Paspor — dokumen — kartu OG 1200×630"
+  },
+  {
+    "id": "05-mcu-og",
+    "kind": "og",
+    "aspect": "1200x630",
+    "path": "og/05-mcu.jpg",
+    "bytes": 58889,
+    "width": 1200,
+    "height": 630,
+    "source": "public/assets/story/wide/05-mcu.webp",
+    "label": "MCU — tanda tangan kontrak — kartu OG 1200×630"
+  },
+  {
+    "id": "05-terbang-og",
+    "kind": "og",
+    "aspect": "1200x630",
+    "path": "og/05-terbang.jpg",
+    "bytes": 55651,
+    "width": 1200,
+    "height": 630,
+    "source": "deliverables/story-3d/assets/wide/05-terbang.webp",
+    "label": "Keberangkatan — bandara — kartu OG 1200×630"
+  },
+  {
+    "id": "06-tiba-og",
+    "kind": "og",
+    "aspect": "1200x630",
+    "path": "og/06-tiba.jpg",
+    "bytes": 65811,
+    "width": 1200,
+    "height": 630,
+    "source": "public/assets/story/wide/06-tiba.webp",
+    "label": "Tiba di Jepang — kimono — kartu OG 1200×630"
+  },
+  {
+    "id": "00-hero--night-3x2",
+    "kind": "still",
+    "aspect": "3x2",
+    "path": "3x2/00-hero--night.webp",
+    "bytes": 38692,
+    "width": 1536,
+    "height": 1024,
+    "source": "deliverables/story-3d/assets/wide/00-hero.webp",
+    "grade": "night",
+    "label": "Hero — suasana night (3x2)"
+  },
+  {
+    "id": "00-hero--night-9x16",
+    "kind": "still",
+    "aspect": "9x16",
+    "path": "9x16/00-hero--night.webp",
+    "bytes": 68500,
+    "width": 1080,
+    "height": 1920,
+    "source": "deliverables/story-3d/assets/00-hero.png",
+    "grade": "night",
+    "label": "Hero — suasana night (9x16)"
+  },
+  {
+    "id": "00-hero--mono-3x2",
+    "kind": "still",
+    "aspect": "3x2",
+    "path": "3x2/00-hero--mono.webp",
+    "bytes": 38648,
+    "width": 1536,
+    "height": 1024,
+    "source": "deliverables/story-3d/assets/wide/00-hero.webp",
+    "grade": "mono",
+    "label": "Hero — suasana mono (3x2)"
+  },
+  {
+    "id": "00-hero--mono-9x16",
+    "kind": "still",
+    "aspect": "9x16",
+    "path": "9x16/00-hero--mono.webp",
+    "bytes": 72380,
+    "width": 1080,
+    "height": 1920,
+    "source": "deliverables/story-3d/assets/00-hero.png",
+    "grade": "mono",
+    "label": "Hero — suasana mono (9x16)"
+  }
+]

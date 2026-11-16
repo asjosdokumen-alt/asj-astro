@@ -3125,12 +3125,19 @@ const legalRegno = typeof LEGAL_REGNO_FACT?.value === 'string' ? LEGAL_REGNO_FAC
       const MEDIA = 'img, picture, video, figure, [data-cursor-media]';
       const TEXT =
         'p, h1, h2, h3, h4, h5, h6, li, dt, dd, blockquote, td, th, figcaption, span, strong, em, small';
+      /* Kolom isian memakai kursor NATIF. Sebelum ini lapisan kustom tetap
+         menampilkan titik + cincin DI ATAS I-beam natif, jadi di dalam modal
+         ada dua penunjuk sekaligus. `is-input` mematikan lapisan ini; aturan
+         `cursor:auto` di motion.css mengembalikan penunjuk asli. */
+      const INPUT = 'input, textarea, select, [contenteditable="true"]';
       const onOver = (e: Event) => {
         const el = e.target;
         if (!(el instanceof Element)) return;
-        const hot = !!el.closest(HOT);
-        const media = !hot && !!el.closest(MEDIA);
-        const text = !hot && !media && !!el.closest(TEXT);
+        const input = !!el.closest(INPUT);
+        const hot = !input && !!el.closest(HOT);
+        const media = !input && !hot && !!el.closest(MEDIA);
+        const text = !input && !hot && !media && !!el.closest(TEXT);
+        layer.classList.toggle('is-input', input);
         layer.classList.toggle('is-hot', hot);
         layer.classList.toggle('is-media', media);
         layer.classList.toggle('is-text', text);

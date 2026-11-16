@@ -1,0 +1,182 @@
+[
+  {
+    "id": "00-hero",
+    "aspect": "16x9",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\16x9\\00-hero.mp4",
+    "ms": 5163,
+    "W": 1920,
+    "H": 1080,
+    "dur": 10
+  },
+  {
+    "id": "00-hero",
+    "aspect": "9x16",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\9x16\\00-hero.mp4",
+    "ms": 5415,
+    "W": 1080,
+    "H": 1920,
+    "dur": 10
+  },
+  {
+    "id": "01-daftar",
+    "aspect": "16x9",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\16x9\\01-daftar.mp4",
+    "ms": 5002,
+    "W": 1920,
+    "H": 1080,
+    "dur": 10
+  },
+  {
+    "id": "01-daftar",
+    "aspect": "9x16",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\9x16\\01-daftar.mp4",
+    "ms": 4774,
+    "W": 1080,
+    "H": 1920,
+    "dur": 10
+  },
+  {
+    "id": "02-latihan",
+    "aspect": "16x9",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\16x9\\02-latihan.mp4",
+    "ms": 5060,
+    "W": 1920,
+    "H": 1080,
+    "dur": 10
+  },
+  {
+    "id": "02-latihan",
+    "aspect": "9x16",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\9x16\\02-latihan.mp4",
+    "ms": 5242,
+    "W": 1080,
+    "H": 1920,
+    "dur": 10
+  },
+  {
+    "id": "03-wawancara",
+    "aspect": "16x9",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\16x9\\03-wawancara.mp4",
+    "ms": 5434,
+    "W": 1920,
+    "H": 1080,
+    "dur": 10
+  },
+  {
+    "id": "03-wawancara",
+    "aspect": "9x16",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\9x16\\03-wawancara.mp4",
+    "ms": 5616,
+    "W": 1080,
+    "H": 1920,
+    "dur": 10
+  },
+  {
+    "id": "04-paspor",
+    "aspect": "16x9",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\16x9\\04-paspor.mp4",
+    "ms": 4877,
+    "W": 1920,
+    "H": 1080,
+    "dur": 10
+  },
+  {
+    "id": "04-paspor",
+    "aspect": "9x16",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\9x16\\04-paspor.mp4",
+    "ms": 5229,
+    "W": 1080,
+    "H": 1920,
+    "dur": 10
+  },
+  {
+    "id": "05-mcu",
+    "aspect": "16x9",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\16x9\\05-mcu.mp4",
+    "ms": 5195,
+    "W": 1920,
+    "H": 1080,
+    "dur": 10
+  },
+  {
+    "id": "05-mcu",
+    "aspect": "9x16",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\9x16\\05-mcu.mp4",
+    "ms": 5301,
+    "W": 1080,
+    "H": 1920,
+    "dur": 10
+  },
+  {
+    "id": "05-terbang",
+    "aspect": "16x9",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\16x9\\05-terbang.mp4",
+    "ms": 5131,
+    "W": 1920,
+    "H": 1080,
+    "dur": 10
+  },
+  {
+    "id": "05-terbang",
+    "aspect": "9x16",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\9x16\\05-terbang.mp4",
+    "ms": 5158,
+    "W": 1080,
+    "H": 1920,
+    "dur": 10
+  },
+  {
+    "id": "06-tiba",
+    "aspect": "16x9",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\16x9\\06-tiba.mp4",
+    "ms": 5320,
+    "W": 1920,
+    "H": 1080,
+    "dur": 10
+  },
+  {
+    "id": "06-tiba",
+    "aspect": "9x16",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\9x16\\06-tiba.mp4",
+    "ms": 5178,
+    "W": 1080,
+    "H": 1920,
+    "dur": 10
+  },
+  {
+    "id": "03-wawancara",
+    "aspect": "portrait",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\site\\03-wawancara.mp4",
+    "ms": 858,
+    "W": 800,
+    "H": 1076,
+    "dur": 5
+  },
+  {
+    "id": "03-wawancara",
+    "aspect": "wide",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\site\\wide-03-wawancara.mp4",
+    "ms": 794,
+    "W": 1248,
+    "H": 664,
+    "dur": 5
+  },
+  {
+    "id": "04-paspor",
+    "aspect": "portrait",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\site\\04-paspor.mp4",
+    "ms": 765,
+    "W": 800,
+    "H": 1076,
+    "dur": 5
+  },
+  {
+    "id": "04-paspor",
+    "aspect": "wide",
+    "path": "F:\\astro\\deliverables\\asset-library\\motion\\site\\wide-04-paspor.mp4",
+    "ms": 782,
+    "W": 1248,
+    "H": 664,
+    "dur": 5
+  }
+]

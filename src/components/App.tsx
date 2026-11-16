@@ -11,6 +11,7 @@ import { initializeAuthListener, logoutSupabase } from '../store/userStore';
 import { toggleLang, t, translateDataLang, useLang } from '../store/i18n';
 import { bannerStore } from '../store/theme';
 import { REVIEW_SOURCE } from '../lib/testimonials';
+import { pasangHurufBesarModal } from '../lib/hurufBesarModal';
 
 /* STACKING ORDER COMES FROM THE THEME SCALE (theme.css `@theme`), NOT A SECOND
    PRIVATE COPY. This file used to carry its own `Z_INDEX` map (scrim 35,
@@ -364,6 +365,10 @@ export default function App(
   }, [aiCopilotP.present, Copilot]);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => { setHydrated(true); }, []);
+  /* Penulisan manual di dalam modal otomatis HURUF BESAR (2026-11-16).
+     Satu listener untuk semua modal — lihat `hurufBesarModal.ts` untuk alasan
+     blur (bukan saat mengetik) dan daftar tipe yang sengaja dikecualikan. */
+  useEffect(() => pasangHurufBesarModal(), []);
   // Hero background is now a CSS gradient (`.hero-gradient` class in global.css)
   // instead of external Supabase images. The old `HEADER_BGS` map, its
   // `bannerStore` listener, and the `asj-theme-change` plumbing are removed —
@@ -1502,7 +1507,11 @@ export default function App(
             <div class={"text-base font-bold " + (u.role === "admin" ? "text-amber-300" : "text-emerald-300")}>{u.name}</div>
           </div>
         )}
-        <div class="flex-1 u-scroll-area p-4 space-y-3">
+        {/* `data-lenis-prevent` WAJIB: halaman depan memakai Lenis (smooth
+            scroll). Tanpa atribut ini Lenis menelan wheel/touch di dalam drawer,
+            sehingga daftar menu yang lebih tinggi dari 100dvh tidak bisa
+            digeser sama sekali — terukur 2026-11-15 di 1063×515. */}
+        <div class="flex-1 u-scroll-area p-4 space-y-3" data-lenis-prevent="true">
           <div class="space-y-3 pb-3 mb-3 border-b border-slate-700">
             {/* ─── THE SITE'S ONLY PATH TO `/loker` ───
                 Owner ruling 2026-09-25 removed the entire band below the hero

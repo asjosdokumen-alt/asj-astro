@@ -9,6 +9,7 @@
 
 import { supabaseJson } from '../../_lib/db/client';
 import { CAND_AUTH_COLS } from '../../_lib/db/projections';
+import { nextCandidateId } from '../../_lib/candidate-helpers';
 
 // ── Admin credentials ────────────────────────────────────────────────────────
 //
@@ -181,4 +182,21 @@ export async function candidateExistsForRefresh(wa: string): Promise<boolean | n
   }
 }
 
-export { supabaseJson };
+/**
+ * Alokasi nomor kandidat (ASJ#####) untuk pendaftaran mandiri.
+ *
+ * WHY IT IS RE-EXPORTED HERE (2026-11-14)
+ *   `registerKandidat()` used to INSERT into `database_candidate` without this
+ *   column at all, so every self-registered candidate was stored with
+ *   `id_kandidat = NULL`. Nothing failed: the reader
+ *   (`_lib/db/candidates.ts:52`) falls back to the numeric row id, so the admin
+ *   table showed "632" where every other row shows "ASJ01011" — a plausible
+ *   number that looks like a real ID. Measured before the fix: 2 rows
+ *   (2026-11-05, 2026-11-14), both self-registrations, both with a password and
+ *   no biodata.
+ *
+ *   It lives in the repository, not in the service, because the service is only
+ *   allowed to touch the DB through this module — that is what lets the test
+ *   suite stub `./repository` and keep service-level tests off the network.
+ */
+export { nextCandidateId, supabaseJson };

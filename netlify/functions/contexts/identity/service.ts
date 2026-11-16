@@ -161,7 +161,18 @@ export function masterPins(): string[] {
 
 export function checkAdminMaster(pin: string) {
   const pins = masterPins();
-  if (!pins.includes(pin)) {
+  // SECURITY (audit 2026-11-15): Array.includes short-circuits on the first
+  // differing character, so comparison time leaks the matching prefix. Reuse
+  // pinsEqual (timingSafeEqual) from the personal-login path and evaluate EVERY
+  // configured PIN so the work does not depend on which one matches.
+  // NOTE: this fixes the comparison, NOT the key space. The 4-digit personal
+  // PINs still folded into masterPins() are an operational risk that requires
+  // rotating those env values — see the audit report (owner decision).
+  let cocok = false;
+  for (const p of pins) {
+    if (pinsEqual(p, pin)) cocok = true;
+  }
+  if (!cocok) {
     return { success: false, message: 'PIN master salah.' };
   }
   const tokens = issueTokens('admin', { name: 'master' });
@@ -334,10 +345,21 @@ export async function registerKandidat(nama: string, wa: string, password?: stri
   const pass = password;
   const hash = await bcrypt.hash(pass, 10);
   // Insert via Supabase
-  const { supabaseJson } = await import('./repository');
+  const { supabaseJson, nextCandidateId } = await import('./repository');
   try {
+    /* id_kandidat WAJIB di sini (fix 2026-11-14).
+       Sampai hari ini baris ini tidak mengalokasikan nomor kandidat, jadi
+       pendaftaran mandiri menyimpan `id_kandidat = NULL`. Tidak ada yang gagal:
+       pembaca (`_lib/db/candidates.ts:52`) jatuh ke kolom `id` numerik, sehingga
+       tabel admin menampilkan "632" di kolom ID Kandidat — angka yang terlihat
+       sah, dan karena itu tidak ada yang menyadarinya. Terukur: 2 baris
+       (2026-11-05 dan 2026-11-14), keduanya punya password, tanpa biodata.
+       Jalur lamaran (`applications/service.ts:122`) sudah mengalokasikan; hanya
+       jalur ini yang tidak. */
+    const idKandidat = await nextCandidateId();
     await supabaseJson('POST', 'database_candidate', {
       body: {
+        id_kandidat: idKandidat,
         nama_lengkap: nama,
         no_wa: wa,
         password_kandidat: hash,

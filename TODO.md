@@ -1,9 +1,17 @@
 # 📋 TODO — ASJ Portal v2 (Astro)
 
-**Terakhir dirapikan:** 2026-11-10
+**Terakhir dirapikan:** 2026-11-15 (pembaruan konteks; daftar di bawah tetap arsip keputusan)
 
 > 📄 **Laporan sesi + dampak terukur: `deliverables/laporan-2026-11-10.md`**
 > (untuk pemilik: apa yang berubah, efeknya, keputusan, dan apa yang menunggu push)
+>
+> 🔴 **CARA BACA (ditambahkan 2026-11-15).** Berkas ini sebagian besar **log
+> keputusan bertanggal**. Entri `[x] SELESAI/DIPUTUSKAN …` adalah potret hari itu,
+> bukan status NOW, dan angka di dalamnya sengaja **tidak diperbarui** (R13l).
+> **Status hidup ada di tiga tempat:** `README.md` §Status (terukur),
+> `PROJECT_CONTEXT.md` §2/§8 (konteks bisnis + teknis), dan
+> `docs/BACKEND_TODO.md` (daftar backend). Kalau butuh angka, ukur ulang — jangan
+> salin angka dari sini. Ringkasan pembaruan konteks:/n> `deliverables/context-refresh-2026-11-15.md`.
 
 > ### ✅ SISA UTANG: **0 butir** per 2026-11-10
 >
@@ -64,8 +72,9 @@
 > ### Yang ditutup pada 2026-10-08
 > - **Root cruft diarsipkan** — `HANDOFF.md`, `make-zip.cjs`, `preview-index.html`,
 >   `test_excel_template.cjs`, `cv-selector-candidate.png` → `docs/archive/`. Ini menutup
->   temuan **#23** di `deliverables/gstack/pre-launch-check-2026-10-04.md`. Root sekarang hanya
->   konfigurasi + `README.md`, `TODO.md`, `DESIGN.md`.
+>   temuan **#23** di `deliverables/gstack/pre-launch-check-2026-10-04.md`.
+>   *(Catatan 2026-11-15: benar pada 2026-10-08; sekarang ada 4 dokumen konteks —
+>   `PROJECT_CONTEXT.md` ikut di root. Lihat `README.md` §Project Structure.)*
 > - **Halaman publik tanpa JavaScript** — `/public` 39 → 1.575 karakter, `/loker` dapat
 >   fallback WhatsApp; dijaga asersi baru di `e2e:headings`. Lihat
 >   `deliverables/gstack/public-pages-review-2026-10-07.md`.
@@ -92,7 +101,7 @@
 - [x] ~~Audit mobile responsive — semua halaman di HP~~ → **SELESAI 2026-09-26**
       (commit `5371c0b`): 11 rute × 390/1280, sebelum 0/20 bersih → sesudah
       **20/20 bersih** (0 overflow horizontal, 0 font < 11px, 0 target < 44px).
-- [ ] Audit aksesibilitas (WCAG 2.1) — **hampir selesai**: lantai font 11px, lantai
+- [ ] Audit aksesibilitas (WCAG 2.1) — **hampir selesai** *(status per 2026-09/11; ukur ulang)*: lantai font 11px, lantai
       target 44px, dan focus-trap drawer/dialog sudah dikerjakan. **Kontras
       menyeluruh kini SELESAI untuk kondisi diam** (2026-09-27):
         · gate `e2e/test-contrast.mjs` ditambahkan (`36712a9`), 0 elemen di bawah

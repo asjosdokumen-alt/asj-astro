@@ -25,6 +25,7 @@ import {
   geometriCincin,
   hitungMbti,
   pilihanPlate,
+  simpulkanAstig,
   simpulkanVisus,
   ukuranLandolt,
   type ArahLandolt,
@@ -346,5 +347,66 @@ describe('simpulkanVisus', () => {
     const h = simpulkanVisus(0, 0.3);
     expect(h.lolos).toBe(false);
     expect(h.catatan).toContain('0,1');
+  });
+});
+
+/**
+ * ── ASTIGMATISME: DUA PERCOBAAN, DAN APA YANG DILAPORKAN SAAT BEDA ──────────
+ *
+ * Satu klik terlalu tipis untuk satu-satunya ukuran astigmatisme: mata yang
+ * lelah bisa menunjuk arah berbeda pada gambar yang sama. Karena itu tiap mata
+ * ditanya DUA kali, dan yang dilaporkan adalah hasil perbandingannya.
+ *
+ * Yang dijaga di sini adalah KEPUTUSAN-nya, bukan tampilannya: kalau dua
+ * percobaan bertentangan, arahnya harus KOSONG dan catatannya harus menyebut
+ * mata yang mana. Memilih salah satu dari dua jawaban yang bertentangan akan
+ * mengarang temuan klinis — persis yang dilarang di halaman ini.
+ */
+describe('simpulkanAstig', () => {
+  it('dua percobaan sepakat → arahnya dilaporkan apa adanya', () => {
+    const h = simpulkanAstig('vertikal', '', { kanan: true, kiri: true });
+    expect(h.kanan).toBe('vertikal');
+    expect(h.indikasi).toBe(true);
+    expect(h.catatan).toContain('BUKAN diagnosis');
+    expect(h.catatan).not.toContain('berbeda');
+  });
+
+  it('kedua mata kosong → "semua arah sama", tanpa indikasi', () => {
+    const h = simpulkanAstig('', '', { kanan: true, kiri: true });
+    expect(h.indikasi).toBe(false);
+    expect(h.catatan).toContain('Semua arah garis tampak sama');
+  });
+
+  it('percobaan bertentangan → arah TIDAK dilaporkan, dan matanya disebut', () => {
+    // Pemanggil sudah mengosongkan `kanan` saat tidak konsisten; yang diuji di
+    // sini adalah cabang catatannya.
+    const h = simpulkanAstig('', '', { kanan: false, kiri: true });
+    expect(h.kanan).toBe('');
+    expect(h.indikasi).toBe(false);
+    expect(h.catatan).toContain('mata kanan');
+    expect(h.catatan).not.toContain('mata kiri');
+    expect(h.catatan).toContain('BUKAN diagnosis');
+  });
+
+  it('satu mata ragu, mata lain yakin → tetap indikasi, dan mata ragu disebut', () => {
+    const h = simpulkanAstig('vertikal', '', { kanan: true, kiri: false });
+    expect(h.indikasi).toBe(true);
+    expect(h.kanan).toBe('vertikal');
+    expect(h.catatan).toContain('mata kiri');
+  });
+
+  it('kedua mata ragu → keduanya disebut, tanpa indikasi', () => {
+    const h = simpulkanAstig('', '', { kanan: false, kiri: false });
+    expect(h.indikasi).toBe(false);
+    expect(h.catatan).toContain('mata kanan');
+    expect(h.catatan).toContain('mata kiri');
+  });
+
+  it('parameter konsisten bersifat opsional — pemanggil lama tidak pecah', () => {
+    const h = simpulkanAstig('horizontal', 'vertikal');
+    expect(h.kanan).toBe('horizontal');
+    expect(h.kiri).toBe('vertikal');
+    expect(h.indikasi).toBe(true);
+    expect(h.catatan).not.toContain('berbeda');
   });
 });

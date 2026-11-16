@@ -611,6 +611,15 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const jawabRef = useRef<(pilih: string | null) => void>(() => {});
 
   /**
+   * Ronde yang sudah dijawab: `[tepat, sisa, bonusOn, ketikOn]`.
+   *
+   * Dikirim bersama skor supaya server bisa MENGHITUNG ULANG (`hitungKotoba`).
+   * Tanpa ini papan peringkat hanya bisa mempercayai angka kiriman. Ref, bukan
+   * state: nilainya tidak dipakai menggambar apa pun.
+   */
+  const rondeRef = useRef<Array<[number, number, number, number]>>([]);
+
+  /**
    * Pegangan ke `muat` versi TERBARU.
    *
    * `muat` adalah fungsi biasa yang dibuat ulang setiap render, jadi
@@ -925,6 +934,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     setKomboMaks(0);
     setJumlahBenar(0);
     setSalahKata([]);
+    rondeRef.current = [];
     if (khusus?.length) {
       const bag = acak(khusus);
       setKantong(bag);
@@ -1022,6 +1032,16 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
        terbatas (Santai) tidak layak diberi nilai lebih. */
     const bonus = tepat && tingkat === 'ketat' ? Math.round(sisaWaktu / 10) : 0;
     const poin = (mode === 'ketik' ? 15 : 10) + kombo * 2 + bonus + (tepat && kombo >= 5 ? 5 : 0);
+    /* Dicatat SEBELUM state berubah, dengan `sisaWaktu` yang sama seperti yang
+       dipakai menghitung bonus. Dua bit terakhir ikut per event: chip
+       Santai/Normal/Ketat dan tab mode bisa diubah di tengah ronde tanpa
+       mereset skor, jadi replay tidak boleh memakai nilai terakhir saja. */
+    rondeRef.current.push([
+      tepat ? 1 : 0,
+      Math.round(sisaWaktu),
+      tingkat === 'ketat' ? 1 : 0,
+      mode === 'ketik' ? 1 : 0,
+    ]);
     bunyi(tepat);
     if (tepat) setKomboMaks((m) => Math.max(m, kombo + 1));
     setBenar(tepat);
@@ -1108,7 +1128,16 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
        memuat skornya, jadi dua ronde dengan skor berbeda tetap terkirim
        keduanya. Kegagalan diabaikan — skor lokal sudah tersimpan lebih dulu. */
     if (skor > 0 && bolehKirim(`kotoba:${skor}`)) {
-      void kirimSkor('kotoba', skor, { mode, sumber, benar: jumlahBenar, kombo: komboMaks }).then(() => {
+      void kirimSkor('kotoba', skor, {
+        mode,
+        sumber,
+        /* `tingkat` menentukan bonus kecepatan (hanya `ketat`), jadi replay
+           tidak bisa menghitung tanpa itu. */
+        tingkat,
+        benar: jumlahBenar,
+        kombo: komboMaks,
+        ronde: rondeRef.current,
+      }).then(() => {
         if (papanBuka) void ambilPapanGame('kotoba', 10).then(setPapan);
       });
     }
@@ -1788,7 +1817,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                       ) : (
                         <span class="min-w-0 truncate">{isi}</span>
                       )}
-                      <strong class="shrink-0 font-mono text-fg">{r.skor.toLocaleString('id-ID')}</strong>
+                      <strong class="shrink-0 font-mono text-fg">{r.skorTampil ?? r.skor.toLocaleString('id-ID')}</strong>
                     </li>
                   );
                 })}

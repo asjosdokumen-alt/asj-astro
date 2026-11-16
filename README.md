@@ -9,20 +9,20 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions,
 
 ---
 
-## 📊 Status (terukur 2026-10-28 pada `266aa9b`)
+## 📊 Status (terukur 2026-11-15, basis kode `e1bfa2f`)
 
 | | |
 |---|---|
-| **Suite uji** | **269 berkas · 3.219 tes · ~409 s** — hijau. (Angka lama di sini: 183/2.221 — basi 20 hari) |
-| **`tsc --noEmit`** | bersih (exit 0, diukur ulang 2026-10-28) |
-| **`verify:md`** | OK — 75 berkas tabel diperiksa |
-| **`lint-ratchet`** | ✅ **PASSED — 1.997 vs baseline 1.997** (2026-10-28). Sebelumnya merah 2.009 vs 2.001; 12 diagnostik baru dibersihkan di sumber, bukan dengan menaikkan baseline |
-| **Halaman publik** | `/` **9,9** · `/public` **10,0** · `/loker` **9,9** · `/404` **10,0** — snapshot 2026-10-07, `deliverables/gstack/public-pages-review-2026-10-07.md` |
-| **Deploy produksi** | **hidup** sejak 7 Okt 2026 ⇒ push `main` = deploy berbayar yang langsung tayang |
-| **Berkas tracked** | 1.170 berkas · ~31 MB (terbesar: `deliverables/` bukti audit, `public/` aset) |
-| **Counter beku** | `files.length = 603` · plafon simbol **29.900** (terukur 29.808) — **hanya team-lead** yang boleh menggesernya |
+| **Suite uji** | **Jangan membekukan angka di sini** — ukur dengan `npm test`. Angka 183/2.221 lalu 269/3.219 adalah snapshot 2026-10, keduanya basi. ⚠ Sebagian tes service-context menembus stub dan **pernah menulis baris ke DB produksi**; bila ragu jalankan suite tertarget, bukan suite penuh. |
+| **`tsc --noEmit`** | bersih (exit 0, diukur ulang 2026-11-15) |
+| **`verify:md`** | OK — **77** berkas tabel diperiksa (2026-11-15) |
+| **`lint-ratchet`** | ✅ PASSED — **1.960 ≤ baseline 1.968** (2026-11-15, `debt reduced by 8`). 9 diagnostik dibersihkan **di sumber**; baseline sengaja tidak dinaikkan. Angka 1.997 / 2.001 di sini dulu sudah basi |
+| **Halaman publik** | **SNAPSHOT 2026-10-07, BUKAN status kini:** `/` 9,9 · `/public` 10,0 · `/loker` 9,9 · `/404` 10,0 — `deliverables/gstack/public-pages-review-2026-10-07.md`. Ukur ulang bila dipakai untuk keputusan |
+| **Deploy produksi** | **hidup** sejak 7 Okt 2026 di `amanahsakura.netlify.app` ⇒ push `main` = deploy berbayar yang langsung tayang. ⛔ **JANGAN PUSH** (R19): commit lokal saja |
+| **Berkas tracked** | **1.755 berkas** (2026-11-15, ukur dengan `git ls-files` lalu hitung barisnya). Terbesar: `deliverables/` bukti audit, `public/` aset |
+| **Counter beku** | Terukur 2026-11-15 dengan aturan `includePath()`: **655 berkas** = 369 ts + 135 tsx + 30 astro + 93 mjs + 6 cjs + 22 js; `files.length` / `fileCount` = **655**, plafon simbol **35.600**, `unresolvedRefs` **39**. **Hanya team-lead** yang boleh menggesernya (R15) |
 
-> ⚠️ **Dua butir yang butuh keputusan owner** — sudah terukur, **belum** dikerjakan:
+> ⚠️ **Dua butir yang butuh keputusan owner** — tercatat 2026-10-28, **ukur ulang sebelum ditindaklanjuti**, belum dikerjakan:
 >
 > 1. **Kontras eyebrow hero `/` — GAGAL HANYA DI MOBILE.** `text-pink-300 text-eyebrow` 11px/700
 >    di atas artwork. Diukur ulang 2026-10-14 (piksel latar terukur): **390px → 3,08:1 (dark) dan
@@ -121,7 +121,7 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions,
 
 ```bash
 npm install
-cp .env.example .env      # lalu isi kredensialnya
+cp .env.example .env.local   # JANGAN pakai .env di root = Supabase LAMA
 
 # Preview lokal DENGAN backend nyata (paling berguna)
 npm run serve             # = node server.cjs → http://localhost:4321
@@ -152,7 +152,7 @@ ke `netlify dev` lokal: `BACKEND_TARGET=http://127.0.0.1:8888 node server.cjs`.
 
 ## 🌐 Environment Variables
 
-35 variabel ada di `.env.example` — pakai itu sebagai daftar otoritatif. Kelompok utamanya:
+**45 kunci** ada di `.env.example` — pakai itu sebagai daftar otoritatif. ⚠ `.env` di root adalah proyek **Supabase LAMA** (ledger berhenti di migrasi 016); produksi memakai `.env.local` / `env-kunci/PRODUCTION.env` (Neon). Cetak host DB sebelum menyimpulkan apa pun. Kelompok utamanya:
 
 | Kelompok | Variabel |
 |----------|----------|
@@ -188,21 +188,21 @@ src/
 │   ├── adminTasks.ts      # Papan Tugas Tim (scratchpad sesi, tanpa DB)
 │   ├── theme.ts           # Mode terang/gelap
 │   └── i18n.ts, i18n-jp.ts # Kamus ID + JP
-├── lib/                   # 65 modul (apiClient, schemas, supabase, helpers_cv, …)
-├── pages/                 # 11 rute Astro
+├── lib/                   # 91 berkas (apiClient, schemas, supabase, helpers_cv, …)
+├── pages/                 # 20 berkas rute (19 .astro + sitemap.xml.ts)
 ├── layouts/               # BaseLayout.astro
 ├── styles/                # global.css, theme.css, layout.css, motion.css
 └── icons/                 # sprite-map.ts (hasil generate)
 
 netlify/functions/
 ├── *.js, *.ts             # Entry point (auth, candidates, jobs, mail, schedule, …)
-├── surfaces/              # 16 entry per-surface (public, auth, admin, kandidat)
-├── contexts/              # 15 domain logika bisnis
+├── surfaces/              # 19 berkas surface (entry per permukaan)
+├── contexts/              # domain logika bisnis (berkas bersarang)
 ├── _lib/                  # Kernel bersama (db, session, rate-limit, …)
 ├── shared/                # Dipakai bareng frontend & function
 └── secrets/               # gitignored — hanya README + .example yang ter-commit
 
-migrations/                # 15 migrasi SQL (di ROOT repo, bukan di dalam netlify/)
+migrations/                # 60 migrasi SQL (di ROOT repo, bukan di dalam netlify/)
 indexer/                   # Code-indexer + boundary checker (alat, punya suite sendiri)
 scripts/ci/                # Gate CI
 e2e/                       # Gate Playwright
@@ -210,28 +210,37 @@ deliverables/              # Laporan audit & review (bukti, bukan kode)
 docs/archive/              # Dokumen historis — JANGAN dipakai sebagai acuan kode
 ```
 
-**Root sengaja hanya berisi konfigurasi + 3 dokumen status** (`README.md`, `TODO.md`,
-`DESIGN.md`). Berkas sekali-pakai tidak ditaruh di root — itu temuan #23 di
+**Root sengaja hanya berisi konfigurasi + 4 dokumen konteks** (`PROJECT_CONTEXT.md`,
+`README.md`, `TODO.md`, `DESIGN.md`). Berkas sekali-pakai tidak ditaruh di root — itu temuan #23 di
 `deliverables/gstack/pre-launch-check-2026-10-04.md`, ditutup 2026-10-08 dengan
 memindahkannya ke `docs/archive/`.
 
 ---
 
-## 🗺️ Halaman (11 rute)
+## 🗺️ Halaman (20 berkas rute, terukur 2026-11-15)
+
+Daftar **lengkap** ada di `src/pages/`; ukur ulang dengan `find src/pages -type f`.
+Angka lama "11 rute" hanya mencatat rute awal dan **sudah basi**.
 
 | Rute | Isi |
 |------|-----|
 | `/` | Landing page |
-| `/loker` | Papan lowongan publik (satu-satunya tautan `/loker` ada di dalam drawer menu) |
+| `/404` | Halaman tidak ditemukan |
+| `/loker` | Papan lowongan publik |
 | `/public` | Lowongan & layanan |
 | `/apply` | Form pendaftaran |
 | `/siswa-baru` | Pendaftaran siswa baru |
+| `/share` | Tampilan berbagi lowongan |
 | `/candidate` | Dasbor kandidat (butuh sesi) |
 | `/master` | Form Master lengkap (butuh sesi) |
 | `/ai-cv` | AI CV Craft — asisten CV "Qween Jeklin" (butuh sesi; non-VIP dialihkan ke `/master`) |
-| `/share` | Tampilan berbagi lowongan |
 | `/admin` | Panel admin (butuh role admin) |
-| `/404` | Halaman tidak ditemukan |
+| `/kotoba` · `/matematika` · `/tes-iq` · `/tes-mata` · `/tes-mbti` · `/wawancara` · `/arcade` | Latihan & asesmen siswa |
+| `/blog/[...slug]` | Artikel panduan |
+| `/sitemap.xml.ts` | Sitemap (bukan halaman HTML) |
+
+> ⚠ Rute latihan/asesmen membuat `dist/` berisi **21 HTML** pada build 2026-11-14.
+> `dist/` bisa lebih tua dari HEAD — cek `dist/version.json` sebelum dipakai sbg bukti.
 
 ---
 
@@ -256,7 +265,7 @@ bukan `useState` di dalam tab, karena tab di-unmount saat berpindah.
 ## 🧪 Testing & Gates
 
 ```bash
-npm test                      # suite penuh: 183 berkas · 2.221 tes · ~323 s
+npm test                      # suite penuh vitest (dibatasi 8 menit); jangan beku angkanya
 npm run typecheck             # tsc (frontend)
 npm run typecheck:indexer     # tsc (indexer)
 npm run icons                 # regenerate sprite ikon
@@ -264,7 +273,7 @@ npm run depcruise             # boundary check (oracle)
 npm run boundary              # boundary check versi indexer
 ```
 
-Gate e2e (butuh server jalan di 4321):
+Gate e2e (butuh server jalan; **baca port dari stdout** — findPort(4321) bisa pindah):
 
 ```bash
 npm run serve &               # di terminal terpisah
@@ -293,6 +302,11 @@ Gate CI lain: `scripts/ci/verify-classes.mjs`, `scripts/ci/lint-ratchet.mjs`,
 Situs terhubung ke GitHub; **setiap push ke `main` memicu build Netlify** (production).
 Tidak ada langkah manual.
 
+> ⛔ **JANGAN PUSH** (R19, keputusan pemilik 2026-09-26). Commit lokal itu murah dan
+> aman; PUSH kecil-kecil memboroskan deploy berbayar. Kumpulkan dulu, push sekali
+> bila pemilik menyatakan batch siap. Cek status deploy lewat daftar deploy Netlify,
+> bukan sekadar HTTP 200 — situs beku pun tetap menjawab 200.
+
 ```
 push ke main  →  Netlify build  →  deploy production
 ```
@@ -317,11 +331,14 @@ integrasi GitHub-nya.
 
 ## 📚 Docs
 
-`docs/` berisi 40 dokumen aktif + 33 di `docs/archive/`. Peta lengkapnya ada di
+`docs/` berisi **43 berkas .md aktif + 36 berkas di `docs/archive/`** (2026-11-15).
+Banyak di antaranya **snapshot bertanggal 2026-09**; baca sebagai THEN, bukan NOW.
+Peta lengkapnya ada di
 **`docs/README.md`** — mulai dari situ. Titik masuk yang paling berguna:
 
 | Dokumen | Isi |
 |---------|-----|
+| `PROJECT_CONTEXT.md` | **Konteks bisnis + teknis untuk AI. Baca ini paling awal.** |
 | `docs/ARCHITECTURE.md` | Arsitektur keseluruhan |
 | `docs/BACKEND_TODO.md` | Satu-satunya daftar pekerjaan backend |
 | `docs/ASTRO_PIPELINE_REFERENCE.md` | Referensi pipeline Astro |

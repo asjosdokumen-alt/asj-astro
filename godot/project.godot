@@ -1,0 +1,43 @@
+; ASJ Belajar — Godot 4.7.2 Web (single-threaded, Compatibility)
+; Satu engine, satu .pck, empat mode. Host (Astro/Preact) tetap menjadi otak:
+; bank soal, skor, VIP, i18n, tema, dan aksesibilitas TIDAK ada di sini.
+
+config_version=5
+
+[application]
+
+config/name="ASJ Belajar"
+config/description="Lapisan visual & game feel untuk 4 game belajar PWA ASJ."
+config/version="1.0.0"
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/quit_on_go_back=false
+
+[autoload]
+
+ASJPalet="*res://scripts/palet.gd"
+ASJJuice="*res://scripts/juice.gd"
+
+[display]
+
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/size/resizable=true
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=1
+anti_aliasing/quality/msaa_2d=0
+
+[input_devices]
+
+; Mouse di desktop diubah menjadi touch supaya satu jalur input dipakai di
+; semua perangkat. Arah sebaliknya TIDAK dinyalakan: kalau keduanya aktif,
+; satu ketukan menghasilkan dua event dan jawaban bisa terkirim dua kali.
+pointing/emulate_touch_from_mouse=true
+pointing/emulate_mouse_from_touch=false

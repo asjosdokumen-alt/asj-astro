@@ -2021,6 +2021,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "arcade.soal_lain": "Soal Lain",
     "arcade.kalimat_selesai": "Kalimat",
     "arcade.papan_skor": "Papan Skor",
+    "arcade.antrian": "Antrian pelanggan",
+    "arcade.pelanggan_kabur": "Pelanggan pergi — pesanan hangus",
     "arcade.anda": "Anda",
     /* Struktur shift (2026-11-05). Kunci baru WAJIB ada di kedua kamus:
        `i18n.keys.test.ts` hanya memeriksa kunci yang dipakai lewat `t('…')`,
@@ -2350,6 +2352,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "matematika.bank_kosong": "Bank soal kosong. Coba lagi sebentar.",
     "matematika.coba_lagi": "Coba lagi",
     "matematika.rekor": "Rekor terbaik",
+    "matematika.papan_skor": "Papan Skor",
     "matematika.belum_ada": "Belum ada",
     "matematika.target": "Target pabrik: akurasi ≥ 85%",
     "matematika.pilih_modul": "Pilih modul tes",

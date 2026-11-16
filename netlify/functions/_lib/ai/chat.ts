@@ -681,14 +681,20 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
   // kehilangan seluruh riwayat percakapan DAN blok "DATA KANDIDAT SAAT INI" pada
   // setiap giliran — persis lubang yang A16 tutup untuk processAiInterview.
   const p = unwrapPayloadArgs(payload);
-  const flow = String(p.flow || 'master');
-  // LOCK VIP (AGENTS.md §6): AI CV Master (flow=master) hanya untuk admin ATAU
-  // kandidat ber-tag VIP/KELAS. Keputusan FINAL di server — jangan mengandalkan
-  // guard frontend saja (bisa di-bypass dengan memanggil action langsung).
-  if (flow === 'master') {
-    const tolak = await tolakKecualiAiCvMaster(sessionToken, t);
-    if (tolak) return tolak;
-  }
+  // SECURITY (audit 2026-11-15): `flow` used to be read straight from the
+  // client payload and (a) decided WHETHER the VIP entitlement gate ran at all,
+  // and (b) was interpolated verbatim into the system prompt. Sending any value
+  // other than 'master' skipped the gate but still reached geminiGenerate with
+  // the full AI CV Master prompt — a free quota bypass — and the free-text field
+  // was a prompt-injection sink. No caller in src/ sends `flow` (AiCvForm posts
+  // [{ history, currentData }]); 'master' is the only real flow for this
+  // handler. Pin it server-side and gate EVERY request.
+  const flow = 'master';
+  // LOCK VIP (AGENTS.md §6): AI CV Master hanya untuk admin ATAU kandidat
+  // ber-tag VIP/KELAS. Keputusan FINAL di server — jangan mengandalkan guard
+  // frontend saja (bisa di-bypass dengan memanggil action langsung).
+  const tolak = await tolakKecualiAiCvMaster(sessionToken, t);
+  if (tolak) return tolak;
   // Riwayat di-cap di SERVER, bukan hanya di klien. Frontend (AiCvForm,
   // AdminAiCopilot, SiswaBaruForm) memang sudah mengirim `.slice(-20)`, tapi itu
   // janji klien — dan klien bisa diganti. Tanpa cap di sini, riwayat yang panjang

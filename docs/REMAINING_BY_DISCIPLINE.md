@@ -1,5 +1,10 @@
 # REMAINING BY DISCIPLINE — apa yang belum, per disiplin, dan pondasi apa yang harus dijaga
 
+> 🔴 **SNAPSHOT — BUKAN status kini (penanda 2026-11-15).** Basis ukur: `7e3a86d`, 2026-09-15 (koreksi 2026-09-17).
+> Isi di bawah sengaja dipertahankan sebagai catatan keputusan (R7): **jangan "diperbaiki" barisnya**, dan jangan pakai angkanya sebagai keadaan sekarang.
+> **Status NOW:** `README.md` §Status · `PROJECT_CONTEXT.md` §2/§8 ·
+> `docs/README.md` (aturan NOW vs THEN). Ukur ulang sebelum dipakai untuk keputusan.
+
 **Dibuat:** 2026-09-15 · **Basis:** `main` lokal `7e3a86d` (46 commit di depan `newrepo/main` `a5f9549`)
 **Sumber:** `docs/BACKEND_TODO.md`, `docs/UI_DESIGN_REVIEW.md`, `docs/CODE_REVIEW_AUDIT.md`,
 `docs/CODE_REVIEW_STANDARD.md`, `scripts/ci/review-manifest.json`, `netlify.toml`, `.github/workflows/*`

@@ -145,6 +145,41 @@ describe('/matematika — siswa ASJ saja', () => {
     expect(screen.getByText('Penalaran & perbandingan')).toBeTruthy();
   });
 
+  it('papan peringkat bisa dibuka dan menampilkan skor siswa lain', async () => {
+    /* REGRESI 2026-11-16: Matematika adalah satu-satunya dari empat game yang
+       mengirim skor tetapi tidak pernah menampilkannya. Papan hanya ada di
+       panel admin, jadi siswa tidak punya cara melihat hasil kerjanya. */
+    loginSebagai('kandidat');
+    apiMock.mockImplementation(async (aksi: string) => {
+      if (aksi === 'getPapanSkor') {
+        return {
+          success: true,
+          peringkat: [
+            { no_wa: '628111', nama: 'Sari', kelas: 'A', skor: 750, skorTampil: '750,0000' },
+            { no_wa: '6281234567890', nama: 'Budi', kelas: 'A', skor: 700 },
+          ],
+        };
+      }
+      return BANK_SISWA;
+    });
+
+    render(<MatematikaGame />);
+    await waitFor(() => expect(screen.getByText('Pilih modul tes')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: /Papan Skor/ }));
+
+    await waitFor(() => expect(screen.getByText('Sari')).toBeTruthy());
+    /* Nomor WA siswa yang sedang masuk ikut dikirim, supaya barisnya bisa
+       ditandai — sama seperti papan Genba/Combo/Kotoba. */
+    expect(apiMock).toHaveBeenCalledWith(
+      'getPapanSkor',
+      ['matematika', 10, '081234567890'],
+      expect.anything(),
+    );
+    expect(screen.getByText('Budi')).toBeTruthy();
+    expect(screen.getByText('750,0000')).toBeTruthy();
+  }, 20000);
+
   it('satu ronde bisa dimainkan sampai layar hasil', async () => {
     loginSebagai('kandidat');
     render(<MatematikaGame />);

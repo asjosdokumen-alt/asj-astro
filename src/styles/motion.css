@@ -2414,8 +2414,21 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
   transition-delay: calc(var(--word-i, 0) * var(--word-stagger));
 }
 
-html.js-reveal .u-words:not(.is-visible) .u-word {
+html.js-reveal .u-words .u-word {
   transform: translate3d(0, var(--word-shift), 0);
+}
+
+/* Keadaan TERLIHAT sebagai subjek selector. `verify:classes` hanya
+   menghitung kelas pada compound TERAKHIR sebuah selector, jadi kelas yang
+   hanya muncul sebagai leluhur (`:not(.is-visible)` atau `.u-words.is-visible
+   .u-word`) terbaca "tidak punya aturan" padahal aturannya ada. Variabel ini
+   juga yang menghentikan pergeseran grup, bukan hanya anaknya. */
+html.js-reveal .u-words.is-visible {
+  --word-shift: 0px;
+}
+
+html.js-reveal .u-words.is-visible .u-word {
+  transform: none;
 }
 
 /* ── Reduced motion: no shift at all. The words must not sit at 110%. ──
@@ -2430,7 +2443,7 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
     transition: none;
   }
 
-  html.js-reveal .u-words:not(.is-visible) .u-word {
+  html.js-reveal .u-words .u-word {
     transform: none;
   }
 }
@@ -2522,6 +2535,13 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
    Tidak ada keadaan di mana pengunjung kehilangan penunjuk. */
 .u-cursor.is-live {
   opacity: 1;
+}
+
+/* Kolom isian: lapisan kustom BERHENTI, kursor natif yang bekerja (lihat
+   `cursor: auto` di blok media query bawah). Tanpa ini, titik+cincin kustom
+   tampil di atas I-beam natif — dua penunjuk sekaligus di dalam modal. */
+.u-cursor.is-input {
+  opacity: 0;
 }
 
 .u-cursor-ring,
@@ -2747,8 +2767,7 @@ html.js-reveal .u-words:not(.is-visible) .u-word {
     opacity: 1;
   }
 
-  html.js-reveal .u-words .u-word,
-  html.js-reveal .u-words:not(.is-visible) .u-word {
+  html.js-reveal .u-words .u-word {
     transform: none;
     transition: none;
   }

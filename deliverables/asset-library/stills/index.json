@@ -1,0 +1,121 @@
+{
+  "sizes": [
+    {
+      "key": "2x3",
+      "w": 1024,
+      "h": 1536,
+      "src": "portrait",
+      "label": "potret 2:3 — web"
+    },
+    {
+      "key": "3x2",
+      "w": 1536,
+      "h": 1024,
+      "src": "wide",
+      "label": "lanskap 3:2 — web"
+    },
+    {
+      "key": "9x16",
+      "w": 1080,
+      "h": 1920,
+      "src": "portrait",
+      "label": "vertikal 9:16 — reels/tiktok"
+    },
+    {
+      "key": "4x5",
+      "w": 1080,
+      "h": 1350,
+      "src": "portrait",
+      "label": "feed 4:5 — instagram"
+    },
+    {
+      "key": "1x1",
+      "w": 1080,
+      "h": 1080,
+      "src": "portrait",
+      "label": "persegi 1:1 — grid/thumbnail"
+    }
+  ],
+  "plates": [
+    {
+      "id": "00-hero",
+      "label": "Berangkat — potret model",
+      "portrait": "deliverables/story-3d/assets/00-hero.png",
+      "wide": "deliverables/story-3d/assets/wide/00-hero.webp",
+      "fx": 0.52,
+      "fy": 0.42,
+      "place": "outdoor",
+      "grade": "dusk"
+    },
+    {
+      "id": "01-daftar",
+      "label": "Pendaftaran — mengisi formulir",
+      "portrait": "public/assets/story/01-daftar.webp",
+      "wide": "public/assets/story/wide/01-daftar.webp",
+      "fx": 0.56,
+      "fy": 0.36,
+      "place": "indoor",
+      "grade": "warm"
+    },
+    {
+      "id": "02-latihan",
+      "label": "Pelatihan — kelas bahasa",
+      "portrait": "public/assets/story/02-latihan.webp",
+      "wide": "public/assets/story/wide/02-latihan.webp",
+      "fx": 0.6,
+      "fy": 0.4,
+      "place": "indoor",
+      "grade": "warm"
+    },
+    {
+      "id": "03-wawancara",
+      "label": "Wawancara — putih hitam",
+      "portrait": "public/assets/story/03-wawancara.webp",
+      "wide": "public/assets/story/wide/03-wawancara.webp",
+      "fx": 0.53,
+      "fy": 0.43,
+      "place": "indoor",
+      "grade": "cool"
+    },
+    {
+      "id": "04-paspor",
+      "label": "Paspor — dokumen",
+      "portrait": "public/assets/story/04-paspor.webp",
+      "wide": "public/assets/story/wide/04-paspor.webp",
+      "fx": 0.52,
+      "fy": 0.4,
+      "place": "indoor",
+      "grade": "warm"
+    },
+    {
+      "id": "05-mcu",
+      "label": "MCU — tanda tangan kontrak",
+      "portrait": "public/assets/story/05-mcu.webp",
+      "wide": "public/assets/story/wide/05-mcu.webp",
+      "fx": 0.55,
+      "fy": 0.58,
+      "place": "indoor",
+      "grade": "warm"
+    },
+    {
+      "id": "05-terbang",
+      "label": "Keberangkatan — bandara",
+      "portrait": "deliverables/story-3d/assets/05-terbang.png",
+      "wide": "deliverables/story-3d/assets/wide/05-terbang.webp",
+      "fx": 0.55,
+      "fy": 0.45,
+      "place": "outdoor",
+      "grade": "cool"
+    },
+    {
+      "id": "06-tiba",
+      "label": "Tiba di Jepang — kimono",
+      "portrait": "public/assets/story/06-tiba.webp",
+      "wide": "public/assets/story/wide/06-tiba.webp",
+      "fx": 0.47,
+      "fy": 0.55,
+      "place": "outdoor",
+      "grade": "dusk"
+    }
+  ]
+}

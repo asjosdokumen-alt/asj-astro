@@ -12,6 +12,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import App from '../components/App.tsx';
 import FormToolbar from '../components/forms/FormToolbar';
 import ArcadeGame from '../components/candidate/ArcadeGame.tsx';
+import { GODOT_AKTIF } from '../lib/fiturGodot';
 ---
 
 <BaseLayout
@@ -53,10 +54,57 @@ import ArcadeGame from '../components/candidate/ArcadeGame.tsx';
           </p>
         </details>
       </section>
+      {/* Pintu masuk versi Godot — DI ATAS game lama, bukan di bawah lipatan.
+          Uji 2026-11-15: pemilik membuka /arcade lalu menyimpulkan "masih game
+          lama" karena tombolnya berada setelah papan skor. */}
+{GODOT_AKTIF && (
+      <section class="mb-3 rounded-card border-2 border-accent-amber bg-surface-raised p-3">
+        <p class="text-[10px] font-black uppercase tracking-wider text-accent-amber">
+          Versi baru · Godot 4.7
+        </p>
+        <p class="mt-0.5 text-[13px] font-bold leading-snug text-fg">
+          Genba dengan engine game sungguhan
+        </p>
+        <p class="mt-0.5 text-[11px] leading-snug text-fg-muted">
+          Mesin diunduh sekali (±10 MB) lalu jalan offline. Skor, soal, dan gerbang VIP tetap di halaman ini.
+        </p>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            data-godot-buka="genba"
+            class="min-h-12 rounded-control border border-accent-amber bg-amber-400 px-3 text-sm font-black text-slate-900"
+          >
+            ▶ Genba
+          </button>
+          <button
+            type="button"
+            data-godot-buka="combo"
+            class="min-h-12 rounded-control border border-accent-sky bg-surface px-3 text-sm font-bold text-accent-sky"
+          >
+            Combo (pratinjau)
+          </button>
+        </div>
+        <div class="mt-1.5 flex flex-wrap items-center gap-2">
+          <button type="button" data-godot-unduh class="text-[10px] font-bold text-accent-sky underline">
+            Unduh paket game (offline)
+          </button>
+          <span id="asj-godot-unduh-status" class="text-[10px] text-fg-muted"></span>
+        </div>
+      </section>
+)}
       <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
         Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
       </noscript>
       <ArcadeGame client:only="preact" />
+
     </div>
   </main>
+
+{GODOT_AKTIF && (
+  <>
+  <script is:inline src="/godot/asj-loader.js"></script>
+  <script is:inline src="/godot/preflight.js"></script>
+  <script is:inline src="/godot/page-bridge.js"></script>
+  </>
+)}
 </BaseLayout>

@@ -104,6 +104,12 @@ assets.sort((a, b) => a.url.localeCompare(b.url));
 const pages = [];
 function walkHtml(dir) {
   for (const name of readdirSync(dir)) {
+    // `dist/godot/` adalah mini-app terpisah (engine 38 MB + shell demo),
+    // BUKAN rute aplikasi. Kalau ikut disapu, `/godot/index.html` masuk
+    // precache install dan menyeret serta-merta `/godot/` + `/godot` sebagai
+    // rute direktori — tiga entri yang membuat "Godot tidak ikut precache"
+    // jadi tidak benar. Engine tetap diunduh lewat tombol, bukan saat install.
+    if (dir === DIST && name === 'godot') continue;
     const full = join(dir, name);
     const st = statSync(full);
     if (st.isDirectory()) {
@@ -173,6 +179,19 @@ for (const d of dirRoutes) h.update(`${d}\n`);
 // changed no page and no hashed asset would otherwise ship new bytes under the
 // old cache name, and every installed client would keep the old glyphs.
 for (const r of RENDER_CRITICAL) h.update(`${r}:${statSync(join(DIST, r)).size}\n`);
+/**
+ * Artefak Godot TIDAK masuk PRECACHE, tetapi ukurannya HARUS masuk hash versi.
+ * Tanpa ini, mengganti `index.pck` tidak mengubah VERSION, dan klien yang sudah
+ * pernah membuka game akan terus memakai engine lama dari bucket
+ * `asj-godot-*` — bug yang tidak terlihat sampai ada yang membandingkan
+ * perilaku antar-perangkat. Nama berkas sengaja tetap (bukan hash) supaya
+ * `Engine` bisa menemukannya lewat `executable`; versi cache dipegang SW.
+ */
+const GODOT_FILES = ['index.wasm', 'index.pck', 'index.js', 'asj-loader.js', 'page-bridge.js'];
+for (const f of GODOT_FILES) {
+  const p = join(DIST, 'godot', f);
+  if (existsSync(p)) h.update(`/godot/${f}:${statSync(p).size}\n`);
+}
 const VERSION = `asj-astro-${h.digest('hex').slice(0, 12)}`;
 
 const totalBytes = assets.reduce((n, a) => n + a.size, 0);

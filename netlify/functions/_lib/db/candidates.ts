@@ -49,7 +49,21 @@ function mapCandidate(row: Record<string, unknown>) {
   const wa = toText(
     pick(row, ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp', 'telp']),
   ).replace(/\D/g, '');
-  const idKandidat = toText(pick(row, ['id_kandidat', 'id', 'kandidat_id', 'uid']));
+  /* ID KANDIDAT — dan apakah nilainya NYATA (fix 2026-11-14).
+     `pick(['id_kandidat', 'id', …])` adalah pengganti yang masuk akal untuk
+     baris lama, tetapi ia juga MENYEMBUNYIKAN cacat: baris tanpa id_kandidat
+     tampil sebagai `id` numerik ("632") — angka yang terlihat sah di kolom
+     "ID Kandidat", jadi tidak ada yang memeriksanya selama berbulan-bulan.
+     Terukur 2026-11-14: 2 baris hasil pendaftaran mandiri.
+     Nilai pengganti tetap dipakai (banyak pemanggil butuh string tak kosong),
+     tetapi sekarang ada penandanya, sehingga UI bisa mengatakan yang sebenarnya
+     alih-alih menampilkan angka yang tidak bisa dibedakan dari ID asli. */
+  const idKandidatMentah = toText(pick(row, ['id_kandidat'])).trim();
+  const idKandidat =
+    idKandidatMentah || toText(pick(row, ['id', 'kandidat_id', 'uid'])).trim();
+  /* `btrim` — sama dengan constraint di migrasi 060. Tanpa ini, baris berisi
+     spasi ("   ") lolos sebagai "terisi" dan dirender sebagai kolom kosong. */
+  const idKandidatTerisi = idKandidatMentah !== '';
   const catatanInt = toText(pick(row, ['catatan_internal', 'catatan_int']));
   /* KELAS: kolom lebih dulu, tag `[KELAS xx]` sebagai cadangan.
      Sejak migrasi 042 kelas punya kolom sendiri. Tag lama TETAP dibaca supaya
@@ -106,6 +120,11 @@ function mapCandidate(row: Record<string, unknown>) {
   return {
     idKandidat,
     id: idKandidat,
+    /* false = kolom `id_kandidat` kosong dan nilai di atas adalah `id` numerik.
+       Sejak migrasi 060 keadaan ini tidak bisa lagi tersimpan; penanda ini
+       menjaga baris lama (atau hasil restore) tetap terlihat sebagai cacat,
+       bukan sebagai nomor yang tampak normal. */
+    idKandidatTerisi,
     nama,
     wa,
     gender: toText(pick(row, ['gender', 'jenis_kelamin', 'jk'])),

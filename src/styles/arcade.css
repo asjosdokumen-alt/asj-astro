@@ -1419,3 +1419,66 @@
     transition: none;
   }
 }
+
+/* ── Antrian pelanggan (2026-11-16) ────────────────────────────────────────
+   Tiga pelanggan terlihat sekaligus; yang aktif diberi bingkai amber, dan
+   bar kesabarannya memerah di bawah 30%. Bar memakai transisi 0,12 dtk —
+   sama dengan interval tick — supaya tidak terlihat melompat. */
+.arc-antrian {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.arc-antrian-kartu {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 7px;
+  border: 1px solid var(--arc-garis);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.arc-antrian-kartu--on {
+  border-color: var(--arc-amber);
+  background: rgba(255, 194, 71, 0.12);
+}
+
+.arc-antrian-jp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.arc-antrian-bar {
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.arc-antrian-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--arc-amber);
+  transition: width 0.12s linear;
+}
+
+.arc-antrian-kartu--hot .arc-antrian-bar > span {
+  background: var(--arc-red);
+}
+
+/* Kesabaran menipis: bingkai kartu ikut memerah, bukan hanya barnya. */
+.arc-antrian-kartu--hot {
+  border-color: var(--arc-red);
+}

@@ -99,6 +99,19 @@ describe('fetchLatestVersion', () => {
     const fetchImpl = vi.fn(async () => ok({ builtAt: '2026-10-19' }));
     await expect(fetchLatestVersion(fetchImpl as unknown as typeof fetch)).resolves.toBeNull();
   });
+
+  it('offline (navigator.onLine=false) tidak memanggil fetch sama sekali', async () => {
+    /* Sebelum ini, offline tetap menembak `/version.json`, gagal, dan menulis
+       `console.error` — terbaca seperti game rusak padahal hanya cek versi. */
+    const fetchImpl = vi.fn(async () => ok({ version: 'asj-astro-bbb' }));
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    try {
+      await expect(fetchLatestVersion(fetchImpl as unknown as typeof fetch)).resolves.toBeNull();
+      expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(navigator, 'onLine');
+    }
+  });
 });
 
 describe('readRunningVersion', () => {

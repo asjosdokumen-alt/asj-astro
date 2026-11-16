@@ -32,7 +32,7 @@
  */
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { authStore } from '../../store/authReactive';
-import { bolehKirim, kirimSkor } from '../../lib/skorGame';
+import { bolehKirim, kirimSkor, ambilPapanGame, type BarisPapanGame } from '../../lib/skorGame';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import { aktifkanSesiAudio } from '../../lib/tts';
 import { validate, kandidatLoginSchema } from '../../lib/schemas';
@@ -45,6 +45,7 @@ import {
   rekapPerDimensi,
   rekapPerKategori,
   tampilAngka,
+  SKOR_PER_BENAR,
   type BankMatematikaRes,
   type BentukFigur,
   type Figur,
@@ -245,6 +246,17 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
   const [bankCerita, setBankCerita] = useState<BankMatematikaRes['cerita']>([]);
   const [kategoriBank, setKategoriBank] = useState<BankMatematikaRes['kategori']>([]);
   const [rekor, setRekor] = useState<Rekor>({ skor: 0, grade: '', main: 0 });
+
+  /**
+   * Papan peringkat.
+   *
+   * SEBELUM 2026-11-16 Matematika adalah SATU-SATUNYA dari empat game yang
+   * mengirim skor ke server tetapi tidak pernah menampilkannya kembali. Siswa
+   * bermain, skornya masuk papan, dan ia tidak punya cara melihatnya — papan
+   * hanya ada di panel admin. Itu bukan "belum rapi", itu fitur yang hilang.
+   */
+  const [papan, setPapan] = useState<BarisPapanGame[]>([]);
+  const [papanBuka, setPapanBuka] = useState(false);
 
   /* ── pilihan lobi ─────────────────────────────────────────────────────── */
   const [kategori, setKategori] = useState<KategoriId | 'campur'>('kraepelin');
@@ -516,14 +528,27 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     }
     const benar = riwayat.filter((r) => r.benar).length;
     const akurasi = Math.round((benar / total) * 100);
-    const skor = benar * 50;
+    const skor = benar * SKOR_PER_BENAR;
     setDurasi(Math.max(1, Math.round((Date.now() - mulaiRef.current) / 1000)));
     const grade = akurasi >= AMBANG.s ? 'S' : akurasi >= AMBANG.a ? 'A' : akurasi >= AMBANG.b ? 'B' : 'C';
     /* Papan peringkat. Dikirim sekali per ronde; `bolehKirim` menjaga render
        ganda tidak mengirim dua kali. Kegagalan diabaikan — rekor lokal sudah
-       ditulis di bawah dan itu yang dilihat siswa. */
+       ditulis di bawah dan itu yang dilihat siswa.
+
+       `ronde` = hasil tiap soal, bukan angka skor. Server menghitung ulang
+       `benar × SKOR_PER_BENAR` dari array ini dan mengabaikan `skor` kiriman;
+       tanpa ronde, kiriman ditolak. */
     if (skor > 0 && bolehKirim(`matematika:${skor}:${total}`)) {
-      void kirimSkor('matematika', skor, { akurasi, benar, total, grade, campur });
+      void kirimSkor('matematika', skor, {
+        akurasi,
+        benar,
+        total,
+        grade,
+        campur,
+        ronde: riwayat.map((r) => (r.benar ? 1 : 0)),
+      }).then(() => {
+        if (papanBuka) void ambilPapanGame('matematika', 10).then(setPapan);
+      });
     }
     if (skor > rekor.skor) {
       const baru = { skor, grade, main: rekor.main + 1 };
@@ -817,6 +842,73 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
           (`z-index: 1`) dan memotong apa pun yang dicat di dalamnya, sedangkan
           konfeti harus menutupi seluruh layar. */}
       <div class="arc">
+
+      {/* ── PAPAN SKOR IN-GAME ─────────────────────────────────────────────
+          Satu-satunya game yang sebelumnya tidak punya papan di halaman siswa.
+          Ditaruh di ATAS layar (lobi/main/hasil) supaya bisa dibuka kapan saja
+          tanpa kehilangan ronde yang sedang berjalan. */}
+      <div class="mb-3 rounded-card border border-line bg-surface p-3 text-[12px] cetak-sembunyi">
+        <div class="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => {
+              const bukaBaru = !papanBuka;
+              setPapanBuka(bukaBaru);
+              if (bukaBaru) void ambilPapanGame('matematika', 10).then(setPapan);
+            }}
+            aria-expanded={papanBuka}
+            class="font-bold text-fg flex items-center gap-1.5"
+          >
+            <span>🏆 {t('matematika.papan_skor')}</span>
+            <span class="text-fg-muted">{papanBuka ? '▲' : '▼'}</span>
+          </button>
+          {papanBuka && (
+            <button
+              type="button"
+              onClick={() => void ambilPapanGame('matematika', 10).then(setPapan)}
+              class="rounded-control border border-line bg-surface-raised px-2 py-0.5 text-[11px] font-bold text-fg-muted"
+            >
+              🔄
+            </button>
+          )}
+        </div>
+        {papanBuka && (
+          <div class="mt-2">
+            {papan.length === 0 ? (
+              <p class="text-fg-muted py-1">{t('admin.papan_skor_kosong')}</p>
+            ) : (
+              <ol class="space-y-1">
+                {papan.map((r, i) => {
+                  const milikSendiri = Boolean(wa && r.no_wa === wa);
+                  const medali = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                  return (
+                    <li
+                      key={`${r.nama}-${r.skor}-${i}`}
+                      class={`flex items-center justify-between rounded-control border px-2.5 py-1.5 ${
+                        milikSendiri ? 'border-accent-violet bg-accent-violet/10' : 'border-line bg-surface-sunken'
+                      }`}
+                    >
+                      <span class="min-w-0 truncate">
+                        <strong class="mr-1.5">{medali}</strong>
+                        <span class="font-bold text-fg">{r.nama}</span>
+                        {r.kelas && <span class="ml-1 text-fg-muted">({r.kelas})</span>}
+                        {milikSendiri && (
+                          <span class="ml-1.5 rounded-pill bg-accent-violet/15 px-1.5 py-0.5 text-[10px] font-bold text-accent-violet">
+                            ⭐ {t('arcade.anda')}
+                          </span>
+                        )}
+                      </span>
+                      <strong class="shrink-0 font-mono text-fg">
+                        {r.skorTampil ?? r.skor.toLocaleString('id-ID')}
+                      </strong>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ── LOBI ── */}
       {layar === 'lobby' && (
@@ -1130,7 +1222,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
           <div class="arc-stats">
             <div class="arc-stat">
               <span>{t('matematika.skor')}</span>
-              <strong>{totalBenar * 50}</strong>
+              <strong>{totalBenar * SKOR_PER_BENAR}</strong>
             </div>
             <div class="arc-stat">
               <span>{t('matematika.akurasi')}</span>

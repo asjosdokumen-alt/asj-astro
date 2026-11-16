@@ -7,6 +7,8 @@
 // tokens), not the legacy { sessionInvalid:true } shape.
 // ==========================================
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, sep } from 'node:path';
 
 /**
  * Revocation state, controlled by the tests.
@@ -26,6 +28,12 @@ const revoked = vi.hoisted(() => ({
   fcmRows: [] as Array<{ id: string; token: string }>,
   /** Nilai query `id=in.(...)` dari setiap DELETE ke `fcm_tokens`. */
   fcmDeleted: [] as string[],
+  /** Body setiap POST ke `database_candidate` — dipakai penjaga id_kandidat. */
+  candidateInserts: [] as Array<Record<string, unknown>>,
+  /** Nomor yang "dialokasikan" sequence di tes. */
+  nextId: 'ASJ01011',
+  /** Baris yang dianggap sudah terdaftar (null = nomor WA belum dipakai). */
+  existingCandidate: null as null | Record<string, unknown>,
 }));
 
 vi.mock('./repository', async () => {
@@ -39,10 +47,20 @@ vi.mock('./repository', async () => {
     },
     candidateExistsForRefresh: async (wa: string) =>
       revoked.dbDown ? null : !revoked.candidateMissing.has(wa),
+    /* `registerKandidat` membaca lewat repository ini; tanpa override ia akan
+       memakai implementasi asli yang menembak jaringan. */
+    findCandidateForAuth: async () => revoked.existingCandidate,
+    /* Alokasi ASJ##### nyata memanggil `rpc/nextval`; di tes ia harus dapat
+       diprediksi, dan yang diuji di sini adalah bahwa nilainya DIPAKAI. */
+    nextCandidateId: async () => revoked.nextId,
     /* `registerFcmToken` memakai `supabaseJson` dari modul ini. Tanpa override,
        tesnya akan menulis ke database sungguhan — dan pagar
        `_lib/db/test-guard.ts` memerahkannya. */
-    supabaseJson: async (method: string, table: string, opts?: { query?: Record<string, string> }) => {
+    supabaseJson: async (method: string, table: string, opts?: { query?: Record<string, string>; body?: Record<string, unknown> }) => {
+      if (table === 'database_candidate' && method === 'POST') {
+        revoked.candidateInserts.push(opts?.body ?? {});
+        return [];
+      }
       if (table !== 'fcm_tokens') return [];
       if (method === 'GET') return revoked.fcmRows;
       if (method === 'DELETE') {
@@ -69,6 +87,7 @@ import {
   requireRole,
   requireAdmin,
   isOwnerOrAdmin,
+  registerKandidat,
 } from './service';
 import { signToken, verifyToken } from '../../_lib/session';
 
@@ -76,18 +95,106 @@ beforeEach(() => {
   revoked.subjects.clear();
   revoked.candidateMissing.clear();
   revoked.dbDown = false;
+  revoked.candidateInserts.length = 0;
+  revoked.nextId = 'ASJ01011';
+  revoked.existingCandidate = null;
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   PENJAGA id_kandidat — 2026-11-14
+   ────────────────────────────────────────────────────────────────────────────
+   Cacat yang dijaga: `registerKandidat()` menyimpan baris `database_candidate`
+   TANPA `id_kandidat`. Tidak ada yang gagal — pembaca jatuh ke kolom `id`
+   numerik, jadi tabel admin menampilkan "632" di kolom ID Kandidat, angka yang
+   terlihat sah. Terukur di produksi: 2 baris (2026-11-05, 2026-11-14).
+
+   Dua lapis, sengaja:
+     1. perilaku — pendaftaran mengalokasikan nomor dan MENYIMPANNYA;
+     2. sumber   — setiap POST ke `database_candidate` di seluruh fungsi wajib
+        menyertakan `id_kandidat`. Lapis kedua menangkap jalur KETIGA yang belum
+        ada hari ini, bukan hanya jalur yang sudah diperbaiki.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('registerKandidat — nomor kandidat tidak boleh hilang diam-diam', () => {
+  it('menyimpan id_kandidat berformat ASJ, bukan membiarkannya NULL', async () => {
+    const res = await registerKandidat('Aris Wibowo', '6281234567890', 'rahasia123');
+
+    expect(res.success).toBe(true);
+    expect(revoked.candidateInserts).toHaveLength(1);
+    const body = revoked.candidateInserts[0];
+    expect(body.id_kandidat).toBe('ASJ01011');
+    // Bentuk yang dibaca manusia dan dipakai tautan: ASJ + minimal 5 digit.
+    expect(String(body.id_kandidat)).toMatch(/^ASJ\d{5,}$/);
+    expect(body.no_wa).toBe('6281234567890');
+    expect(body.status_kandidat).toBe('BARU');
+  });
+
+  it('nomor yang dialokasikan benar-benar dipakai — bukan nomor tetap', async () => {
+    revoked.nextId = 'ASJ10011';
+    await registerKandidat('Budi', '6281234567891', 'rahasia123');
+    expect(revoked.candidateInserts[0].id_kandidat).toBe('ASJ10011');
+  });
+
+  it('setiap POST ke database_candidate di seluruh fungsi menyertakan id_kandidat', () => {
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) {
+          if (e.name === 'node_modules') continue;
+          walk(p);
+        } else if (/\.ts$/.test(e.name) && !/\.test\.ts$/.test(e.name)) {
+          files.push(p);
+        }
+      }
+    };
+    walk(join(process.cwd(), 'netlify', 'functions'));
+
+    const offenders: string[] = [];
+    let sites = 0;
+    /* Pemindaian berbasis INDEKS, bukan `matchAll` dengan konteks di belakangnya.
+       Versi pertama memakai pola `/'POST', 'database_candidate'[\s\S]{0,1400}/g`,
+       dan match pertama MENELAN match berikutnya yang jatuh di dalam 1400
+       karakter itu — terukur: POST di `applications/service.ts` tidak pernah
+       diperiksa karena didahului PATCH di berkas yang sama. Gerbang yang hijau
+       karena separuh jalur tidak dipindai persis jenis gerbang yang seharusnya
+       menangkap cacat ini. */
+    for (const f of files) {
+      const src = readFileSync(f, 'utf8');
+      const needle = /'POST',\s*'database_candidate'/g;
+      let hit = needle.exec(src);
+      while (hit !== null) {
+        sites++;
+        /* Jendela mencakup KEDUA bentuk sah:
+             · `id_kandidat: …` di dalam literal body (identity)
+             · `base.id_kandidat = await nextCandidateId()` yang disusun lebih
+               dulu lalu dikirim sebagai `body: base` (applications)
+           Yang dihitung hanya penetapan, bukan kata di komentar. */
+        const from = Math.max(0, hit.index - 1200);
+        const window = src.slice(from, hit.index + 900);
+        const assigns =
+          /(?:^|[^.\w])id_kandidat\s*:/.test(window) || /\.id_kandidat\s*=/.test(window);
+        if (!assigns) offenders.push(f.replace(process.cwd() + sep, ''));
+        hit = needle.exec(src);
+      }
+    }
+
+    // Kalau pemindaiannya sendiri tidak menemukan apa pun, tes ini hijau karena
+    // tidak mengukur — bukan karena kode benar.
+    expect(sites).toBeGreaterThanOrEqual(2);
+    expect(offenders).toEqual([]);
+  });
 });
 
 describe('refreshKandidatSession — pemulihan sesi kandidat diam-diam', () => {
   it('refresh token kandidat yang sah → sessionToken baru + wa', async () => {
     const rt = signToken({ role: 'kandidat', wa: '6281234567890', kind: 'refresh' });
     const res = await refreshKandidatSession(rt);
-    if (!res.success) throw new Error('expected refresh success: ' + res.message);
+    if (!res.success) throw new Error(`expected refresh success: ${res.message}`);
     expect(res.wa).toBe('6281234567890');
     const t = verifyToken(res.sessionToken);
-    expect(t && t.role).toBe('kandidat');
-    expect(t && t.wa).toBe('6281234567890');
-    expect(t && t.kind).toBe('session'); // token sesi biasa, bukan refresh
+    expect(t?.role).toBe('kandidat');
+    expect(t?.wa).toBe('6281234567890');
+    expect(t?.kind).toBe('session'); // token sesi biasa, bukan refresh
   });
 
   it('menolak token non-refresh (sesi biasa / role lain / rusak)', async () => {
@@ -115,11 +222,11 @@ describe('refreshAdminSession — pemulihan sesi admin diam-diam', () => {
   it('refresh token admin yang sah → sessionToken baru (nama di payload)', async () => {
     const rt = signToken({ role: 'admin', name: 'AGUS', kind: 'refresh' });
     const res = await refreshAdminSession(rt);
-    if (!res.success) throw new Error('expected refresh success: ' + res.message);
+    if (!res.success) throw new Error(`expected refresh success: ${res.message}`);
     const t = verifyToken(res.sessionToken);
-    expect(t && t.role).toBe('admin');
-    expect(t && t.name).toBe('AGUS');
-    expect(t && t.kind).toBe('session');
+    expect(t?.role).toBe('admin');
+    expect(t?.name).toBe('AGUS');
+    expect(t?.kind).toBe('session');
   });
 
   it('menolak token non-refresh (sesi biasa / role lain / rusak)', async () => {

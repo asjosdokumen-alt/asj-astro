@@ -47,7 +47,10 @@ import {
   COMBO_SOAL,
   KOMBO_MAKS,
   SHIFT_GENBA,
+  ULTIMATE,
+  aturanUltimate,
   batasKalimat,
+  bonusUltimate,
   bonusKalimat,
   bonusShift,
   buatPerintah,
@@ -55,6 +58,7 @@ import {
   buatZona,
   bintangShift,
   cekGenba,
+  digitPresisi,
   durasiShift,
   gelombangShift,
   kartuBenar,
@@ -73,6 +77,13 @@ import {
   type TingkatGenba,
   type ZonaGenba,
 } from '../../lib/arcade';
+import {
+  ANTRIAN_MAKS,
+  buatPelanggan,
+  palingMendesak,
+  tick,
+  type Pelanggan,
+} from '../../lib/genba-antrian';
 
 const KUNCI_LEMAH = 'asj_arcade_lemah';
 const KUNCI_REKOR_GENBA = 'asj_arcade_rekor_genba';
@@ -161,6 +172,8 @@ interface HasilShift {
   deltaRekor: number;
   rekorBaru: boolean;
   drill: boolean;
+  /** Kedalaman Ultimate Loop saat run berakhir (0 = hanya shift biasa). */
+  loop: number;
 }
 
 function bacaLemah(): CatatanLemah[] {
@@ -336,6 +349,47 @@ export default function ArcadeGame() {
   const [mode, setMode] = useState<'shift' | 'drill'>('shift');
   const [target, setTarget] = useState(aturan.pesanan);
   const antrianRef = useRef<Perintah[]>([]);
+  /**
+   * Total sisa waktu dalam milidetik untuk satu shift. Ini yang menjadi 4 digit
+   * desimal skor ("4.550,3712") dan pemecah seri pertama di papan peringkat —
+   * dua siswa yang sama-sama sempurna hampir pasti berbeda di digit ini.
+   * Bukan angka acak: ia dijumlahkan dari reaksi nyata setiap jawaban.
+   */
+  const presisiMsRef = useRef(0);
+
+  /**
+   * Ronde yang sudah dimainkan, dalam bentuk `[benar, sisaMs]`.
+   *
+   * Dikirim bersama skor supaya server bisa MENGHITUNG ULANG skornya
+   * (`hitungGenba`). Tanpa ini, papan peringkat hanya bisa mempercayai angka
+   * yang dikirim klien — dan klien yang dimodifikasi bisa mengirim apa saja.
+   * Ref, bukan state: nilainya tidak dipakai untuk menggambar apa pun, jadi
+   * menaikkannya ke state hanya menambah render di tengah permainan berwaktu.
+   */
+  const rondeRef = useRef<Array<[number, number, number?]>>([]);
+
+  /**
+   * Ronde Combo: `[1,0]` kartu benar · `[0,0]` kartu salah ·
+   * `[2,sisa,kodeLevel]` kalimat selesai.
+   *
+   * Level ikut di setiap penyelesaian karena tombol level bisa ditekan di
+   * tengah sesi tanpa mereset skor; replay yang memakai level terakhir akan
+   * menolak skor yang sah.
+   */
+  const rondeComboRef = useRef<number[][]>([]);
+
+  /* ── Antrian pelanggan (mode shift) ─────────────────────────────────────
+     Tiga pelanggan dengan kesabaran masing-masing. `perintah` di bawah adalah
+     pelanggan AKTIF — satu sumber untuk render dan penilaian, supaya replay
+     tidak perlu tahu konsep antrian. Drill tetap satu pesanan seperti dulu. */
+  const [antrian, setAntrian] = useState<Pelanggan[]>([]);
+  const pelangganRef = useRef<Pelanggan[]>([]);
+  pelangganRef.current = antrian;
+  const [aktifId, setAktifId] = useState(0);
+  const aktifIdRef = useRef(0);
+  aktifIdRef.current = aktifId;
+  /** Nomor urut pelanggan; naik terus supaya id tidak pernah dipakai ulang. */
+  const seqRef = useRef(0);
 
   const [perintah, setPerintah] = useState<Perintah | null>(null);
   const [pilihan, setPilihan] = useState<PilihanGenba[]>([]);
@@ -344,6 +398,14 @@ export default function ArcadeGame() {
   const [dipilih, setDipilih] = useState<string | null>(null);
   const [nyawa, setNyawa] = useState(aturan.nyawa);
   const [skor, setSkor] = useState(0);
+  /**
+   * Kedalaman Ultimate Loop. 0 = shift biasa; 1.. = gelombang tanpa akhir.
+   * Saat loop > 0, `pasang` memakai `aturanUltimate` (waktu turun, pilihan/rak
+   * naik) dan `target` direset ke 4 pesanan per gelombang. Skor shift TIDAK
+   * di-reset: loop melanjutkan run yang sama, jadi papan peringkat menerima
+   * satu angka total + kedalaman loop sebagai pemecah seri.
+   */
+  const [loop, setLoop] = useState(0);
   const [komboGenba, setKomboGenba] = useState(0);
   const [komboGenbaMaks, setKomboGenbaMaks] = useState(0);
   const [pesananSelesai, setPesananSelesai] = useState(0);
@@ -403,12 +465,27 @@ export default function ArcadeGame() {
    * mengembalikannya. Tanpa parameter ini, `pasang` membaca `kombo` dari state
    * yang belum tentu sudah ter-commit pada tick yang sama.
    */
-  const pasang = (modeNow: 'shift' | 'drill', urutanKe: number, kombo: number, p?: Perintah) => {
+  const pasang = (
+    modeNow: 'shift' | 'drill',
+    urutanKe: number,
+    kombo: number,
+    p?: Perintah,
+    /* `loopNow` dikirim eksplisit saat gelombang baru dimulai: state `loop`
+       baru ter-commit SETELAH render, sedangkan `pasang` dipanggil di tick
+       yang sama. Membacanya dari closure akan memasang gelombang baru dengan
+       aturan gelombang lama. */
+    loopNow: number = loop,
+  ) => {
     const a = modeNow === 'drill' ? SHIFT_GENBA.magang : aturan;
     const cmd = p ?? (modeNow === 'drill' ? antrianRef.current.shift() : undefined) ?? buatPerintah();
+    const aLoop = loopNow > 0 ? aturanUltimate(a, loopNow - 1) : null;
+    const jumlahPilihan = aLoop ? aLoop.pilihan : pilihanShift(a, urutanKe);
+    const jumlahZona = aLoop
+      ? Math.min(ULTIMATE.zonaMaks, aLoop.zona + (kombo >= 8 ? 4 : kombo >= 4 ? 2 : 0))
+      : zonaAdaptif(a, urutanKe, kombo);
     setPerintah(cmd);
-    setPilihan(buatPilihan(cmd, Math.random, pilihanShift(a, urutanKe)));
-    setZona(buatZona(cmd, zonaAdaptif(a, urutanKe, kombo)));
+    setPilihan(buatPilihan(cmd, Math.random, jumlahPilihan));
+    setZona(buatZona(cmd, jumlahZona));
     setDipilih(null);
     setSisa(100);
     setPesan('');
@@ -417,8 +494,72 @@ export default function ArcadeGame() {
     setAnimasi('');
     /* Kecepatan bicara ikut gelombang, bukan lompatan pada satu ambang skor:
        dulu 0,9 lalu tiba-tiba 1,05 setelah ¥500, dan siswa yang mendengarnya
-       tidak tahu mengapa tiba-tiba lebih cepat. */
-    ucap(cmd.jp, 0.9 + 0.06 * gelombangShift(a, urutanKe));
+       tidak tahu mengapa tiba-tiba lebih cepat. Di Ultimate Loop kecepatannya
+       naik 0,03 per gelombang sampai plafon 1,5×. */
+    ucap(cmd.jp, aLoop ? aLoop.kecepatanTts : 0.9 + 0.06 * gelombangShift(a, urutanKe));
+  };
+
+  /**
+   * Pasang pelanggan sebagai pesanan AKTIF.
+   *
+   * Meja (pilihan) dan rak diacak ulang per pelanggan: barang milik pelanggan
+   * sebelumnya tidak boleh tertinggal di meja, karena pemain akan mencocokkan
+   * barang yang salah. Konsekuensinya berpindah pelanggan = meja disusun ulang,
+   * dan itu memang yang terjadi di restoran.
+   */
+  const pasangAktif = (c: Pelanggan, kombo: number, loopNow: number = loop) => {
+    const a = aturanAktif;
+    const aLoop = loopNow > 0 ? aturanUltimate(a, loopNow - 1) : null;
+    const jumlahPilihan = aLoop ? aLoop.pilihan : pilihanShift(a, pesananSelesai);
+    const jumlahZona = aLoop
+      ? Math.min(ULTIMATE.zonaMaks, aLoop.zona + (kombo >= 8 ? 4 : kombo >= 4 ? 2 : 0))
+      : zonaAdaptif(a, pesananSelesai, kombo);
+    setPerintah(c.perintah);
+    setPilihan(buatPilihan(c.perintah, Math.random, jumlahPilihan));
+    setZona(buatZona(c.perintah, jumlahZona));
+    setDipilih(null);
+    setSisa((c.sisaMs / c.batasMs) * 100);
+    setPesan('');
+    setMenunggu(false);
+    setRakSalah(null);
+    setAnimasi('');
+    ucap(c.perintah.jp, aLoop ? aLoop.kecepatanTts : 0.9 + 0.06 * gelombangShift(a, pesananSelesai));
+  };
+
+  /** Pindah melayani pelanggan lain; kesabaran masing-masing TIDAK direset. */
+  const pilihAktif = (c: Pelanggan) => {
+    if (menunggu) return;
+    setAktifId(c.id);
+    pasangAktif(c, komboGenba);
+  };
+
+  /** Isi antrian sampai penuh; pelanggan pertama langsung dilayani. */
+  const isiAntrian = (urutanKe: number, loopNow: number) => {
+    const daftar: Pelanggan[] = [];
+    for (let i = 0; i < ANTRIAN_MAKS; i++) {
+      seqRef.current += 1;
+      daftar.push(buatPelanggan(seqRef.current, urutanKe, aturan, loopNow));
+    }
+    pelangganRef.current = daftar;
+    setAntrian(daftar);
+    setAktifId(daftar[0].id);
+    pasangAktif(daftar[0], 0, loopNow);
+  };
+
+  /** Pelanggan selesai dilayani: keluar, digantikan yang baru, pilih terdesak. */
+  const layani = (c: Pelanggan | null, urutanKe: number, kombo: number) => {
+    let daftar = pelangganRef.current.filter((x) => x.id !== c?.id);
+    while (daftar.length < ANTRIAN_MAKS) {
+      seqRef.current += 1;
+      daftar = [...daftar, buatPelanggan(seqRef.current, urutanKe, aturan, loop)];
+    }
+    pelangganRef.current = daftar;
+    setAntrian(daftar);
+    const berikut = palingMendesak(daftar);
+    if (berikut) {
+      setAktifId(berikut.id);
+      pasangAktif(berikut, kombo);
+    }
   };
 
   /** Antrian latihan dari catatan salah; entri lama tanpa ID dilewati. */
@@ -460,11 +601,51 @@ export default function ArcadeGame() {
     setPesananSelesai(0);
     setSalahGenba(0);
     setJumlahSisa(0);
+    setLoop(0);
+    presisiMsRef.current = 0;
+    rondeRef.current = [];
     setHasil(null);
     setPoinTerbang(null);
     setFase('main');
-    pasang(modeNow, 0, 0);
+    if (modeNow === 'shift') {
+      antrianRef.current = [];
+      isiAntrian(0, 0);
+    } else {
+      /* Drill tetap satu pesanan: yang diulang adalah kata yang salah, bukan
+         antrian pelanggan. */
+      pelangganRef.current = [];
+      setAntrian([]);
+      pasang(modeNow, 0, 0);
+    }
     bunyiMulai();
+  };
+
+  /**
+   * Masuk Ultimate Loop dari kartu hasil S.
+   *
+   * Skor shift DIB AWA, bukan direset: loop adalah lanjutan run yang sama.
+   * Nyawa menjadi 1 dan target menjadi 4 pesanan per gelombang; `pasang`
+   * menerima `loopNow = 1` secara eksplisit karena state `loop` belum
+   * ter-commit pada tick ini.
+   */
+  const mulaiLoop = () => {
+    setLoop(1);
+    setTarget(ULTIMATE.pesananPerGelombang);
+    setNyawa(ULTIMATE.nyawa);
+    setPesananSelesai(0);
+    setSalahGenba(0);
+    setKomboGenba(0);
+    setHasil(null);
+    setPoinTerbang(null);
+    setFase('main');
+    pasang('shift', 0, 0, undefined, 1);
+    bunyiMulai();
+  };
+
+  /** Berhenti sukarela: run ditutup sebagai "selesai" dan skor tetap dikirim. */
+  const hentikanLoop = () => {
+    if (loop <= 0 || fase !== 'main') return;
+    selesaikan(true, skor, pesananSelesai, salahGenba, jumlahSisa, komboGenbaMaks, 'shift');
   };
 
   /* `gagal` dibuat ulang tiap render; efek timer menyimpannya di ref supaya
@@ -506,6 +687,7 @@ export default function ArcadeGame() {
       deltaRekor: drill ? 0 : skorFinal - rekorLama,
       rekorBaru,
       drill,
+      loop,
     });
     setSkor(skorFinal);
     setFase('selesai');
@@ -515,6 +697,10 @@ export default function ArcadeGame() {
   /** Satu kali salah: nyawa berkurang, catatan disimpan, perintah berganti. */
   const gagal = (alasan: string, rak?: string) => {
     if (!perintah || fase !== 'main' || menunggu) return;
+    /* Kesalahan juga bagian dari ronde: server memakainya untuk memutus kombo
+       dan mengurangi nyawa saat memutar ulang. Tanpa event ini, replay akan
+       menghitung run yang tidak pernah terjadi. */
+    rondeRef.current.push([0, 0, 0]);
     bunyi(false);
     getar([20, 40, 20]);
     setAnimasi('salah');
@@ -537,6 +723,14 @@ export default function ArcadeGame() {
       selesaikan(false, skor, pesananSelesai, salahBaru, jumlahSisa, komboGenbaMaks, mode);
       return;
     }
+    if (mode === 'shift') {
+      /* Antrian: pelanggan TIDAK diganti — ia tetap menunggu, dan kesabarannya
+         terus menipis. Hukuman salah taruh adalah nyawa + kombo putus, bukan
+         pesanan baru. Jeda singkat supaya pemain melihat koreksinya. */
+      setMenunggu(true);
+      window.setTimeout(() => setMenunggu(false), 800);
+      return;
+    }
     setMenunggu(true);
     window.setTimeout(() => {
       if (sisaNyawa <= 0) return;
@@ -553,6 +747,50 @@ export default function ArcadeGame() {
   };
   gagalRef.current = gagal;
 
+  const kaburRef = useRef<(ids: number[]) => void>(() => {});
+  /**
+   * Pelanggan pergi karena kesabarannya habis.
+   *
+   * BEDA dengan salah taruh: salah taruh memakan nyawa tapi pelanggan tetap
+   * menunggu; kehabisan kesabaran berarti pesanannya hilang. Karena itu satu
+   * pelanggan yang kabur = satu event `[0,0,0]` di ronde, dan penggantinya
+   * langsung masuk supaya antrian tidak pernah kosong.
+   */
+  const kabur = (ids: number[]) => {
+    if (fase !== 'main' || mode !== 'shift' || ids.length === 0) return;
+    const sisaNyawa = nyawa - ids.length;
+    const salahBaru = salahGenba + ids.length;
+    ids.forEach(() => {
+      rondeRef.current.push([0, 0, 0]);
+    });
+    setNyawa(sisaNyawa);
+    setSalahGenba(salahBaru);
+    setKomboGenba(0);
+    setPesan(t('arcade.pelanggan_kabur'));
+
+    let daftar = pelangganRef.current.filter((c) => !ids.includes(c.id));
+    while (daftar.length < ANTRIAN_MAKS) {
+      seqRef.current += 1;
+      daftar = [...daftar, buatPelanggan(seqRef.current, pesananSelesai, aturan, loop)];
+    }
+    pelangganRef.current = daftar;
+    setAntrian(daftar);
+
+    if (sisaNyawa <= 0) {
+      selesaikan(false, skor, pesananSelesai, salahBaru, jumlahSisa, komboGenbaMaks, 'shift');
+      return;
+    }
+    /* Kalau yang kabur adalah pelanggan aktif, pindah ke yang paling mendesak. */
+    if (!daftar.some((c) => c.id === aktifIdRef.current)) {
+      const berikut = palingMendesak(daftar);
+      if (berikut) {
+        setAktifId(berikut.id);
+        pasangAktif(berikut, 0);
+      }
+    }
+  };
+  kaburRef.current = kabur;
+
   const taruh = (zonaId: string) => {
     if (!perintah || !dipilih || fase !== 'main' || menunggu) return;
     const modeNow = mode;
@@ -564,10 +802,28 @@ export default function ArcadeGame() {
       const komboBaru = komboGenba + 1;
       bunyiKombo(komboBaru);
       getar(komboBaru >= 5 ? [10, 26, 10] : 12);
-      const { tambah } = poinGenba(sisa, komboBaru);
+      /* Kesabaran pelanggan AKTIF, bukan durasi gelombang: dengan antrian,
+         tiap pelanggan punya batasnya sendiri dan angka itu yang dikirim ke
+         server. Drill memakai durasi gelombang seperti dulu. */
+      const aktifNow =
+        modeNow === 'shift'
+          ? (pelangganRef.current.find((c) => c.id === aktifIdRef.current) ?? null)
+          : null;
+      const batasNow = aktifNow
+        ? aktifNow.batasMs
+        : loop > 0
+          ? aturanUltimate(aturanAktif, loop - 1).durasiMs
+          : durasiShift(aturanAktif, pesananSelesai);
+      const sisaMs = aktifNow ? Math.round(aktifNow.sisaMs) : Math.round((sisa / 100) * batasNow);
+      const { tambah } = poinGenba(sisaMs, batasNow, komboBaru);
       const skorBaru = skor + tambah;
       const benarBaru = pesananSelesai + 1;
       const sisaTotalBaru = jumlahSisa + sisa;
+      /* Presisi memakai MILIDETIK sisa waktu, bukan persen yang dibulatkan:
+         persen 0–100 kehilangan resolusi tepat di tempat yang dibutuhkan
+         pemecah seri. Angka yang sama dikirim ke server di `ronde`. */
+      presisiMsRef.current += sisaMs;
+      rondeRef.current.push([1, sisaMs, batasNow]);
       const komboMaksBaru = Math.max(komboGenbaMaks, komboBaru);
       setKomboGenba(komboBaru);
       setKomboGenbaMaks(komboMaksBaru);
@@ -576,11 +832,32 @@ export default function ArcadeGame() {
       setPoinTerbang({ id: Date.now(), nilai: tambah });
       if (modeNow === 'drill') hapusLemahSatu(perintah);
       if (benarBaru >= target) {
-        const skorFinal = modeNow === 'drill' ? skorBaru : skorShift(skorBaru, aturan, true);
-        selesaikan(true, skorFinal, benarBaru, salahGenba, sisaTotalBaru, komboMaksBaru, modeNow);
+        if (modeNow === 'shift' && loop > 0) {
+          /* Gelombang Ultimate Loop selesai: bayaran gelombang ditambahkan,
+             lalu gelombang berikutnya dipasang dengan aturan yang lebih sulit.
+             Skor TIDAK di-reset dan `skorShift` TIDAK dipanggil lagi — kalau
+             dipanggil, bonus shift + pengali tingkat akan diberikan ulang di
+             setiap gelombang dan ekonominya membengkak. */
+          const bonusLoop = bonusUltimate(loop - 1, benarBaru);
+          const skorWave = skorBaru + bonusLoop;
+          const gelombangBaru = loop + 1;
+          setSkor(skorWave);
+          setPoinTerbang({ id: Date.now(), nilai: tambah + bonusLoop });
+          setLoop(gelombangBaru);
+          setPesananSelesai(0);
+          setSalahGenba(0);
+          setKomboGenba(0);
+          setNyawa(ULTIMATE.nyawa);
+          setTarget(ULTIMATE.pesananPerGelombang);
+          window.setTimeout(() => isiAntrian(0, gelombangBaru), 900);
+        } else {
+          const skorFinal = modeNow === 'drill' ? skorBaru : skorShift(skorBaru, aturan, true);
+          selesaikan(true, skorFinal, benarBaru, salahGenba, sisaTotalBaru, komboMaksBaru, modeNow);
+        }
       } else {
         setSkor(skorBaru);
-        pasang(modeNow, benarBaru, komboBaru);
+        if (modeNow === 'shift') layani(aktifNow, benarBaru, komboBaru);
+        else pasang(modeNow, benarBaru, komboBaru);
         /* SESUDAH `pasang`, bukan sebelum. `pasang()` mengosongkan `animasi`
            (baris `setAnimasi('')` di dalamnya), dan kedua panggilan berada di
            satu batch — jadi menyetelnya lebih dulu berarti nilai terakhir yang
@@ -605,10 +882,15 @@ export default function ArcadeGame() {
      `menunggu` WAJIB ada di daftar dependensi: tanpa itu sumbu terus berjalan
      selama jeda 1,1 detik setelah kesalahan, dan kesalahan yang terjadi di
      detik-detik akhir bisa memakan nyawa KEDUA kalinya. */
-  // biome-ignore lint/correctness/useExhaustiveDependencies: timer hanya boleh mulai ulang saat perintah/fase/menunggu berubah — bukan tiap kali skor atau gelombang berganti
+  // biome-ignore lint/correctness/useExhaustiveDependencies: timer hanya boleh mulai ulang saat perintah/fase/menunggu/loop berubah — bukan tiap kali skor berganti
   useEffect(() => {
-    if (fase !== 'main' || !perintah || menunggu) return;
-    const batas = durasiShift(aturanAktif, pesananSelesai);
+    /* Drill memakai satu timer per pesanan. Mode shift memakai timer antrian
+       di effect berikutnya (tiap pelanggan punya kesabarannya sendiri). */
+    if (fase !== 'main' || !perintah || menunggu || mode !== 'drill') return;
+    /* Ultimate Loop memakai kurva waktunya sendiri: turun 250 ms per gelombang
+       sampai lantai 2,5 dtk. `loop` ada di dependensi karena gelombang baru
+       harus memakai batas baru tanpa menunggu perintah berikutnya. */
+    const batas = loop > 0 ? aturanUltimate(aturanAktif, loop - 1).durasiMs : durasiShift(aturanAktif, pesananSelesai);
     const mulaiMs = Date.now();
     const id = window.setInterval(() => {
       const lewat = Date.now() - mulaiMs;
@@ -624,7 +906,24 @@ export default function ArcadeGame() {
       }
     }, 100);
     return () => window.clearInterval(id);
-  }, [fase, perintah, menunggu]);
+  }, [fase, perintah, menunggu, loop]);
+
+  /* Timer ANTRIAN (mode shift). Kesabaran SETIAP pelanggan berjalan
+     bersamaan — itulah yang membuat memilih siapa dilayani jadi keputusan.
+     `menunggu` menahan tick selama jeda koreksi, jadi pemain tidak dihukum
+     dua kali karena membaca pesan salah. */
+  useEffect(() => {
+    if (fase !== 'main' || mode !== 'shift' || menunggu) return;
+    const id = window.setInterval(() => {
+      const { daftar, kabur: kaburIds } = tick(pelangganRef.current, 100);
+      pelangganRef.current = daftar;
+      setAntrian(daftar);
+      const aktif = daftar.find((c) => c.id === aktifIdRef.current);
+      if (aktif) setSisa((aktif.sisaMs / aktif.batasMs) * 100);
+      if (kaburIds.length) kaburRef.current(kaburIds);
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [fase, mode, menunggu]);
 
   /* ── GAME 2: Kotoba Combo Builder ────────────────────────────────────────
      Kombo naik tiap kartu benar dan TIDAK lagi tanpa batas: `KOMBO_MAKS`
@@ -751,6 +1050,16 @@ export default function ArcadeGame() {
       kombo: komboGenbaMaks,
       tingkat,
       nilai: hasil?.nilai ?? '',
+      // `loop` adalah kedalaman Ultimate Loop (0 = shift biasa). Server memakai
+      // angka ini untuk (a) menaikkan plafon skor ke 10 juta dan (b) memecah
+      // seri sebelum waktu kirim. `presisi` = 4 digit dari milidetik sisa waktu.
+      presisi: digitPresisi(presisiMsRef.current),
+      loop,
+      ultimate: loop > 0,
+      /* Sumber kebenaran skor. Server menghitung ulang dari array ini dan
+         memakai hasilnya; `skor` di atas hanya dipakai sebagai pembanding
+         untuk mendeteksi selisih (lihat `simpanSkor`). */
+      ronde: rondeRef.current,
     }).then(() => {
       if (papanBuka) muatPapan('genba');
     });
@@ -767,7 +1076,13 @@ export default function ArcadeGame() {
     if (skorCombo <= 0) return;
     const id = window.setTimeout(() => {
       if (!bolehKirim(`combo:${skorCombo}`)) return;
-      void kirimSkor('combo', skorCombo, { level, kombo, kalimat: kalimatSelesai }).then(() => {
+      void kirimSkor('combo', skorCombo, {
+        level,
+        kombo,
+        kalimat: kalimatSelesai,
+        /* Sumber kebenaran skor Combo; server memutar ulang dari sini. */
+        ronde: rondeComboRef.current,
+      }).then(() => {
         if (papanBuka) muatPapan('combo');
       });
     }, 5000);
@@ -793,6 +1108,14 @@ export default function ArcadeGame() {
        memanggil `muatSoal(soalIdx + 1)` lagi — soal bisa melompat dua kali. */
     if (langkah >= soal.urutan.length || !kalimatAktif) return;
 
+    /* Jembatan ke adegan Godot (mode beta). Event ini TIDAK mengubah skor atau
+       state apa pun — ia hanya memberi tahu panggung visual bahwa sebuah kartu
+       disentuh, sehingga pita kombo dan ledakannya sinkron dengan permainan
+       DOM. Kalau Godot tidak dimuat, dispatch ke window tidak berefek. */
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('asj:combo', { detail: { aksi: 'pilih', indeks, kombo } }));
+    }
+
     if (kartuBenar(soal, langkah, k)) {
       bunyi(true);
       getar(10);
@@ -803,7 +1126,11 @@ export default function ArcadeGame() {
          `kombo` lama sehingga ketukan pertama selalu dinilai seolah tidak ada
          rangkaian — dan angka di layar (x2) tidak cocok dengan skor yang masuk. */
       const komboBaru = Math.min(KOMBO_MAKS, kombo + 1);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('asj:combo', { detail: { aksi: 'benar', indeks, kombo: komboBaru } }));
+      }
       const skorBaru = skorCombo + 50 * komboBaru;
+      rondeComboRef.current.push([1, 0]);
       setLangkah(l);
       setTray((tr) => [...tr, k.jp]);
       setKombo(komboBaru);
@@ -815,11 +1142,22 @@ export default function ArcadeGame() {
            bernilai daripada "mengetuk terus". Sisa waktu ikut dihitung, jadi
            kalimat yang cepat dibayar lebih. */
         const bonus = bonusKalimat(soal, sisaKalimatRef.current, level);
+        /* Level saat penyelesaian ini, bukan level terakhir sesi. */
+        rondeComboRef.current.push([
+          2,
+          Math.round(sisaKalimatRef.current),
+          level === 'hell' ? 2 : level === 'sulit' ? 1 : 0,
+        ]);
         setSkorCombo(skorBaru + bonus);
         catatRekorCombo(skorBaru + bonus);
         setBonusTerakhir(bonus);
         setKalimatAktif(false);
         setKalimatSelesai((n) => n + 1);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('asj:combo', { detail: { aksi: 'selesai', indeks: -1, kombo: komboBaru } }),
+          );
+        }
         setBalas(t('arcade.sempurna'));
         window.setTimeout(() => ucap(soal.urutan.map((u) => u.jp).join(' '), 0.95), 250);
         window.setTimeout(() => berikutCombo(), 1600);
@@ -828,6 +1166,10 @@ export default function ArcadeGame() {
       bunyi(false);
       getar([20, 40, 20]);
       setKombo(1);
+      rondeComboRef.current.push([0, 0]);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('asj:combo', { detail: { aksi: 'salah', indeks, kombo: 1 } }));
+      }
       const harap = soal.urutan[langkah];
       setBalas(k.jenis === 'particle' ? k.ket : `${t('arcade.butuh')} ${harap?.jp ?? ''} — ${harap?.ket ?? ''}`);
       catatLemah({ judul: `${soal.indo} — ${k.jp}`, detail: k.ket });
@@ -839,7 +1181,7 @@ export default function ArcadeGame() {
   }
 
   const waSendiri = waSiswa();
-  const gelombang = gelombangShift(aturanAktif, pesananSelesai) + 1;
+  const gelombang = loop > 0 ? loop : gelombangShift(aturanAktif, pesananSelesai) + 1;
   const progresShift = target > 0 ? Math.min(100, (pesananSelesai / target) * 100) : 0;
   /* Jumlah rak mengikuti performa (lihat `zonaAdaptif`), jadi tata letaknya
      harus ikut: 4 rak = 2 kolom, 6 = 3 kolom, 8 = 4 kolom. Ketiganya tetap DUA
@@ -961,6 +1303,11 @@ export default function ArcadeGame() {
               <p class="arc-result-title">
                 {hasil.menang ? `🏁 ${t('arcade.shift_selesai')}` : `💀 ${t('arcade.nyawa_habis')}`}
               </p>
+              {hasil.loop > 0 && (
+                <p class="arc-result-sub font-bold text-accent-amber">
+                  ∞ ULTIMATE LOOP · {t('arcade.gelombang')} {hasil.loop}
+                </p>
+              )}
               <p class="arc-result-sub">
                 {pesananSelesai}/{target} {t('arcade.pesanan')} · {t('arcade.akurasi')} {Math.round(hasil.akurasi * 100)}%
               </p>
@@ -1000,6 +1347,16 @@ export default function ArcadeGame() {
                   : `${t('arcade.rekor')} ¥ ${bacaRekorTingkat(hasil.tingkat)}`}
                 {hasil.deltaRekor > 0 && !hasil.rekorBaru ? ` · +${hasil.deltaRekor}` : ''}
               </p>
+              {!hasil.drill && hasil.nilai === 'S' && hasil.loop === 0 && (
+                <button
+                  type="button"
+                  onClick={mulaiLoop}
+                  class="arc-btn arc-btn--primary mt-2 w-full"
+                  data-testid="arcade-ultimate"
+                >
+                  ∞ ULTIMATE LOOP
+                </button>
+              )}
               <div class="arc-actions">
                 <button type="button" onClick={() => mulai('shift')} class="arc-btn arc-btn--primary">
                   ▶️ {t('arcade.cobagi')}
@@ -1023,6 +1380,11 @@ export default function ArcadeGame() {
                     <span class="arc-kicker">
                       {mode === 'drill' ? t('arcade.latih_salah') : t('arcade.pendapatan')}
                     </span>
+                    {loop > 0 && (
+                      <span class="ml-1.5 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-black text-slate-900">
+                        ∞ W{loop}
+                      </span>
+                    )}
                     <span class="arc-skor-baris">
                       <span class="arc-skor" data-testid="arcade-skor">
                         ¥ {skor}
@@ -1055,6 +1417,17 @@ export default function ArcadeGame() {
                         </span>
                       ))}
                     </p>
+                    {loop > 0 && (
+                      <button
+                        type="button"
+                        onClick={hentikanLoop}
+                        class="arc-btn arc-btn--small arc-btn--ghost mt-1"
+                        aria-label="Berhenti"
+                        title="Berhenti"
+                      >
+                        ■
+                      </button>
+                    )}
                   </div>
                 </div>
                 {komboGenba >= 2 && (
@@ -1069,6 +1442,34 @@ export default function ArcadeGame() {
                   <div class="arc-meter-fill" style={`transform:scaleX(${progresShift / 100})`} />
                 </div>
               </div>
+
+              {/* ── Antrian pelanggan ─────────────────────────────────────
+                  Tiga pelanggan sekaligus. Yang aktif diberi bingkai; mengetuk
+                  yang lain berpindah melayani TANPA mereset kesabarannya. */}
+              {mode === 'shift' && antrian.length > 0 && (
+                <section class="arc-antrian" aria-label={t('arcade.antrian')}>
+                  {antrian.map((c) => {
+                    const aktif = c.id === aktifId;
+                    const persen = Math.max(0, Math.min(100, (c.sisaMs / c.batasMs) * 100));
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => pilihAktif(c)}
+                        aria-pressed={aktif}
+                        class={`arc-antrian-kartu ${aktif ? 'arc-antrian-kartu--on' : ''} ${
+                          persen <= 30 ? 'arc-antrian-kartu--hot' : ''
+                        }`}
+                      >
+                        <span class="arc-antrian-jp">{c.perintah.jp}</span>
+                        <span class="arc-antrian-bar">
+                          <span style={`width:${persen}%`} />
+                        </span>
+                      </button>
+                    );
+                  })}
+                </section>
+              )}
 
               {/* ── Perintah ────────────────────────────────────────────── */}
               <div
@@ -1399,7 +1800,7 @@ export default function ArcadeGame() {
                           </span>
                         )}
                       </span>
-                      <strong class="shrink-0 font-mono text-fg">¥ {r.skor.toLocaleString('id-ID')}</strong>
+                      <strong class="shrink-0 font-mono text-fg">¥ {r.skorTampil ?? r.skor.toLocaleString('id-ID')}</strong>
                     </li>
                   );
                 })}

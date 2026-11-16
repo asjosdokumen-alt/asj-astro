@@ -39,6 +39,13 @@ export interface Kandidat {
   email?: string;
   tanggalDaftar?: string;
   createdAt?: string;
+  /**
+   * `false` = kolom `id_kandidat` kosong; `id` yang tampil adalah id numerik
+   * baris, bukan nomor ASJ. Dikirim `mapCandidate` sejak 2026-11-14 — dan
+   * seperti tiga field di atas, field yang tidak dideklarasikan di sini akan
+   * dibuang di sisi klien tanpa error, jadi penandanya ikut hilang.
+   */
+  idKandidatTerisi?: boolean;
 }
 
 // ── Modal State ──────────────────────────────────────────

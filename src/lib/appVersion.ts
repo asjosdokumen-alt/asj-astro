@@ -85,6 +85,12 @@ export function compareVersion(
 export async function fetchLatestVersion(
   fetchImpl: typeof fetch = fetch,
 ): Promise<VersionFile | null> {
+  /* Offline: jangan memanggil fetch sama sekali. Sebelumnya pemeriksaan ini
+     tetap menembak `/version.json`, gagal, dan menulis satu `console.error`
+     di DevTools — terbaca seperti game rusak padahal hanya cek versi.
+     `onLine === false` adalah sinyal yang tepat; kalau browser berbohong
+     (captive portal), catch di bawah tetap menangani. */
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
   try {
     const res = await fetchImpl(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) return null;

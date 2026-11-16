@@ -306,3 +306,39 @@ describe('mapCandidate — nilai ujian vs tautan tidak tercampur', () => {
     expect(c.jftText).toBe('N4');
   });
 });
+
+// ==========================================
+// mapCandidate — nomor kandidat: nilai NYATA vs pengganti
+// ==========================================
+//
+// KENAPA
+//   `mapCandidate` memakai `pick(['id_kandidat', 'id', …])`. Untuk baris yang
+//   kolomnya kosong, nilai pengganti itu adalah `id` numerik — dan di kolom
+//   "ID Kandidat" angka tersebut tidak bisa dibedakan dari nomor ASJ asli.
+//   Terukur 2026-11-14: 2 baris hasil pendaftaran mandiri tampil "632"/"628"
+//   dan tidak ada yang menyadarinya sampai pemilik bertanya.
+//
+//   Nilai pengganti TETAP dipakai (banyak pemanggil butuh string tak kosong),
+//   jadi yang diuji adalah PENANDANYA — satu-satunya hal yang membuat keadaan
+//   itu terlihat.
+// ==========================================
+describe('mapCandidate — idKandidatTerisi menandai nomor pengganti', () => {
+  it('id_kandidat terisi → penanda true, nilainya dipakai apa adanya', () => {
+    const c = mapCandidate({ id: 632, id_kandidat: 'ASJ01011', nama_lengkap: 'ARIS' });
+    expect(c.id).toBe('ASJ01011');
+    expect(c.idKandidatTerisi).toBe(true);
+  });
+
+  it('id_kandidat kosong → penanda false, dan id numerik TIDAK menyamar jadi nomor', () => {
+    const c = mapCandidate({ id: 632, id_kandidat: null, nama_lengkap: 'ARIS' });
+    // Nilai pengganti tetap ada supaya kontrak string tidak berubah…
+    expect(c.id).toBe('632');
+    // …tetapi sekarang ia menyatakan dirinya sebagai pengganti.
+    expect(c.idKandidatTerisi).toBe(false);
+  });
+
+  it('id_kandidat berupa string kosong / spasi diperlakukan sama seperti NULL', () => {
+    expect(mapCandidate({ id: 632, id_kandidat: '' }).idKandidatTerisi).toBe(false);
+    expect(mapCandidate({ id: 632, id_kandidat: '   ' }).idKandidatTerisi).toBe(false);
+  });
+});

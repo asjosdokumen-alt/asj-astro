@@ -63,7 +63,19 @@ const waExam =
                Wujudkan mimpimu berkarir di Jepang lewat jalur resmi. Tersedia program <strong>Tokutei Ginou (SSW)</strong> dan <strong>Magang (SO Swasta)</strong> dengan kuota eksklusif terbatas 25-30 anak per angkatan agar belajar lebih fokus.
            </p>
 
-           <div class="bg-emerald-900/20 p-4 rounded-xl border-l-4 border-emerald-500 mb-6">
+           {/* ── KOTAK DI DALAM KOTAK DI DALAM KOTAK (2026-11-14) ────────────
+               Sebelumnya kartu ini punya tiga lapis permukaan: panel luar →
+               callout hijau berisi `bg-emerald-900/20 rounded-xl` → dua kotak
+               `bg-black/30 rounded-xl`. Tiga tingkat kotak bersarang membuat
+               mata harus memutuskan "mana yang penting" di setiap tepi, dan
+               callout dana talang — yang isinya cuma satu paragraf — tampak
+               sama beratnya dengan dua kotak data di bawahnya.
+
+               Yang dilepas HANYA permukaan callout-nya (bg + radius). Garis
+               kiri 4 px tetap: itu yang memberi penekanan, dan ia bekerja
+               tanpa kotak. Sekarang: panel → dua kotak data. Satu lapis lebih
+               sedikit, informasi tidak berkurang satu kata pun. */}
+           <div class="border-l-4 border-emerald-500 pl-4 mb-6">
                <!-- H3, not H4: this card's own title is an H2 (line 42), so an H4 here
                     skipped a level. Measured by Lighthouse (`heading-order`, 2026-10-20)
                     and by `e2e:headings` once its outline check was widened from the
@@ -97,7 +109,19 @@ const waExam =
                <!-- Fasilitas Asrama -->
                <div class="bg-black/30 border border-slate-700/50 p-4 rounded-xl">
                    <h3 class="text-amber-400 font-bold mb-1 text-sm uppercase tracking-widest"><Icon name="hotel" class="mr-1.5" /> <span data-lang="landing.class_fac_title">Fasilitas Asrama Gratis</span></h3>
-                   <p class="text-[11px] text-slate-500 mb-3 italic" data-lang="landing.class_fac_note">*Hanya iuran listrik Rp 30.000/Bln</p>
+                   {/* 11px -> 12px (2026-11-14). Ini satu-satunya teks ISI di
+                      halaman depan yang masih di bawah 12 px; sisanya kroma
+                      dekoratif band film yang `aria-hidden`. Baris ini menyebut
+                      ANGKA (Rp 30.000), jadi ia yang paling perlu terbaca.
+
+                      ⚠ WARNANYA TIDAK SAYA UBAH, dan itu keputusan terukur.
+                      `text-slate-600` sempat dicoba: ia punya aturan untuk tema
+                      terang (`#7d7772`) tetapi TIDAK punya aturan untuk tema
+                      gelap, jadi di sana ia jatuh ke `#475569` literal di atas
+                      panel gelap — sekitar 2,2:1, gagal telak. `text-slate-500`
+                      punya KEDUA aturan (`#6b6661` terang / `#8593ac` gelap),
+                      jadi yang perlu diperbaiki hanya ukurannya. */}
+                  <p class="text-[12px] text-slate-500 mb-3 italic" data-lang="landing.class_fac_note">*Hanya iuran listrik Rp 30.000/Bln</p>
                    <div class="grid grid-cols-2 gap-y-2 gap-x-1 text-xs text-slate-300">
                        <div class="flex items-center gap-1.5"><Icon name="bed" class="text-amber-400/70 w-3" /> <span data-lang="landing.class_fac_kasur">Kasur</span></div>
                        <div class="flex items-center gap-1.5"><Icon name="wifi" class="text-amber-400/70 w-3" /> <span data-lang="landing.class_fac_wifi">WiFi</span></div>

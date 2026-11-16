@@ -1,5 +1,10 @@
 # DESIGN.md — Design System ASJ Portal v2
 
+> 🔴 **SNAPSHOT — BUKAN status kini (penanda 2026-11-15).** Basis ukur: `41e64cc`, 2026-09-19.
+> Ini **keputusan desain**, bukan laporan status; nilai token yang benar-benar aktif tetap ukur dari `src/styles/theme.css` / `global.css`.
+> **Status NOW:** `README.md` §Status · `PROJECT_CONTEXT.md` §2/§8 ·
+> `docs/README.md` (aturan NOW vs THEN). Ukur ulang sebelum dipakai untuk keputusan.
+
 **Status:** rancangan arah & token · **Dibuat:** 2026-09-19
 **Basis ukur:** HEAD `41e64cc`, pohon kerja **bersih**
 **Sasaran dokumen:** siapa pun yang menyentuh tampilan — rombak UI/UX dimulai dari

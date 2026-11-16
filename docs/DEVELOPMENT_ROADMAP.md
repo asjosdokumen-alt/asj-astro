@@ -1,5 +1,10 @@
 # DEVELOPMENT_ROADMAP — urutan eksekusi: fondasi dulu, fitur belakangan
 
+> 🔴 **SNAPSHOT — BUKAN status kini (penanda 2026-11-15).** Basis ukur: `3804576`, 2026-09-18.
+> Isi di bawah sengaja dipertahankan sebagai catatan keputusan (R7): **jangan "diperbaiki" barisnya**, dan jangan pakai angkanya sebagai keadaan sekarang.
+> **Status NOW:** `README.md` §Status · `PROJECT_CONTEXT.md` §2/§8 ·
+> `docs/README.md` (aturan NOW vs THEN). Ukur ulang sebelum dipakai untuk keputusan.
+
 **Dibuat:** 2026-09-18 · **Basis ukur:** HEAD `3804576`, pohon kerja bersih (0 berkas kotor)
 **Prinsip pemilik:** *"bangun fondasi 100% dulu tanpa ada tanggungan atau backlog yang tertinggal.
 Setelah fondasi bersih dan stabil, baru tahap perbaikan bug, upgrade fitur, dan seterusnya."*

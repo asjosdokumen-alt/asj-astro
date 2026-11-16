@@ -372,13 +372,24 @@ export interface PoinGenba {
  * setiap jawaban; yang bertingkat adalah PENGALINYA.
  *
  *   dasar        100
- *   cepat        round(50 × sisa waktu)   → 0–50
+ *   cepat        round(50 × sisa/batas)   → 0–50
  *   kombo ≥ 5    ×2
  *   kombo ≥ 10   ×3   (batas, supaya skor tumbuh linear)
+ *
+ * SEJAK 2026-11-16 argumennya MILIDETIK, bukan persen 0–100. Alasannya bukan
+ * kerapian: skor dihitung ulang di server dari ronde yang sama, dan persen
+ * yang sudah dibulatkan kehilangan informasi tepat di tempat pembulatan
+ * terjadi — dua kiriman sah bisa berbeda 1 poin lalu ditolak. Milidetik adalah
+ * angka yang benar-benar diukur timer, jadi ia yang dipakai kedua sisi.
+ *
+ * ⚠️ SALINAN: `netlify/functions/shared/genba-skor.ts` memuat rumus yang HARUS
+ * identik (bundler Netlify tidak menjangkau `src/`). Paritasnya dipaku
+ * `shared/genba-skor.test.ts`. Jangan ubah satu sisi saja.
  */
-export function poinGenba(sisaPersen: number, kombo: number): PoinGenba {
-  const sisa = Math.min(100, Math.max(0, sisaPersen));
-  const bonusCepat = Math.round((sisa / 100) * 50);
+export function poinGenba(sisaMs: number, batasMs: number, kombo: number): PoinGenba {
+  const batas = Number.isFinite(batasMs) && batasMs > 0 ? Math.round(batasMs) : 1;
+  const ms = Number.isFinite(sisaMs) ? Math.min(batas, Math.max(0, Math.round(sisaMs))) : 0;
+  const bonusCepat = Math.round((ms / batas) * 50);
   const pengali = kombo >= 10 ? 3 : kombo >= 5 ? 2 : 1;
   return { tambah: (100 + bonusCepat) * pengali, bonusCepat, pengali };
 }
@@ -432,6 +443,301 @@ export function bonusShift(aturan: AturanShift): number {
 export function skorShift(skor: number, aturan: AturanShift, selesai: boolean): number {
   if (!selesai) return skor;
   return Math.round((skor + bonusShift(aturan)) * aturan.pengali);
+}
+
+/* ── ULTIMATE LOOP: "S bukan akhir, S adalah gerbang" ───────────────────────
+ *
+ * KELUHAN YANG DIJAWAB (pemilik, 2026-11-15): "kalau misal 1 siswa sama sama
+ * perfect jadi sama donk ... biar auto top score nya gak ada yg sama".
+ *
+ * Dua siswa dengan 100% benar dan rata-rata sisa waktu ≥ 50% memang sama-sama
+ * mendapat S, dan karena poin per pesanan dibulatkan, skor mereka bisa IDENTIK.
+ * Papan peringkat lalu cuma mengurutkan siapa yang lebih dulu menekan tombol.
+ *
+ * Dua mekanisme yang saling melengkapi:
+ *
+ *  1. ULTIMATE LOOP — nilai S bukan plafon, melainkan GERBANG. Setelah shift
+ *     selesai dengan S, pemain boleh masuk gelombang tak terbatas. Tiap
+ *     gelombang makin sulit DAN makin besar bayarannya, jadi skor tidak punya
+ *     batas atas; kedalaman loop memisahkan dua pemain sempurna.
+ *  2. DIGIT PRESISI — total sisa waktu dalam milidetik jadi 4 digit desimal
+ *     pada skor yang ditampilkan ("¥ 4.550,3712"). Digit ini berasal dari
+ *     reaksi nyata, BUKAN angka acak, dan dipakai sebagai kunci urut kedua.
+ *     Pemecah seri terakhir: waktu kirim, lalu hash deterministik nomor WA.
+ *
+ * Semua fungsi di blok ini MURNI dan diuji di `arcade.test.ts`. Skor tetap
+ * dihitung di TypeScript (bukan di Godot), supaya papan peringkat, rekor
+ * lokal, dan kartu hasil memakai satu angka yang sama.
+ */
+
+export const ULTIMATE: Readonly<{
+  pesananPerGelombang: number;
+  nyawa: number;
+  durasiMin: number;
+  turunDurasi: number;
+  pilihanMaks: number;
+  zonaMaks: number;
+  kecepatanTtsMaks: number;
+  bonusGelombang: number;
+  bonusBenar: number;
+  pengaliGelombang: number;
+}> = {
+  pesananPerGelombang: 4,
+  nyawa: 1,
+  durasiMin: 2500,
+  turunDurasi: 250,
+  pilihanMaks: 9,
+  zonaMaks: 8,
+  kecepatanTtsMaks: 1.5,
+  bonusGelombang: 100,
+  bonusBenar: 25,
+  pengaliGelombang: 0.1,
+};
+
+/** 4 digit desimal = 10.000 kemungkinan; modulus, bukan clamp, supaya tidak jenuh. */
+export const PRESISI_MOD = 10_000;
+
+/** Batas skor server untuk mode tanpa akhir (dinaikkan dari 1.000.000). */
+export const SKOR_MAKS_ULTIMATE = 10_000_000;
+
+export interface AturanUltimate {
+  gelombang: number;
+  durasiMs: number;
+  pilihan: number;
+  zona: number;
+  kecepatanTts: number;
+}
+
+/** Hanya shift yang SELESAI dan bernilai S yang membuka gerbang. */
+export function bolehUltimate(nilai: NilaiShift, selesai: boolean): boolean {
+  return selesai && nilai === 'S';
+}
+
+/**
+ * Kurva gelombang ke-`w` (0-based) setelah shift dasar.
+ *
+ * Waktu turun 250 ms per gelombang sampai 2,5 dtk, pilihan barang naik tiap
+ * 2 gelombang sampai 9, rak naik ke 8 mulai gelombang 3, TTS makin cepat
+ * sampai 1,5×. Semua ada PLAFON: tanpa itu gelombang ke-20 mustahil dibaca
+ * dan pemain berhenti bukan karena kalah, tapi karena layar tidak masuk akal.
+ */
+export function aturanUltimate(dasar: AturanShift, gelombang: number): AturanUltimate {
+  const w = Math.max(0, Math.floor(Number.isFinite(gelombang) ? gelombang : 0));
+  const durasiAkhir = dasar.durasi[dasar.durasi.length - 1] ?? 8000;
+  const pilihanAkhir = dasar.pilihan[dasar.pilihan.length - 1] ?? 6;
+  const zonaAkhir = dasar.zona[dasar.zona.length - 1] ?? 4;
+  return {
+    gelombang: w,
+    durasiMs: Math.max(ULTIMATE.durasiMin, durasiAkhir - ULTIMATE.turunDurasi * w),
+    pilihan: Math.min(ULTIMATE.pilihanMaks, pilihanAkhir + Math.floor(w / 2)),
+    zona: Math.min(ULTIMATE.zonaMaks, zonaAkhir + (w >= 2 ? 2 : 0)),
+    kecepatanTts: Math.min(
+      ULTIMATE.kecepatanTtsMaks,
+      0.9 + 0.06 * Math.max(0, dasar.durasi.length - 1) + 0.03 * w,
+    ),
+  };
+}
+
+/** Bayaran menyelesaikan satu gelombang: tumbuh, tapi tidak meledak kuadratik. */
+export function bonusUltimate(gelombang: number, benar: number): number {
+  const w = Math.max(0, Math.floor(Number.isFinite(gelombang) ? gelombang : 0));
+  const b = Math.max(0, Math.floor(Number.isFinite(benar) ? benar : 0));
+  return Math.round(
+    (ULTIMATE.bonusGelombang * (w + 1) + ULTIMATE.bonusBenar * b) *
+      (1 + ULTIMATE.pengaliGelombang * w),
+  );
+}
+
+/** Total sisa waktu (ms) → 4 digit tanda presisi. Modulus supaya tidak jenuh. */
+export function digitPresisi(sisaMs: number): number {
+  if (!Number.isFinite(sisaMs) || sisaMs <= 0) return 0;
+  return Math.floor(sisaMs) % PRESISI_MOD;
+}
+
+/** Kunci urut papan: skor menang, presisi jadi pemecah seri pertama. */
+export function kunciPresisi(skor: number, digit: number): number {
+  const s = Math.max(0, Math.round(Number.isFinite(skor) ? skor : 0));
+  const d = Math.min(PRESISI_MOD - 1, Math.max(0, Math.round(Number.isFinite(digit) ? digit : 0)));
+  return s * PRESISI_MOD + d;
+}
+
+/** "4.550,3712" — dipakai kartu hasil DAN papan peringkat, jadi selalu cocok. */
+export function formatSkorPresisi(skor: number, digit: number): string {
+  const s = Math.max(0, Math.round(Number.isFinite(skor) ? skor : 0));
+  const d = Math.min(PRESISI_MOD - 1, Math.max(0, Math.round(Number.isFinite(digit) ? digit : 0)));
+  return `${s.toLocaleString('id-ID')},${String(d).padStart(4, '0')}`;
+}
+
+/* ── REPLAY: skor Genba dari urutan jawaban ────────────────────────────────
+ *
+ * KENAPA ADA (2026-11-16)
+ *   Sampai 2026-11-15 papan peringkat menerima angka apa pun dari klien.
+ *   Batas 1 juta hanya menolak kiriman mustahil; klien yang dimodifikasi bisa
+ *   mengirim 999.999 tanpa memainkan satu ronde pun. Dengan replay ini, skor
+ *   menjadi FUNGSI dari urutan jawaban: server menjalankan ulang aturan yang
+ *   sama dan memakai hasilnya, bukan angka kiriman.
+ *
+ * YANG TIDAK DIKLAIM
+ *   Ini bukan anti-curang penuh. Klien masih bisa mengaku "12 jawaban benar
+ *   dalam 0 ms" — yang hilang adalah kemampuan mengarang angka di luar
+ *   ronde. Penjagaan sesungguhnya menuntut soal yang diterbitkan server, dan
+ *   itu pekerjaan lain.
+ *
+ * KENAPA MENERIMA `unknown`
+ *   Fungsi ini dipanggil di server dengan payload mentah. Memvalidasi di sini
+ *   (bukan di pemanggil) membuat satu tempat yang bisa salah, dan membuat
+ *   salinan backend-nya bisa diuji paritas apa adanya.
+ */
+
+export interface HasilHitungGenba {
+  skor: number;
+  /** 4 digit dari total milidetik sisa waktu jawaban BENAR. */
+  presisi: number;
+  /** Gelombang loop yang SUDAH selesai (0 = baru shift dasar). */
+  loop: number;
+  /**
+   * Nomor gelombang yang sedang dimainkan (0 = belum masuk loop).
+   *
+   * BEDA dengan `loop`, dan bedanya penting: klien mengirim `detail.loop`
+   * sebagai nomor gelombang BERJALAN (`mulaiLoop` menyetel 1 sebelum pesanan
+   * pertama), sedangkan `loop` menghitung gelombang yang tuntas. Memakai
+   * `loop` untuk membandingkan akan menolak setiap pemain yang gugur di
+   * gelombang loop pertama — kegagalan yang paling sering terjadi.
+   */
+  loopDimainkan: number;
+  benar: number;
+  salah: number;
+  /** Pesanan pada fase terakhir yang dilaporkan klien (`detail.pesanan`). */
+  pesananAkhir: number;
+  /** Shift dasar tuntas — syarat masuk Ultimate Loop. */
+  selesai: boolean;
+  /** Run berakhir karena nyawa habis (bukan karena menang). */
+  berhenti: boolean;
+  nilai: NilaiShift;
+}
+
+/** Batas jumlah event: kiriman raksasa ditolak sebelum memakan CPU fungsi. */
+export const RONDE_MAKS = 4000;
+
+/**
+ * Jalankan ulang satu shift Genba.
+ *
+ * Bentuk `ronde`: array `[benar, sisaMs]` berurutan. `sisaMs` dijepit ke batas
+ * waktu pesanan yang berlaku saat itu — angka dari klien tidak pernah dipakai
+ * mentah. Mengembalikan `null` untuk payload yang tidak bisa dipercaya, supaya
+ * pemanggil bisa menolak alih-alih menyimpan skor 0 yang tampak sah.
+ */
+export function hitungGenba(tingkat: unknown, ronde: unknown): HasilHitungGenba | null {
+  if (typeof tingkat !== 'string' || !Object.hasOwn(SHIFT_GENBA, tingkat)) return null;
+  const aturan = SHIFT_GENBA[tingkat as TingkatGenba];
+  if (!aturan) return null;
+  if (!Array.isArray(ronde) || ronde.length === 0 || ronde.length > RONDE_MAKS) return null;
+
+  let skor = 0;
+  let kombo = 0;
+  let benar = 0;
+  let salah = 0;
+  let presisiMs = 0;
+  let loop = 0;
+  let pesanan = 0;
+  let pesananLapor = 0;
+  let nyawa = aturan.nyawa;
+  let sisaTotal = 0;
+  let benarGelombang = 0;
+  let tahap: 'shift' | 'loop' = 'shift';
+  let selesai = false;
+  let berhenti = false;
+
+  for (const ev of ronde) {
+    if (!Array.isArray(ev) || ev.length < 2) return null;
+    const b = ev[0];
+    const msRaw = ev[1];
+    if (b !== 0 && b !== 1) return null;
+    if (typeof msRaw !== 'number' || !Number.isFinite(msRaw)) return null;
+    /* Event sesudah run berakhir (nyawa habis) diabaikan, tapi TETAP divalidasi
+       di atas — kalau tidak, ekor sampah bisa menyelinap tanpa terbaca. */
+    if (berhenti) continue;
+
+    /* Peralihan ke loop terjadi pada EVENT PERTAMA sesudah shift tuntas, bukan
+       saat shift tuntas. Klien mengirim kiriman pertama tepat pada momen itu
+       (dengan `loop: 0`), jadi menyalakan `tahap` lebih awal akan membuat
+       replay melaporkan gelombang 1 untuk run yang belum memainkannya. */
+    if (selesai && tahap === 'shift') tahap = 'loop';
+
+    /* Batas waktu pesanan INI. Sejak antrian pelanggan (2026-11-16), klien
+       mengirim kesabaran pelanggan di elemen ke-3 — tiap pelanggan punya
+       batasnya sendiri, jadi menurunkannya dari nomor pesanan akan salah.
+       Nilai dari klien dijepit ke rentang wajar supaya tidak bisa dipakai
+       menggelembungkan bonus kecepatan. */
+    const batasDikirim = Number(ev[2]);
+    const batas =
+      Number.isFinite(batasDikirim) && batasDikirim >= 1000 && batasDikirim <= 30_000
+        ? Math.round(batasDikirim)
+        : tahap === 'loop'
+          ? aturanUltimate(aturan, loop).durasiMs
+          : durasiShift(aturan, pesanan);
+    const ms = Math.min(batas, Math.max(0, Math.round(msRaw)));
+
+    if (b === 1) {
+      kombo += 1;
+      skor += poinGenba(ms, batas, kombo).tambah;
+      presisiMs += ms;
+      benar += 1;
+      pesanan += 1;
+      benarGelombang += 1;
+      sisaTotal += (ms / batas) * 100;
+      pesananLapor = pesanan;
+      const target = tahap === 'loop' ? ULTIMATE.pesananPerGelombang : aturan.pesanan;
+      if (pesanan >= target) {
+        if (tahap === 'loop') {
+          /* Gelombang loop tuntas: bayaran gelombang, BUKAN `skorShift` lagi —
+             kalau dipanggil ulang, bonus shift + pengali tingkat terbayar di
+             setiap gelombang dan ekonominya membengkak. Klien langsung
+             mereset pesanan ke 0 dan belum menjawab apa pun, jadi angka yang
+             dilaporkan pada kiriman berikutnya adalah 0. */
+          skor += bonusUltimate(loop, benarGelombang);
+          loop += 1;
+          pesananLapor = 0;
+        } else {
+          skor = skorShift(skor, aturan, true);
+          selesai = true;
+        }
+        pesanan = 0;
+        benarGelombang = 0;
+        kombo = 0;
+        nyawa = ULTIMATE.nyawa;
+      }
+    } else {
+      kombo = 0;
+      salah += 1;
+      nyawa -= 1;
+      pesananLapor = pesanan;
+      if (nyawa <= 0) berhenti = true;
+    }
+  }
+
+  const sisaRata = benar > 0 ? sisaTotal / benar : 0;
+  return {
+    skor,
+    presisi: digitPresisi(presisiMs),
+    loop,
+    loopDimainkan: loop + (tahap === 'loop' ? 1 : 0),
+    benar,
+    salah,
+    pesananAkhir: pesananLapor,
+    selesai,
+    berhenti,
+    nilai: nilaiShift({ selesai, benar, salah, sisaRata }),
+  };
+}
+
+/** FNV-1a — pemecah seri TERAKHIR yang deterministik (bukan Math.random). */export function tandaSiswa(wa: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < wa.length; i++) {
+    h ^= wa.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
 }
 
 /* ── GAME 2: rangkai kalimat ─────────────────────────────────────────────── */
@@ -2470,4 +2776,87 @@ export function bonusKalimat(soal: SoalCombo, sisaPersen: number, level: LevelCo
      sama dengan kalimat 5 kartu hanya karena sisa waktunya penuh. */
   const cepat = Math.round((sisa / 100) * 100 * (soal.urutan.length / 5));
   return dasar + cepat;
+}
+
+/* ── REPLAY SKOR COMBO ─────────────────────────────────────────────────────
+ *
+ * KENAPA ADA (2026-11-16)
+ *   Sama seperti Genba: skor Combo dulu dihitung di komponen lalu dikirim
+ *   sebagai angka, dan papan peringkat menerimanya selama ≤ 1.000.000. Fungsi
+ *   ini membuat skor menjadi fungsi dari urutan ketukan.
+ *
+ * BENTUK RONDE: `[jenis, nilai, kode]`
+ *   1 = kartu benar            nilai 0
+ *   0 = kartu salah            nilai 0
+ *   2 = kalimat selesai        nilai = sisa waktu 0–100
+ *                              kode  = 0 normal · 1 sulit · 2 hell
+ *
+ *   Level ikut di SETIAP penyelesaian karena tombol level bisa ditekan di
+ *   tengah sesi tanpa mereset skor — kalau level hanya dikirim sekali, replay
+ *   akan memakai level terakhir untuk seluruh riwayat.
+ *
+ *   Kartu terakhir sebuah kalimat menghasilkan DUA event: `[1,0]` lalu
+ *   `[2,sisa,kode]`. Panjang kalimat tidak dikirim — server menghitungnya dari
+ *   jumlah kartu benar sejak penyelesaian sebelumnya, sama dengan
+ *   `soal.urutan.length` yang dipakai klien.
+ *
+ * ⚠️ SALINAN: `netlify/functions/shared/game-skor.ts`. Paritas dipaku
+ * `shared/game-skor.test.ts`.
+ */
+
+/** Batas event satu kiriman; Combo bermain terus, jadi batasnya lebih longgar. */
+export const RONDE_MAKS_COMBO = 4000;
+
+export interface HasilHitungCombo {
+  skor: number;
+  /** Kalimat yang selesai — dibandingkan dengan `detail.kalimat`. */
+  kalimat: number;
+  /** Kombo terakhir — dibandingkan dengan `detail.kombo`. */
+  kombo: number;
+}
+
+/**
+ * Jalankan ulang satu sesi Combo.
+ *
+ * Kombo mulai dari 1 (bukan 0): kartu pertama sebuah kalimat bernilai ×2,
+ * sama seperti yang terlihat di layar. Mengembalikan `null` untuk payload tak
+ * layak.
+ */
+export function hitungCombo(ronde: unknown): HasilHitungCombo | null {
+  if (!Array.isArray(ronde) || ronde.length === 0 || ronde.length > RONDE_MAKS_COMBO) return null;
+
+  let skor = 0;
+  let kombo = 1;
+  let kalimat = 0;
+  let benarSejak = 0;
+
+  for (const ev of ronde) {
+    if (!Array.isArray(ev) || ev.length < 2) return null;
+    const jenis = ev[0];
+    const nilai = ev[1];
+    if (jenis === 1) {
+      if (nilai !== 0) return null;
+      kombo = Math.min(KOMBO_MAKS, kombo + 1);
+      skor += 50 * kombo;
+      benarSejak += 1;
+    } else if (jenis === 0) {
+      if (nilai !== 0) return null;
+      kombo = 1;
+    } else if (jenis === 2) {
+      if (typeof nilai !== 'number' || !Number.isFinite(nilai)) return null;
+      const kode = ev[2];
+      if (kode !== 0 && kode !== 1 && kode !== 2) return null;
+      /* Kalimat tanpa satu kartu benar bukan penyelesaian yang sah. */
+      if (benarSejak === 0) return null;
+      const sisa = Math.min(100, Math.max(0, nilai));
+      const dasar = kode === 2 ? 300 : kode === 1 ? 200 : 100;
+      skor += dasar + Math.round((sisa / 100) * 100 * (benarSejak / 5));
+      kalimat += 1;
+      benarSejak = 0;
+    } else {
+      return null;
+    }
+  }
+
+  return { skor, kalimat, kombo };
 }

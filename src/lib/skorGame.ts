@@ -36,8 +36,20 @@ export interface BarisPapanGame {
   nama: string;
   kelas: string;
   skor: number;
+  /** "4.550,3712" — ada sejak Ultimate Loop; opsional untuk server versi lama. */
+  skorTampil?: string;
+  /** 4 digit presisi (milidetik sisa waktu) dan kedalaman loop. */
+  presisi?: number;
+  loop?: number;
   detail?: Record<string, unknown>;
   dibuat_pada?: string;
+}
+
+/** Teks skor papan yang aman untuk server lama maupun baru. */
+export function teksSkorPapan(r: BarisPapanGame): string {
+  return typeof r.skorTampil === 'string' && r.skorTampil.length > 0
+    ? r.skorTampil
+    : Math.max(0, Math.round(r.skor || 0)).toLocaleString('id-ID');
 }
 
 /** Nomor WA siswa yang sedang masuk, atau '' bila tidak ada. */

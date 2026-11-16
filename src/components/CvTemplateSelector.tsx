@@ -159,7 +159,11 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
           so a click inside the panel cannot reach the close path. The explicit
           guard is one fewer interactive static element for the a11y ratchet to
           carry — `lint-ratchet` failed on exactly that when it was here. */}
-      <div class={`bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full ${preview ? 'max-w-6xl' : 'max-w-lg'} max-h-[85vh] overflow-auto shadow-2xl`}>
+      {/* Saat pratinjau, panel dilebarkan hampir sepanjang layar: form KINKI
+          hanya 31 kolom sempit (~1.080 px) dan `kaigo-hyogo` 2.995 px. Di
+          `max-w-6xl` (1.152 px) yang pertama mengambang kecil dan yang kedua
+          harus digeser 2,6 layar. Lebar isi tidak diubah — hanya ruangnya. */}
+      <div class={`bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full ${preview ? 'max-w-[92vw]' : 'max-w-lg'} max-h-[85vh] overflow-auto shadow-2xl`}>
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-bold text-sky-400"><Icon name="file-alt" class="mr-2" />{t('ui.select_cv_template')}</h3>
           <button type="button" onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
@@ -167,9 +171,12 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
         {error && <p class="text-red-400 text-sm mb-4">{error}</p>}
         {preview ? (
           <div class="space-y-3">
-            {/* Border/fill template tidak ikut diekspor SheetJS (itu SheetJS Pro);
-                garis di bawah ini hanya supaya sel terbaca sebagai tabel, bukan
-                meniru form. Yang dicetak tetap berkas .xlsx-nya. */}
+            {/* Sejak 2026-11-14 border, font, fill, dan alignment dibaca dari
+                `styles.xml` oleh `xlsxPreviewHtml` dan ditulis inline per sel —
+                jadi yang di bawah ini hanya jaring pengaman untuk sel yang tidak
+                punya style sama sekali. Jangan menambah border di sini: garis
+                seragam untuk semua sel itulah yang dulu membuat pratinjau
+                terbaca sebagai kertas grafik. Yang dicetak tetap berkas .xlsx. */}
             <style>{`.cv-preview table{border-collapse:collapse;table-layout:fixed;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif}
 .cv-preview td{overflow:hidden}`}</style>
             <div class="flex items-center justify-between gap-3">

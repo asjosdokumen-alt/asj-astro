@@ -231,3 +231,14 @@ deliverables/story-3d/assets/*.png
 # of PNG that the committed `.webp` beside them fully replaces. Same reason, one
 # directory deeper — `assets/*.png` does not match a nested path.
 deliverables/story-3d/assets/wide/*.png
+
+# Master PNG hasil generate untuk kit aset game (2026-11-15): 6 berkas / 9,2 MB,
+# masih ada watermark generator. Yang dipakai game adalah WebP hasil crop di
+# `deliverables/game-design/art/` (266 KB), dibuat ulang lewat `_build-art.mjs`.
+# Master tidak perlu masuk riwayat repo publik.
+deliverables/game-design/art/_masters/*.png
+
+# Godot 4: cache impor/editor. Dibuat ulang oleh
+# `godot --headless --path godot --import`; tidak perlu masuk riwayat.
+# `godot/art/*.import` TETAP di-track karena menyimpan setelan impor tekstur.
+godot/.godot/

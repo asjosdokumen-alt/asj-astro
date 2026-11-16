@@ -9,14 +9,21 @@ tidak tahu harus baca yang mana, mulai dari tabel di bawah.
 
 ---
 
-## Kalau kamu baru masuk (baca 3 ini dulu)
+## Kalau kamu baru masuk (baca 4 ini dulu)
 
 | # | Dokumen | Untuk apa |
 |---|---|---|
-| 1 | [[DEVELOPMENT_ROADMAP]] | **Urutan eksekusi.** Apa yang dikerjakan sekarang, apa yang sengaja ditunda, dan kenapa. Ini otoritas urutan kerja. |
-| 2 | [[REMAINING_BY_DISCIPLINE]] | Apa yang belum selesai, dikelompokkan per disiplin (frontend, backend, CI, data). |
-| 3 | `../README.md` §Status | **Kondisi terkini**, diukur dan bertanggal. |
-| 3b | `../TODO.md` | Pekerjaan non-backend yang benar-benar tersisa. |
+| 0 | `../PROJECT_CONTEXT.md` | **Baca paling awal.** Konteks bisnis + teknis untuk AI, disegarkan 2026-11-15 dari kode: stack, env, rute, status rilis, aturan kerja. |
+| 1 | `../README.md` §Status | **Kondisi terkini**, diukur dan bertanggal. |
+| 2 | `../TODO.md` | Log keputusan non-backend (arsip bertanggal; baca penanda "CARA BACA" di atasnya). |
+| 3 | [[BACKEND_TODO]] | Daftar pekerjaan backend; juga **snapshot** dengan basis ukur sendiri. |
+
+> 🔴 **Jangan mulai dari [[DEVELOPMENT_ROADMAP]] atau [[REMAINING_BY_DISCIPLINE]] untuk
+> mengetahui keadaan sekarang.** Keduanya berbasis ukur **September 2026**
+> (`3804576` / `7e3a86d`), jauh sebelum cutover Neon, 60 migrasi, dan rute
+> asesmen. Dokumen-dokumen itu sengaja dipertahankan sebagai catatan keputusan
+> (R7), dan masing-masing sudah diberi penanda SNAPSHOT di bagian atas. Untuk
+> urutan kerja hari ini, ukur ulang dari `README.md` §Status + kode.
 
 ## Landing page (pekerjaan besar yang berjalan)
 
@@ -34,7 +41,7 @@ Spec tidak boleh mengarang data; semua angka perusahaan harus bisa dilacak ke
 
 | Dokumen | Isi | Status |
 |---|---|---|
-| [[ARCHITECTURE]] | Arsitektur frontend (Astro + Preact). | ✅ terimplementasi |
+| [[ARCHITECTURE]] | Arsitektur frontend (Astro + Preact). | ✅ terimplementasi; **cek tanggal basis ukurnya** |
 | [[BACKEND_ARCHITECTURE_2026-09-01]] | Arsitektur backend target. | ✅ terimplementasi |
 | [[SCALABILITY_RELIABILITY_ARCHITECTURE]] | Bagaimana backend menahan beban. **Induk** dari Phase A–E. | rencana + sebagian dibangun |
 | [[DB_PERFORMANCE_AUDIT]] | Angka performa DB (terukur ke produksi). | terukur 2026-09-01 |
@@ -100,6 +107,22 @@ sudah selesai, audit yang sudah tertutup.
 - **Huruf besar semua** = dokumen aktif. `db-optimization-2026-09-01.md` sengaja
   huruf kecil karena historis.
 
+## 🔴 NOW vs THEN — aturan anti-noise (ditambahkan 2026-11-15)
+
+Sebagian besar isi `docs/` adalah **potret hari itu**, bukan status kini. Sebelum
+memakai sebuah angka atau baris status, tentukan dulu mana dari dua ini:/n/n- **THEN** — ada penanda `Basis ukur: HEAD …`, `terukur di <hash>`, atau nama
+  berkas `*_2026-…`. Jangan "diperbaiki" barisnya; cukup baca sebagai riwayat.
+  Koreksi yang benar adalah menambah penanda SNAPSHOT + pointer ke sumber hidup.
+- **NOW** — `README.md` §Status, `PROJECT_CONTEXT.md` §2/§8, dan kode itu sendiri.
+  Dokumen NOW wajib menyebut tanggal DAN perintah pengukurnya.
+
+Tiga jebakan yang sudah terukur di repo ini: (1) tabel usang yang sengaja
+mempertahankan snapshot awal (R13l §6) — jangan dibetulkan; (2) sitasi commit yang
+**tidak ada** (`git cat-file -t <hash>` = `Not a valid object name`); (3) angka
+"hijau" yang sebenarnya tidak pernah diukur ulang. Bila ragu, `git log -1`, lalu
+jalankan perintah pengukurnya. Ringkasan audit: 
+`../deliverables/context-refresh-2026-11-15.md`.
+
 ## Konvensi isi
 
 Setiap dokumen yang mengklaim sesuatu **wajib** menyebut:
@@ -110,3 +133,7 @@ Setiap dokumen yang mengklaim sesuatu **wajib** menyebut:
 
 Tanpa ketiganya, dokumen itu berubah dari fakta menjadi kenangan begitu commit
 berikutnya masuk.
+
+4. **Penanda SNAPSHOT** bila dokumen tidak lagi dijaga hidup — sebut ke mana
+   pembaca harus pergi untuk status NOW. Ini yang membedakan arsip yang berguna
+   dari arsip yang menyesatkan.

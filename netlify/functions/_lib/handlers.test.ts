@@ -115,3 +115,52 @@ describe('rateLimitChecks — adminCrud hanya untuk aksi tulis', () => {
     }
   });
 });
+
+// ==========================================
+// TESTS: sesi kandidat TIDAK boleh lolos tanpa throttle (audit 2026-11-15).
+//
+// rateLimitChecks() used to fall through to `return []` for every authenticated
+// non-admin session outside the AI / prefill / contact buckets. That left
+// getUploadUrls (signed Storage URLs) and every simpan* write callable without
+// limit by any logged-in candidate. The in-memory limiter costs no DB trip, so
+// a per-identity bucket is cheap insurance.
+// ==========================================
+describe('rateLimitChecks — sesi kandidat termeter', () => {
+  const ip = '203.0.113.7';
+  const kandidatToken = signToken({ role: 'kandidat', wa: '6285700000001' });
+
+  it('aksi berbiaya kandidat tidak lagi mengembalikan [] (dulu tanpa batas)', () => {
+    for (const action of ['getUploadUrls', 'simpanBiodataLengkap', 'getHasilWawancara']) {
+      const checks = rateLimitChecks(action, { ip }, kandidatToken);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].key).toContain('kandidat:');
+      expect(checks[0].opts.limit).toBeGreaterThan(0);
+    }
+  });
+
+  it('kontrol: aksi baca tetap tanpa bucket agar dashboard tidak ter-throttle', () => {
+    for (const action of ADMIN_READ_ACTIONS) {
+      expect(rateLimitChecks(action, { ip }, kandidatToken)).toHaveLength(0);
+    }
+  });
+});
+
+// ==========================================
+// TESTS: PIN master dibandingkan constant-time (audit 2026-11-15).
+// Array.includes short-circuits on the first differing character. A
+// timingSafeEqual helper (pinsEqual) already exists for the personal-login
+// path; the master path must use it too.
+// ==========================================
+describe('checkAdminMaster — perbandingan PIN constant-time', () => {
+  it('tubuh checkAdminMaster memakai pinsEqual, bukan pins.includes', () => {
+    const src = readFileSync(
+      join(process.cwd(), 'netlify', 'functions', 'contexts', 'identity', 'service.ts'),
+      'utf8',
+    );
+    const start = src.indexOf('export function checkAdminMaster');
+    expect(start).toBeGreaterThan(-1);
+    const body = src.slice(start, start + 700);
+    expect(body).toContain('pinsEqual(');
+    expect(body).not.toContain('pins.includes(');
+  });
+});

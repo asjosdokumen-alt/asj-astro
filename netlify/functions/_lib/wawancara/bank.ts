@@ -27,7 +27,7 @@ import { supabaseJson, normalizeWa } from '../db/client';
 import { fetchMasterByWa } from '../db/master';
 import { isVipCatatan } from '../ai/interview-shared';
 import { geminiGenerate, parseJsonLoose } from '../ai/providers';
-import { AppError, Errors } from '../kernel/errors';
+import { AppError, Errors, GENERIC_ERROR_MESSAGE } from '../kernel/errors';
 import { log } from '../kernel/log';
 
 export type Soal = {
@@ -462,8 +462,15 @@ export async function simpanJawaban(
         });
         tertulisKeCv = Array.isArray(hasil) ? hasil.length > 0 : Boolean(hasil);
       } catch (e) {
+        // SECURITY (audit 2026-11-15): AppError.message ikut ke klien lewat
+        // safeError(), jadi String(e) di sini membocorkan badan PostgREST /
+        // potongan skema. Detailnya tetap dicatat di log server, bukan dikirim.
+        log.error('wawancara.patch-cv-gagal', {
+          kolom: String(soal.kolom_cv || ''),
+          err: String(e),
+        });
         throw new AppError('VALIDATION_FAILED', {
-          message: `Gagal menyimpan ke kolom CV (${soal.kolom_cv}): ${String(e).slice(0, 160)}`,
+          message: `Gagal menyimpan ke kolom CV (${soal.kolom_cv}): ${GENERIC_ERROR_MESSAGE}`,
         });
       }
     }

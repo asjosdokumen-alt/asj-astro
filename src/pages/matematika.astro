@@ -11,6 +11,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import App from '../components/App.tsx';
 import FormToolbar from '../components/forms/FormToolbar';
 import MatematikaGame from '../components/candidate/MatematikaGame.tsx';
+import { GODOT_AKTIF } from '../lib/fiturGodot';
 ---
 
 <BaseLayout
@@ -48,10 +49,44 @@ import MatematikaGame from '../components/candidate/MatematikaGame.tsx';
           </p>
         </details>
       </section>
+      {/* Figural interaktif (beta) — rotasi & cermin digambar sebagai poligon
+          kode, jadi bentuknya benar-benar berputar, bukan gambar yang ditukar. */}
+{GODOT_AKTIF && (
+      <section class="mt-4 rounded-card border border-line-strong bg-surface-raised p-3">
+        <p class="text-[11px] leading-snug text-fg-muted">
+          <b class="text-fg">Figural interaktif (beta)</b> — swipe untuk memutar 90°, tombol CERMIN
+          untuk membalik, lalu KIRIM. Latihan spasial di engine Godot.
+        </p>
+        <button
+          type="button"
+          data-godot-buka="matematika"
+          class="mt-2 min-h-11 w-full rounded-control border border-accent-violet bg-surface px-4 text-sm font-bold text-accent-violet"
+        >
+          Buka Figural
+        </button>
+        {/* Sama seperti /kotoba: mesin Godot diunduh sekali, lalu Figural bisa
+            dibuka tanpa sinyal. Tanpa tombol ini, halaman ini satu-satunya
+            pintu Godot yang tidak bisa disiapkan sebelum kehilangan jaringan. */}
+        <div class="mt-1.5 flex flex-wrap items-center gap-2">
+          <button type="button" data-godot-unduh class="text-[10px] font-bold text-accent-sky underline">
+            Unduh paket game (offline)
+          </button>
+          <span id="asj-godot-unduh-status" class="text-[10px] text-fg-muted"></span>
+        </div>
+      </section>
+)}
       <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
         Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
       </noscript>
       <MatematikaGame client:only="preact" />
+
     </div>
   </main>
+{GODOT_AKTIF && (
+  <>
+  <script is:inline src="/godot/asj-loader.js"></script>
+  <script is:inline src="/godot/preflight.js"></script>
+  <script is:inline src="/godot/page-bridge.js"></script>
+  </>
+)}
 </BaseLayout>

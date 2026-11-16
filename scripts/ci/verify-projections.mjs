@@ -19,6 +19,8 @@
  *   In every .ts/.js file under netlify/functions/ (comments excluded):
  *     · `select: '*'`  / `select: "*"`  → fail
  *     · `select: '…*…'` where the whole value is `*` → fail
+ *     · `?select=*` / `&select=*` in a PostgREST query string → fail
+ *       (same full-row read, just the URL form; added 2026-11-15)
  *   A named constant (`select: CAND_MAP_COLS`) or a column list
  *   (`select: 'id,no_wa'`) both pass. Use `allColumns('<table>')` when a read
  *   genuinely needs the whole row.
@@ -48,13 +50,25 @@ function stripBlockComments(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
 }
 
-/** True when the match sits after a `//` on the same line, i.e. inside a line comment. */
+/** True when the match sits after a `//` on the same line, i.e. inside a line comment.
+ *  SECURITY (audit 2026-11-15): the FIRST `//` in a full URL belongs to the
+ *  scheme (`https://`), not to a comment. Treating it as one made every
+ *  wildcard written in a full-URL query string invisible to this gate. */
 function isCommentedOut(line, index) {
-  const slashes = line.indexOf('//');
-  return slashes !== -1 && slashes < index;
+  for (let i = 0; i + 1 < line.length; i++) {
+    if (line[i] === '/' && line[i + 1] === '/' && (i === 0 || line[i - 1] !== ':')) {
+      return i < index;
+    }
+  }
+  return false;
 }
 
 const WILDCARD = /select\s*:\s*(['"`])\s*\*\s*\1/g;
+// URL form: `?select=*` / `&select=*`. The negative lookahead keeps a
+// projection like `select=*,t.` out of scope while still catching a bare
+// wildcard followed by a quote, `&`, whitespace, or end of line.
+const URL_WILDCARD = /[?&]select\s*=\s*\*(?![\w,])/g;
+const PATTERNS = [WILDCARD, URL_WILDCARD];
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
@@ -100,11 +114,13 @@ function main() {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (!line.includes('select')) continue;
-      WILDCARD.lastIndex = 0;
-      let m;
-      while ((m = WILDCARD.exec(line)) !== null) {
-        if (isCommentedOut(line, m.index)) continue;
-        hits.push({ file: relative(REPO, file).replace(/\\/g, '/'), line: i + 1, text: line.trim() });
+      for (const pattern of PATTERNS) {
+        pattern.lastIndex = 0;
+        let m;
+        while ((m = pattern.exec(line)) !== null) {
+          if (isCommentedOut(line, m.index)) continue;
+          hits.push({ file: relative(REPO, file).replace(/\\/g, '/'), line: i + 1, text: line.trim() });
+        }
       }
     }
   }

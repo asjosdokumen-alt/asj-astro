@@ -1,0 +1,92 @@
+{
+  "waktu": "2026-11-16T03:57:36.730Z",
+  "langkah": [
+    {
+      "nama": "Arcade: halaman terbuka",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Preflight: disembunyikan bersama kartu Godot",
+      "ok": true,
+      "detail": "GODOT_AKTIF=false"
+    },
+    {
+      "nama": "Genba: antrian 3 pelanggan tampil",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Genba: berpindah pelanggan mengganti pesanan",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Genba: satu pesanan benar memajukan ronde",
+      "ok": true,
+      "detail": "#2: みどり かさ を まど の そば に おいてくだ"
+    },
+    {
+      "nama": "Combo: panggung kalimat tampil",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Combo: kartu bisa diketuk",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Godot genba: disembunyikan",
+      "ok": true,
+      "detail": "GODOT_AKTIF=false"
+    },
+    {
+      "nama": "Godot combo: disembunyikan",
+      "ok": true,
+      "detail": "GODOT_AKTIF=false"
+    },
+    {
+      "nama": "Kotoba: soal tampil",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Kotoba: jawaban benar diterima",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Kotoba: papan peringkat terbuka",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Godot garden: disembunyikan",
+      "ok": true,
+      "detail": "GODOT_AKTIF=false"
+    },
+    {
+      "nama": "Matematika: lobi tampil",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Matematika: papan peringkat terbuka",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Matematika: satu soal bisa dijawab",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "nama": "Godot figural: disembunyikan",
+      "ok": true,
+      "detail": "GODOT_AKTIF=false"
+    }
+  ],
+  "galatKonsol": [],
+  "simpanSkor": []
+}

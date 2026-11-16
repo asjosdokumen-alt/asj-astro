@@ -181,6 +181,28 @@
     Permissions-Policy = "camera=(), microphone=(self), geolocation=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
+# ─── Godot Web (2026-11-15) ──────────────────────────────────────────────────
+#
+# `application/wasm` bukan kosmetik: tanpa MIME ini browser tidak memakai
+# kompilasi streaming dan engine jatuh ke jalur unduh penuh. `.pck` sengaja
+# octet-stream — ia arsip, bukan kode.
+#
+# Cache-Control pendek (1 jam), BUKAN immutable: nama berkas Godot tetap
+# (`index.wasm`), jadi `immutable` akan membuat siswa memakai engine lama
+# berbulan-bulan. Yang menyimpan jangka panjang adalah service worker di
+# bucket `asj-godot-v1`, dan versinya berubah lewat hash build.
+[[headers]]
+  for = "/godot/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/godot/*.pck"
+  [headers.values]
+    Content-Type = "application/octet-stream"
+    Cache-Control = "public, max-age=3600"
+
 # ─── REMOVED 2026-10-03: the `/candidate` → `/index.html` rewrite ────────────
 #
 #   [[redirects]]

@@ -40,7 +40,10 @@ function distRoutes(): string[] {
   for (const name of readdirSync(DIST)) {
     const full = join(DIST, name);
     if (!statSync(full).isDirectory()) continue;
-    if (name.startsWith('_') || name === 'icons') continue;
+    // `godot/` adalah mini-app terpisah (engine 38 MB, diunduh lewat tombol),
+    // bukan rute aplikasi. Ia sengaja TIDAK masuk precache install; lihat
+    // `build-sw-manifest.mjs` dan tes "engine Godot punya bucket sendiri".
+    if (name.startsWith('_') || name === 'icons' || name === 'godot') continue;
     if (existsSync(join(full, 'index.html'))) routes.push('/' + name + '/');
   }
   return routes.sort();
@@ -139,10 +142,25 @@ describe.skipIf(!hasBuild)('built service worker — offline navigation (#18)', 
 
   it('activate drops every other cache and force-reloads open tabs', () => {
     const src = readFileSync(SW_PATH, 'utf8');
-    // Without the version filter, old asset hashes accumulate forever.
-    expect(src).toContain('keys.filter((k) => k !== VERSION)');
+    // Tanpa filter versi, hash aset lama menumpuk selamanya. Sejak Godot
+    // (2026-11-15) filter punya syarat KEDUA: bucket `asj-godot-*` justru
+    // dipertahankan, karena isinya engine 38 MB yang sudah diunduh siswa.
+    expect(src).toContain("k !== VERSION && !k.startsWith('asj-godot-')");
     expect(src).toContain('caches.delete(k)');
     expect(src).toContain("postMessage({ type: 'ASJ_FORCE_RELOAD' })");
+  });
+
+  it('engine Godot punya bucket sendiri dan TIDAK ikut precache install', () => {
+    const src = readFileSync(SW_PATH, 'utf8');
+    expect(src).toContain("const GODOT_CACHE = 'asj-godot-v1'");
+    expect(src).toContain("url.pathname.startsWith('/godot/')");
+    // Biner besar cache-first: game kedua harus instan.
+    expect(src).toContain('return hit || (await jaringan)');
+    // Loader/bridge JS network-first: perbaikan kecil tidak boleh tertahan
+    // satu kunjungan hanya karena engine 38 MB memakai cache-first.
+    expect(src).toContain('const kecil = /\\.(js|html)$/.test(url.pathname)');
+    // 38 MB wasm tidak boleh masuk daftar yang diunduh saat install PWA.
+    expect(readPrecache().filter((u) => u.startsWith('/godot/'))).toEqual([]);
   });
 
   it('navigations are network-first with a cache fallback (never cache-first)', () => {

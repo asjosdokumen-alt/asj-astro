@@ -22,6 +22,16 @@
 
 export type Kesulitan = 'easy' | 'medium' | 'hard';
 export type KesulitanPilih = Kesulitan | 'mixed';
+
+/**
+ * Poin per jawaban benar.
+ *
+ * SEJAK 2026-11-16 server menghitung ulang skor dari ronde jawaban
+ * (`hitungMatematika` di `netlify/functions/shared/game-skor.ts`), jadi angka
+ * ini adalah KONTRAK, bukan pilihan tampilan. Kalau diubah di sini, ubah juga
+ * salinan backend-nya — `shared/game-skor.test.ts` membandingkan keduanya.
+ */
+export const SKOR_PER_BENAR = 50;
 export type KategoriId =
   | 'kraepelin'
   | 'kabataku'

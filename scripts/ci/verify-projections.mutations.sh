@@ -195,6 +195,28 @@ export const q = { select: '"'"'id,no_wa'"'"' };
 check "D4  a wildcard inside a LINE comment is not flagged" equivalent
 drop "$FNDIR/zz-battery-linecomment.ts"
 
+# ── D5/D6 · PostgREST URL form (audit 2026-11-15) ────────────────────────
+# The gate only knew `select: '*'` (object literal). A wildcard written as
+# `?select=*` in a query string is the SAME full-row read on the wire, and was
+# invisible. Two shapes: a relative path, and a FULL URL whose `https://`
+# must not be mistaken for a `//` line comment by isCommentedOut().
+plant "$FNDIR/zz-battery-urlwild.ts" 'export const u = `/rest/v1/candidate?select=*`;
+'
+check "D5  ?select=* in a query string is flagged" kill
+drop "$FNDIR/zz-battery-urlwild.ts"
+
+plant "$FNDIR/zz-battery-urlfull.ts" 'export const u = `https://db.example.com/rest/v1/candidate?select=*`;
+'
+check "D6  ?select=* in a full https URL is flagged" kill
+drop "$FNDIR/zz-battery-urlfull.ts"
+
+# T2 is the CONTROL: a named column list in a URL is legitimate and must stay
+# green. Without it a regex that flags any `select=` would look like a fix.
+plant "$FNDIR/zz-battery-urlsafe.ts" 'export const u = `/rest/v1/candidate?select=id,no_wa`;
+'
+check "T2  ?select=id,no_wa stays green (no false positive)" equivalent
+drop "$FNDIR/zz-battery-urlsafe.ts"
+
 # ── T1 · the named-constant and explicit-list forms ─────────────────────────
 plant "$FNDIR/zz-battery-constant.ts" 'import { CAND_MAP_COLS } from "./_lib/db/projections";
 export const a = { select: CAND_MAP_COLS };

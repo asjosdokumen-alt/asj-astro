@@ -10,6 +10,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import App from '../components/App.tsx';
 import FormToolbar from '../components/forms/FormToolbar';
 import KotobaGame from '../components/candidate/KotobaGame.tsx';
+import { GODOT_AKTIF } from '../lib/fiturGodot';
 ---
 
 <BaseLayout
@@ -50,10 +51,45 @@ import KotobaGame from '../components/candidate/KotobaGame.tsx';
           </p>
         </details>
       </section>
+      {/* Kotoba Garden (beta) — membaca progres Leitner yang SUDAH tersimpan
+          di perangkat ini; tidak menulis apa pun. */}
+{GODOT_AKTIF && (
+      <section class="mt-4 rounded-card border border-line-strong bg-surface-raised p-3">
+        <p class="text-[11px] leading-snug text-fg-muted">
+          <b class="text-fg">Kotoba Garden (beta)</b> — taman yang tumbuh dari kata yang sudah kamu
+          kuasai, musim dari streak, dan lentera saat tiga hari berturut.
+        </p>
+        <button
+          type="button"
+          data-godot-buka="kotoba"
+          class="mt-2 min-h-11 w-full rounded-control border border-accent-emerald bg-surface px-4 text-sm font-bold text-accent-emerald"
+        >
+          Buka Kotoba Garden
+        </button>
+        {/* Unduh lebih dulu = taman tetap bisa dibuka saat sinyal hilang.
+            Tombol ini sebelumnya hanya ada di /arcade, padahal mesin yang sama
+            dipakai halaman ini — siswa yang membuka /kotoba di Wi-Fi sekolah
+            lalu kehilangan sinyal tidak punya cara menyiapkannya. */}
+        <div class="mt-1.5 flex flex-wrap items-center gap-2">
+          <button type="button" data-godot-unduh class="text-[10px] font-bold text-accent-sky underline">
+            Unduh paket game (offline)
+          </button>
+          <span id="asj-godot-unduh-status" class="text-[10px] text-fg-muted"></span>
+        </div>
+      </section>
+)}
       <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
         Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
       </noscript>
       <KotobaGame client:only="preact" />
+
     </div>
   </main>
+{GODOT_AKTIF && (
+  <>
+  <script is:inline src="/godot/asj-loader.js"></script>
+  <script is:inline src="/godot/preflight.js"></script>
+  <script is:inline src="/godot/page-bridge.js"></script>
+  </>
+)}
 </BaseLayout>

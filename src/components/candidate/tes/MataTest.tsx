@@ -226,6 +226,12 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
   /* Astigmatisme: arah garis yang tampak paling tebal; '' = semua sama. */
   const [astigMata, setAstigMata] = useState<Mata>('KANAN');
   const [astigPilih, setAstigPilih] = useState({ kanan: '', kiri: '' });
+  /* DUA percobaan per mata. Satu klik terlalu tipis untuk satu-satunya ukuran
+     astigmatisme: mata yang lelah bisa menunjuk arah berbeda pada gambar yang
+     sama. Percobaan kedua memeriksa konsistensi, bukan mencari arah baru. */
+  const [astigPutaran, setAstigPutaran] = useState(0);
+  const [astigAwal, setAstigAwal] = useState({ kanan: '', kiri: '' });
+  const [astigKonsisten, setAstigKonsisten] = useState({ kanan: true, kiri: true });
 
   const [hasil, setHasil] = useState<HasilMata | null>(null);
   const [menyimpan, setMenyimpan] = useState(false);
@@ -303,10 +309,11 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
     v: { kanan: number; kiri: number },
     k: { kanan: number; kiri: number },
     a: { kanan: string; kiri: string },
+    konsisten: { kanan: boolean; kiri: boolean } = { kanan: true, kiri: true },
   ) => {
     const ish: HasilIshihara = evaluasiIshihara(jawaban);
     const kontras = simpulkanKontras(k.kanan, k.kiri);
-    const astig = simpulkanAstig(a.kanan, a.kiri);
+    const astig = simpulkanAstig(a.kanan, a.kiri, konsisten);
     const payload: HasilMata = {
       ishihara: { skor: ish.skor, total: ish.total, status: ish.status, label: ish.label },
       visus: v,
@@ -344,6 +351,13 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
       );
       if (d.success === false) {
         if (d.sudah) {
+          /* Server versi LAMA menolak simpanan kedua. Saat kandidat menekan
+             "Tes Ulang", pesan "sudah pernah dikerjakan" menyesatkan: yang
+             gagal adalah penyimpanan ulangnya, bukan tesnya. */
+          if (ulang) {
+            setGalat(t('tes.mata_ulang_server_lama'));
+            return;
+          }
           await gerbang.muat();
           return;
         }
@@ -444,14 +458,26 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
   };
 
   const jawabAstig = (arah: string) => {
-    const baru = { ...astigPilih, [astigMata === 'KANAN' ? 'kanan' : 'kiri']: arah };
+    const sisi = astigMata === 'KANAN' ? 'kanan' : 'kiri';
+    /* Putaran pertama: simpan jawabannya, tanya SEKALI lagi untuk mata yang
+       sama. Putaran kedua: bandingkan. Beda = arah tidak dilaporkan. */
+    if (astigPutaran === 0) {
+      setAstigAwal((a) => ({ ...a, [sisi]: arah }));
+      setAstigPutaran(1);
+      return;
+    }
+    const cocok = astigAwal[sisi] === arah;
+    const baru = { ...astigPilih, [sisi]: cocok ? arah : '' };
+    const konsisten = { ...astigKonsisten, [sisi]: cocok };
     setAstigPilih(baru);
+    setAstigKonsisten(konsisten);
+    setAstigPutaran(0);
     if (astigMata === 'KANAN') {
       setAstigMata('KIRI');
       return;
     }
     setFase('hasil');
-    void simpanHasil(visus, kontrasSkor, baru);
+    void simpanHasil(visus, kontrasSkor, baru, konsisten);
   };
 
   /* ── INTRO ────────────────────────────────────────────────────────────── */
@@ -816,7 +842,9 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
         <Tahap n={4} label={t("tes.mata_astig")} />
         <div class="rounded-control bg-surface-sunken p-2.5 text-[11.5px] font-bold text-fg">
           {astigMata === 'KANAN' ? t('tes.mata_tutup_kiri') : t('tes.mata_tutup_kanan')} ·{' '}
-          <span class="text-accent-sky">{t('tes.mata_tahap_astig')}</span>
+          <span class="text-accent-sky">
+            {t('tes.mata_tahap_astig')} {astigPutaran + 1}/2
+          </span>
         </div>
         <p class="text-[12px] leading-relaxed text-fg-muted">{t('tes.mata_astig_ket')}</p>
 

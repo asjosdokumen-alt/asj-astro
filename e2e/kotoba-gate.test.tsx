@@ -23,6 +23,7 @@
 import { render, screen, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import KotobaGame, { dalamRentangBab, jatuhTempo, JARAK_HARI, hitungStreak, hitungHarian, MISI_HARIAN, tanggalLokal, gelarDari, GELAR } from '../src/components/candidate/KotobaGame';
+import { hitungKotoba } from '../src/lib/kotoba-skor';
 import { authStore } from '../src/store/authReactive';
 
 /* `vi.hoisted` wajib: `vi.mock` diangkat ke atas `const`. */
@@ -179,6 +180,49 @@ describe('/kotoba — siswa ASJ saja', () => {
     }
 
     await waitFor(() => expect(screen.getByTestId('kotoba-hasil')).toBeTruthy());
+  }, 30000);
+
+  it('kiriman skor membawa ronde yang diputar ulang jadi angka yang SAMA', async () => {
+    /* Kontrak klien–server: server MENOLAK Kotoba tanpa `ronde`, dan skor yang
+       disimpannya adalah hasil replay. Kalau komponen menghitung dengan rumus
+       yang berbeda, papan menampilkan angka lain dari kartu hasil — tanpa satu
+       pun error. Satu jawaban benar lalu dua salah: skor > 0 dan ronde berakhir
+       karena nyawa habis. */
+    loginSebagai('kandidat');
+    render(<KotobaGame />);
+    await waitFor(() => expect(screen.getByTestId('kotoba-soal')).toBeTruthy());
+
+    const kana = screen.getByTestId('kotoba-soal').textContent || '';
+    const benar = [...document.querySelectorAll('button')]
+      .filter((b) => b.hasAttribute('data-opsi'))
+      .find((b) => b.querySelector('span')?.textContent === ARTI[kana]);
+    benar?.click();
+    await new Promise((r) => setTimeout(r, 900));
+
+    for (let i = 0; i < 3; i++) {
+      const k = screen.getByTestId('kotoba-soal').textContent || '';
+      const salah = [...document.querySelectorAll('button')]
+        .filter((b) => b.hasAttribute('data-opsi'))
+        .find((b) => b.querySelector('span')?.textContent !== ARTI[k]);
+      salah?.click();
+      await new Promise((r) => setTimeout(r, 1600));
+    }
+
+    await waitFor(() => expect(screen.getByTestId('kotoba-hasil')).toBeTruthy());
+    await waitFor(() => expect(apiMock.mock.calls.some((c) => c[0] === 'simpanSkorGame')).toBe(true));
+
+    const panggilan = apiMock.mock.calls.find((c) => c[0] === 'simpanSkorGame');
+    expect(panggilan, 'tidak ada kiriman simpanSkorGame').toBeTruthy();
+    const argumen = (panggilan as unknown[])[1] as [string, string, number, Record<string, unknown>];
+    const skor = argumen[2];
+    const detail = argumen[3];
+    const ronde = detail.ronde as Array<[number, number, number, number]>;
+    const ulang = hitungKotoba(ronde);
+    expect(ulang).not.toBeNull();
+    expect(ulang?.skor).toBe(skor);
+    expect(ulang?.benar).toBe(detail.benar);
+    expect(ulang?.komboMaks).toBe(detail.kombo);
+    expect(ronde).toHaveLength(4);
   }, 30000);
 
   /* Tingkat kesulitan (2026-11-10). Pemilik: "kotoba sih gak perlu cepat kan

@@ -17,11 +17,33 @@
  * akan hijau hanya kalau undiannya kebetulan benar.
  */
 import { render, screen, cleanup, waitFor } from '@testing-library/preact';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import ArcadeGame from '../src/components/candidate/ArcadeGame';
-import { COMBO_SOAL, GENBA_ZONA, SHIFT_GENBA } from '../src/lib/arcade';
+import { COMBO_SOAL, GENBA_ZONA, SHIFT_GENBA, hitungGenba, hitungCombo } from '../src/lib/arcade';
 import { authStore } from '../src/store/authReactive';
 import { langStore } from '../src/store/i18n';
+
+/* ── Rekaman kiriman skor ───────────────────────────────────────────────────
+ * Server MENOLAK skor Genba yang tidak membawa ronde (2026-11-16). Kalau
+ * komponen lupa mengirimnya, semua kiriman siswa hilang tanpa satu pun error —
+ * `kirimSkor` memang menelan kegagalan. Karena itu payload-nya direkam di sini
+ * dan diputar ulang dengan `hitungGenba`: skor yang tampil dan skor yang
+ * dihitung server harus berasal dari ronde yang sama.
+ */
+const kiriman = vi.hoisted(
+  () => [] as Array<{ game: string; skor: number; detail: Record<string, unknown> }>,
+);
+
+vi.mock('../src/lib/skorGame', async (importOriginal) => {
+  const asli = await importOriginal<typeof import('../src/lib/skorGame')>();
+  return {
+    ...asli,
+    kirimSkor: vi.fn(async (game: string, skor: number, detail?: Record<string, unknown>) => {
+      kiriman.push({ game, skor, detail: detail || {} });
+      return null;
+    }),
+  };
+});
 
 /** `/arcade` bergerbang login; tes perilaku game harus masuk dulu. */
 function loginSebagaiSiswa() {
@@ -120,10 +142,10 @@ describe('arcade — Genba Order Rush', () => {
     await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
     const awal = perintahTeks();
 
-    /* Batas waktu 8 detik; beri ruang untuk jeda 1,1 detik sebelum perintah
-       berikutnya dipasang. */
-    await waitFor(() => expect(perintahTeks()).not.toBe(awal), { timeout: 14000 });
-  }, 20000);
+    /* Kesabaran pelanggan = 2× batas gelombang (16 dtk di reguler), jadi beri
+       ruang lebih dari sekadar 8 dtk + jeda. */
+    await waitFor(() => expect(perintahTeks()).not.toBe(awal), { timeout: 22000 });
+  }, 28000);
 
   /* REGRESI: ketukan kedua setelah gagal TIDAK boleh memakan nyawa lagi.
      Dulu `fase` tetap 'main' dan `dipilih` tetap terpasang selama jeda 1,1 detik,
@@ -252,6 +274,104 @@ describe('arcade — Genba Order Rush', () => {
     expect(teks).toContain('★');
   }, 40000);
 
+  it('kiriman skor membawa ronde yang diputar ulang jadi angka yang SAMA', async () => {
+    /* Ini penjaga kontrak klien–server: server menolak Genba tanpa `ronde`, dan
+       skor yang disimpannya adalah hasil replay. Kalau komponen menghitung skor
+       dengan rumus yang berbeda dari `hitungGenba`, papan peringkat akan
+       menampilkan angka lain dari kartu hasil — tanpa satu pun error. */
+    kiriman.length = 0;
+    render(<ArcadeGame />);
+    cariTombol('Mulai Shift')?.click();
+    await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
+
+    const total = SHIFT_GENBA.reguler.pesanan;
+    for (let n = 1; n <= total; n++) {
+      const m = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+      expect(m, `pesanan ${n} tak terbaca: ${perintahTeks()}`).toBeTruthy();
+      const [, warna, barang, zona] = m as RegExpMatchArray;
+      cariTombol(`${warna}${barang}`)?.click();
+      await waitFor(() =>
+        expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'),
+      );
+      rakId(GENBA_ZONA.find((z) => z.jp === zona)?.id ?? '')?.click();
+      if (n < total) {
+        await waitFor(() => expect(document.body.textContent || '').toContain(`Pesanan ${n}/${total}`));
+      }
+    }
+    await waitFor(() => expect(document.body.textContent || '').toContain('Nilai shift'));
+
+    await waitFor(() => expect(kiriman.some((k) => k.game === 'genba')).toBe(true));
+    const k = kiriman.find((x) => x.game === 'genba');
+    const ronde = k?.detail.ronde as Array<[number, number]>;
+    expect(Array.isArray(ronde)).toBe(true);
+    expect(ronde).toHaveLength(total);
+    expect(ronde.every(([b, ms]) => b === 1 && ms > 0)).toBe(true);
+
+    const ulang = hitungGenba('reguler', ronde);
+    expect(ulang?.skor).toBe(k?.skor);
+    expect(ulang?.pesananAkhir).toBe(total);
+    expect(ulang?.loop).toBe(0);
+    /* Angka yang dibandingkan server, dikirim apa adanya. */
+    expect(k?.detail.pesanan).toBe(total);
+    expect(k?.detail.loop).toBe(0);
+  }, 40000);
+
+  /* ULTIMATE LOOP (2026-11-15): shift sempurna berhenti menjadi PLAFON.
+     Nilai S membuka tombol loop; gelombang pertama memakai 1 nyawa dan 4
+     pesanan, dan menyelesaikannya menaikkan badge ke W2 tanpa mereset skor.
+     Tes ini menjawab 12 pesanan secepat mungkin, jadi `sisaRata` pasti ≥ 50%
+     dan nilainya S — bukan undian. */
+  it('shift sempurna membuka Ultimate Loop dan gelombang 2 tercapai', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Mulai Shift')?.click();
+    await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
+
+    const total = SHIFT_GENBA.reguler.pesanan;
+    for (let n = 1; n <= total; n++) {
+      const m = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+      expect(m, `pesanan ${n} tak terbaca: ${perintahTeks()}`).toBeTruthy();
+      const [, warna, barang, zona] = m as RegExpMatchArray;
+      const kartu = cariTombol(`${warna}${barang}`);
+      expect(kartu, `pesanan ${n}: ${warna}${barang} tidak ada di meja`).toBeTruthy();
+      kartu?.click();
+      await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
+      const idRak = GENBA_ZONA.find((z) => z.jp === zona)?.id ?? '';
+      rakId(idRak)?.click();
+      if (n < total) {
+        await waitFor(() => expect(document.body.textContent || '').toContain(`Pesanan ${n}/${total}`));
+      }
+    }
+
+    await waitFor(() => expect(document.body.textContent || '').toContain('Nilai shift'));
+    const tombolLoop = document.querySelector('[data-testid="arcade-ultimate"]') as HTMLButtonElement | null;
+    expect(tombolLoop, 'nilai S seharusnya membuka Ultimate Loop').toBeTruthy();
+    tombolLoop?.click();
+
+    /* Gelombang 1: target 4 pesanan, satu nyawa, badge W1. */
+    await waitFor(() => expect(document.body.textContent || '').toContain('∞ W1'));
+    expect(document.body.textContent || '').toContain('Pesanan 0/4');
+
+    for (let n = 1; n <= 4; n++) {
+      const m = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+      expect(m, `gelombang 1 pesanan ${n} tak terbaca: ${perintahTeks()}`).toBeTruthy();
+      const [, warna, barang, zona] = m as RegExpMatchArray;
+      const kartu = cariTombol(`${warna}${barang}`);
+      expect(kartu, `gelombang 1 pesanan ${n}: ${warna}${barang} tidak ada`).toBeTruthy();
+      kartu?.click();
+      await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
+      const idRak = GENBA_ZONA.find((z) => z.jp === zona)?.id ?? '';
+      rakId(idRak)?.click();
+      if (n < 4) {
+        await waitFor(() => expect(document.body.textContent || '').toContain(`Pesanan ${n}/4`));
+      }
+    }
+
+    /* Bukti gelombang berikutnya: badge W2 dan target kembali 0/4. Skor tidak
+       direset — ia hanya bisa naik dari skor shift sebelumnya. */
+    await waitFor(() => expect(document.body.textContent || '').toContain('∞ W2'));
+    expect(document.body.textContent || '').toContain('Pesanan 0/4');
+  }, 40000);
+
   /* Koreksi yang bisa DILIHAT: dulu satu-satunya umpan balik salah adalah satu
      baris teks. Sekarang rak yang benar ikut disorot, jadi siswa melihat
      tujuan yang seharusnya — bukan hanya membaca kalimatnya. */
@@ -323,7 +443,10 @@ describe('arcade — Genba Order Rush', () => {
 
     await waitFor(() => expect(rakTampil()).toHaveLength(6));
 
-    /* Satu kesalahan → kombo 0 → pesanan berikutnya kembali ke 4 rak. */
+    /* Satu kesalahan → kombo 0. Meja pelanggan yang SEDANG dilayani tidak
+       disusun ulang (antrian 2026-11-16: kamu tidak menata ulang restoran
+       hanya karena salah taruh), jadi rak tetap 6 sampai pelanggan ini
+       selesai. Pelanggan BERIKUTNYA kembali ke 4 rak. */
     const m = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
     expect(m).toBeTruthy();
     const [, warna, barang, zona] = m as RegExpMatchArray;
@@ -332,6 +455,20 @@ describe('arcade — Genba Order Rush', () => {
     cariTombol(`${warna}${barang}`)?.click();
     await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
     cariTombol(GENBA_ZONA.find((z) => z.id === idSalah)?.id_ ?? 'Rak Atas')?.click();
+
+    await waitFor(() => expect(rakTampil()).toHaveLength(6));
+
+    /* Jeda koreksi 800 ms harus lewat dulu; mengetuk rak saat `menunggu`
+       sengaja diabaikan (supaya satu kesalahan tidak memakan dua nyawa). */
+    await new Promise((r) => setTimeout(r, 900));
+
+    /* Layani pelanggan itu dengan benar → pelanggan berikutnya memakai 4 rak. */
+    const m2 = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+    expect(m2).toBeTruthy();
+    const [, w2, b2, z2] = m2 as RegExpMatchArray;
+    cariTombol(`${w2}${b2}`)?.click();
+    await waitFor(() => expect(cariTombol(`${w2}${b2}`)?.getAttribute('aria-pressed')).toBe('true'));
+    rakId(GENBA_ZONA.find((z) => z.jp === z2)?.id ?? '')?.click();
 
     await waitFor(() => expect(rakTampil()).toHaveLength(4), { timeout: 5000 });
   }, 30000);
@@ -488,6 +625,33 @@ describe('arcade — Kotoba Combo Builder', () => {
     await new Promise((r) => setTimeout(r, 60));
     expect((document.body.textContent || '').match(/x(\d+)/)?.[1], 'kombo tereset oleh ketukan nyasar').toBe('6');
   }, 15000);
+
+  it('kiriman Combo membawa ronde yang diputar ulang jadi angka yang SAMA', async () => {
+    /* Server MENOLAK Combo tanpa `ronde`, dan skor yang disimpannya adalah hasil
+       replay. Kalau urutan event di komponen berbeda dari `hitungCombo`, papan
+       menampilkan angka lain dari layar — tanpa satu pun error. */
+    kiriman.length = 0;
+    render(<ArcadeGame />);
+    cariTombol('Combo Kalimat')?.click();
+    await waitFor(() => expect(screen.getByTestId('arcade-target')).toBeTruthy());
+
+    for (const k of COMBO_SOAL[0].urutan) {
+      tombol().find((b) => (b.textContent || '').trim() === k.jp)?.click();
+      await new Promise((r) => setTimeout(r, 30));
+    }
+
+    /* Combo dikirim dengan jeda 5 detik: skor dikirim setelah tidak berubah. */
+    await waitFor(() => expect(kiriman.some((x) => x.game === 'combo')).toBe(true), {
+      timeout: 9000,
+    });
+
+    const k = kiriman.find((x) => x.game === 'combo');
+    const ulang = hitungCombo(k?.detail.ronde);
+    expect(ulang).not.toBeNull();
+    expect(ulang?.skor).toBe(k?.skor);
+    expect(ulang?.kalimat).toBe(k?.detail.kalimat);
+    expect(ulang?.kombo).toBe(k?.detail.kombo);
+  }, 25000);
 
   /* Level Sulit menghapus WARNA jenis kata — dan warna itulah yang selama ini
      memberi jawaban: kartu partikel kuning membuat siswa bisa memilih "kuning

@@ -107,6 +107,11 @@ const OUR_PREFIXES = [
   // while the animation silently never ran. That is exactly the failure the
   // unreachable-name check below exists to prevent.
   "game-",
+  // Added 2026-11-16: six keyframes in arcade.css (`arc-slam`, `arc-getar`,
+  // `arc-denyut`, `arc-burst`, `arc-poin`, `arc-rank`) were invisible to this
+  // gate — a typo in `arc-burst` would have read as "all resolve" while the
+  // animation silently never ran.
+  "arc-",
   // Tailwind-generated, from the `--animate-*` tokens in theme.css. They are
   // declared by Tailwind at build time rather than by hand, but they resolve the
   // same way and a typo in `animate-slide-in` is just as silent.

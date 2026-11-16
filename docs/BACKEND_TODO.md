@@ -1,5 +1,10 @@
 # BACKEND_TODO — satu daftar, semua pekerjaan backend yang belum selesai
 
+> 🔴 **SNAPSHOT — BUKAN status kini (penanda 2026-11-15).** Basis ukur: `8593e10` / `70a648e`, 2026-09-13.
+> Isi di bawah sengaja dipertahankan sebagai catatan keputusan (R7): **jangan "diperbaiki" barisnya**, dan jangan pakai angkanya sebagai keadaan sekarang.
+> **Status NOW:** `README.md` §Status · `PROJECT_CONTEXT.md` §2/§8 ·
+> `docs/README.md` (aturan NOW vs THEN). Ukur ulang sebelum dipakai untuk keputusan.
+
 **Dibuat:** 2026-09-13 · **Sumber:** kode di `main` (`8593e10`) + `docs/` + `HANDOFF.md`
 **Diaudit ulang:** 2026-09-13 (sore) terhadap `main` `cb7c3ad` — **setiap klaim diverifikasi ke kode, bukan
 dipercaya dari dokumen.** Beberapa item ternyata sudah selesai dan dikoreksi (#14, #19, #20–#25);

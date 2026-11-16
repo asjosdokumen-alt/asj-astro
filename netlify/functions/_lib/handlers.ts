@@ -211,6 +211,16 @@ export function rateLimitChecks(
   if (adminKey && !ADMIN_READ_ACTIONS.has(action)) {
     return [{ key: 'adminCrud:' + adminKey, opts: { limit: 120, windowMs: 60000 } }];
   }
+  // SECURITY (audit 2026-11-15): an authenticated KANDIDAT session used to fall
+  // through to `return []` for every action outside the AI / prefill / contact
+  // groups — including getUploadUrls (signed Storage URLs) and all simpan*
+  // writes. One candidate token could hammer those endpoints without limit.
+  // Default to a per-identity bucket; ADMIN_READ_ACTIONS stays exempt because
+  // the dashboard polls those names and the limiter must not throttle a page.
+  // Arah aman: aksi BARU otomatis ikut terlindungi.
+  if (ident && !ADMIN_READ_ACTIONS.has(action)) {
+    return [{ key: `kandidat:${ident}`, opts: { limit: 120, windowMs: 60000 } }];
+  }
   return [];
 }
 

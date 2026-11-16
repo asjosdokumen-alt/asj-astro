@@ -730,14 +730,26 @@ export interface HasilAstig {
   catatan: string;
 }
 
-export function simpulkanAstig(kanan: string, kiri: string): HasilAstig {
+/**
+ * @param konsisten hasil dua percobaan per mata. `false` = jawaban pertama dan
+ *   kedua berbeda, jadi arahnya TIDAK dilaporkan (`''`) — lebih jujur daripada
+ *   memilih salah satu dari dua jawaban yang saling bertentangan.
+ */
+export function simpulkanAstig(
+  kanan: string,
+  kiri: string,
+  konsisten: { kanan: boolean; kiri: boolean } = { kanan: true, kiri: true },
+): HasilAstig {
   const ada = Boolean(kanan) || Boolean(kiri);
+  const ragu = [konsisten.kanan === false ? 'mata kanan' : '', konsisten.kiri === false ? 'mata kiri' : ''].filter(Boolean);
   return {
     kanan: kanan || '',
     kiri: kiri || '',
     indikasi: ada,
-    catatan: ada
-      ? 'Ada arah garis yang tampak lebih tebal. Ini BUKAN diagnosis — periksa ulang saat MCU.'
-      : 'Semua arah garis tampak sama.',
+    catatan: ragu.length
+      ? `Jawaban berbeda antara percobaan pertama dan kedua (${ragu.join(' & ')}), jadi arahnya tidak dilaporkan. Ini BUKAN diagnosis — ulangi saat MCU.`
+      : ada
+        ? 'Ada arah garis yang tampak lebih tebal. Ini BUKAN diagnosis — periksa ulang saat MCU.'
+        : 'Semua arah garis tampak sama.',
   };
 }

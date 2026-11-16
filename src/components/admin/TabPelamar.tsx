@@ -357,7 +357,24 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
                   <tr><td colSpan={6} class="p-6 text-center text-slate-500">{t('admin.no_candidates')}</td></tr>
                 ) : shown.map((k) => (
                   <tr key={k.id || k.wa} class="hover:bg-white/5 transition-colors">
-                    <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.id || k.wa || '-'}</td>
+                    {/* `idKandidatTerisi === false` berarti kolom `id_kandidat`
+                        kosong dan yang tampil adalah `id` numerik baris. Sebelum
+                        2026-11-14 angka itu TIDAK bisa dibedakan dari nomor ASJ
+                        asli, jadi cacatnya tidak pernah terlihat. Migrasi 060
+                        membuat keadaan ini mustahil untuk baris baru; penanda di
+                        sini menjaga baris lama tetap terbaca sebagai cacat. */}
+                    <td class="p-4 font-mono text-xs font-bold">
+                      {k.idKandidatTerisi === false ? (
+                        <span
+                          class="text-amber-400"
+                          title="Nomor kandidat (ASJ) belum terisi — yang tampil adalah id baris. Jalankan migrasi 060."
+                        >
+                          {k.id || k.wa || '-'} ⚠
+                        </span>
+                      ) : (
+                        <span class="text-sky-300">{k.id || k.wa || '-'}</span>
+                      )}
+                    </td>
                     <td class="p-4 font-bold text-white">{k.nama || '-'}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50" />}</td>
                     <td class="p-4"><span class="font-mono text-sky-300 text-xs">{k.idLoker || '-'}</span></td>
                     <td class="p-4">

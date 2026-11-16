@@ -25,6 +25,8 @@ const m = vi.hoisted(() => ({
   master: [] as Array<Record<string, unknown>>,
   /** true ⇒ setiap supabaseJson melempar PGRST205. */
   belumExpose: false,
+  /** Kalau diisi, PATCH master melempar Error(isi) — uji kebocoran pesan. */
+  patchError: '' as string,
   /** Catatan panggilan tulis: [method, table, body]. */
   tulis: [] as Array<{ method: string; table: string; body: unknown; query: unknown }>,
   /** Berapa kali bank soal DIBACA (untuk menguji cache). */
@@ -46,6 +48,9 @@ vi.mock('../db/client', async (importOriginal) => {
         throw new Error(
           "PGRST205 Could not find the table 'public.wawancara_soal' in the schema cache",
         );
+      }
+      if (method === 'PATCH' && m.patchError) {
+        throw new Error(m.patchError);
       }
       if (method === 'GET') {
         m.bacaQuery[table] = (opts.query || {}) as Record<string, unknown>;
@@ -114,6 +119,7 @@ beforeEach(() => {
   m.jawaban = [];
   m.master = [];
   m.belumExpose = false;
+  m.patchError = '';
   m.tulis = [];
   m.bacaBank = 0;
   m.bacaQuery = {};
@@ -160,6 +166,22 @@ describe('gabungBankDanJawaban — sinkron CV', () => {
     const hasil = await bank.gabungBankDanJawaban('628111');
     expect(hasil.jumlah).toBe(0);
     expect(hasil.tahap).toEqual([]);
+  });
+});
+
+describe('simpanJawaban — pesan galat tidak membocorkan internal', () => {
+  it('detail Error dari PostgREST TIDAK boleh sampai ke pesan AppError', async () => {
+    const RAHASIA = 'PGRST204_SECRET_COLUMN_xyz';
+    m.patchError = RAHASIA;
+    let pesan = '';
+    try {
+      await bank.simpanJawaban('628111', 'ms-009', { arti: 'Saya pekerja keras.' });
+    } catch (e) {
+      pesan = String((e as { message?: string })?.message || '');
+    }
+    expect(pesan).not.toBe('');
+    expect(pesan).not.toContain(RAHASIA);
+    expect(pesan).toContain('Gagal menyimpan ke kolom CV');
   });
 });
 
