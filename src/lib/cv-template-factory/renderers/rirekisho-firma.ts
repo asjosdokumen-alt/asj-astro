@@ -35,10 +35,35 @@
  * `L31` 日本語学習期間 (`lama_belajar_jp`), `L32` 渡航経験 negara lain
  * (`negara_lain`), `K33` その他事項 (`catatan_cv`). Yang tetap kosong hanya
  * sel sub-judul `G31`/`G32`/`G33` — di template aslinya pun tidak berteks.
+ *
+ * BAHASA KOLOM — KEPUTUSAN PEMILIK 2026-11-16
+ * -------------------------------------------
+ * Pemilik mengirim tangkapan layar CV hasil generate dan menandai lima hal.
+ * Semuanya soal BAHASA dan SATUAN, bukan tata letak:
+ *
+ *   1. 学歴: kolom 専攻 dicetak Jepang (`MANAJEMEN PERKANTORAN & BISNIS` →
+ *      事務管理・ビジネス, `BAHASA JEPANG` → 日本語) dan baris LPK berlabel
+ *      日本語学校 — dulu tercetak `LPK` mentah. Nama sekolah tetap huruf Latin
+ *      karena itu nama diri (SD/SMP/SMK tidak punya padanan kanji).
+ *   2. 職歴: 職種 (`L`) dan 雇用形態 (`O`) dicetak Jepang — dulu
+ *      `SEKRETARIS`/`OPERATOR PRODUKSI`/`MAGANG`/`KARYAWAN KONTRAK` apa adanya.
+ *   3. 家族構成: 姓名 kembali ke nama Indonesia (dulu katakana kalau kolomnya
+ *      terisi — form ini form Indonesia, dan pemilik mengenali nama keluarganya
+ *      dari ejaan Latin), 職業 dicetak Jepang (`PETANI` → 農家).
+ *   4. 月収 keluarga DIKONVERSI ke yen (`1500000円` → `¥ 13.636`). Dulu angka
+ *      rupiah hanya ditempeli `円`, jadi gaji ayah tercetak 110x lipat.
+ *   5. 日本語学習期間 berisi RENTANG tanggal (`2025年8月～2026年2月`), bukan
+ *      durasi `6ヶ月` — durasi tidak mengatakan kapan belajarnya.
+ *
+ * Kenapa rentangnya di `L31` dan bukan di sel sempit `K31` (yang dilingkari
+ * pemilik): `K31` hanya 48 px dan `wrapText="1"`, jadi teks 14 karakter di
+ * sana dipotong Excel menjadi 2-3 baris yang tidak terbaca. `L31:P31` adalah
+ * sel NILAI resmi baris itu (merge 5 kolom), dan rentangnya kini terbaca utuh.
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { RIREKISHO_FIRMA_BASE64 } from '../templates/rirekisho-firma.b64';
-import { isGood, batasiRiwayatSekolah } from '../../helpers_cv';
+import { isGood, isLpkTingkat, batasiRiwayatSekolah } from '../../helpers_cv';
+import { jpTerm, sudahJp } from '../../cv-jp-terms';
 import { isCurrent } from '../../cvPeriod';
 import {
   buildXlsxForm,
@@ -155,12 +180,66 @@ function gajiDiharapkan(raw: unknown): string {
 function levelJp(raw: unknown): string {
   const t = s(raw).toUpperCase();
   if (!isGood(t)) return '';
+  /* LPK/ kursus bahasa Jepang: dulu tercetak `LPK` mentah di kolom 分類 —
+     satu-satunya sel blok 学歴 yang tidak berbahasa Jepang. */
+  if (isLpkTingkat(t)) return '日本語学校';
   if (/^SD|SEKOLAH DASAR/.test(t)) return '小学生 SD';
   if (/^SMP|SEKOLAH MENENGAH PERTAMA/.test(t)) return '中学生 SMP';
   if (/^SMA|SEKOLAH MENENGAH ATAS/.test(t)) return '高校生 SMA';
   if (/^SMK|KEJURUAN/.test(t)) return '職業高校 SMK';
   if (/UNIVERSITAS|^S1|SARJANA/.test(t)) return '大学生 Universitas';
   return s(raw);
+}
+
+/**
+ * 雇用形態 (`O16/O18/O20`) — istilah Indonesia → Jepang.
+ *
+ * Form ini TIDAK punya dropdown (terukur: 0 `dataValidation` di sheet1.xml),
+ * jadi tidak ada daftar nilai sah yang membatasi. Urutan cabang = urutan
+ * KEKHUSUSAN: `KARYAWAN KONTRAK` memuat kata "KARYAWAN", dan kalau `KARYAWAN`
+ * diperiksa lebih dulu ia tercetak 正社員 (pegawai tetap) — kebalikan dari
+ * kenyataannya. Karena itu yang spesifik diperiksa lebih dulu.
+ *
+ * Teks yang tidak dikenali dikembalikan apa adanya: mengarang bentuk kerja
+ * lebih buruk daripada mencetak istilah aslinya.
+ */
+function bentukKerjaJp(raw: unknown): string {
+  const t = bersih(raw);
+  if (!t) return '';
+  if (sudahJp(t)) return t;
+  const key = t.toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+  if (/MAGANG|INTERN/.test(key)) return 'インターン';
+  if (/HARIAN|PART|LEPAS|ALBAITO|PARUH/.test(key)) return 'アルバイト';
+  if (/KONTRAK|HONORER|PKWT/.test(key)) return '契約社員';
+  if (/PNS|ASN|TNI|POLRI/.test(key)) return '公務員';
+  if (/WIRAUSAHA|PEMILIK|USAHA SENDIRI|SELF EMPLOYED/.test(key)) return '自営業';
+  if (/BELUM|TIDAK BEKERJA|PENSIUN/.test(key)) return '無職';
+  if (/TETAP|KARYAWAN|KARYAWATI|STAFF/.test(key)) return '正社員';
+  return t;
+}
+
+/**
+ * 日本語学習期間 (`L31`) — RENTANG tanggal belajar, bukan durasi.
+ *
+ * Pemilik 2026-11-16: *"lama belajar cellnya salah isi … rentang dari tgl bulan
+ * tahun sampai tgl bulan tahun belajar nya"*. `6ヶ月` menjawab "berapa lama"
+ * tetapi tidak menjawab "kapan", dan itu yang ditanyakan form 特定技能.
+ *
+ * Sumbernya baris LPK di `pendidikan` — baris itulah satu-satunya yang mencatat
+ * kapan kandidat belajar bahasa Jepang. Tanpa baris LPK fungsi ini kosong dan
+ * pemanggil jatuh ke durasi (`durasiJp`), karena durasi masih lebih baik
+ * daripada sel kosong.
+ */
+function rentangBelajar(pendidikan: Record<string, unknown>[]): string {
+  const lpk = pendidikan.find((p) => isLpkTingkat(p.tingkat));
+  if (!lpk) return '';
+  const masuk = yearMonth(lpk.masuk ?? lpk.tahun_masuk);
+  if (!masuk.y) return '';
+  const keluarRaw = lpk.lulus ?? lpk.tahun_lulus;
+  const keluar = yearMonth(keluarRaw);
+  /* LPK tanpa tanggal selesai = masih belajar (baris itu sekolah berjalan). */
+  const akhir = isCurrent(String(keluarRaw ?? '')) || !keluar.y ? '現在' : `${keluar.y}${keluar.m}`;
+  return `${masuk.y}${masuk.m}～${akhir}`;
 }
 
 /** 続柄: hubungan keluarga dalam huruf Jepang + Indonesia. */
@@ -249,8 +328,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`G${row}`] = lulus.y;
     cells[`H${row}`] = lulus.m;
     cells[`I${row}`] = levelJp(p.tingkat);
-    cells[`J${row}`] = s(p.sekolah ?? p.nama_sekolah ?? p.sekolah_id);
-    cells[`O${row}`] = s(p.jurusan ?? p.jurusan_id);
+    cells[`J${row}`] = s(p.sekolah_jp) || s(p.sekolah ?? p.nama_sekolah ?? p.sekolah_id);
+    /* 専攻: kolom `jurusan_jp` menang, lalu kamus istilah (MANAJEMEN
+       PERKANTORAN & BISNIS → 事務管理・ビジネス, BAHASA JEPANG → 日本語). */
+    cells[`O${row}`] = jpTerm(s(p.jurusan_jp) || s(p.jurusan ?? p.jurusan_id));
   }
 
   /* ── pengalaman kerja: 3 blok x 2 baris (16-21) ────────────────────────── */
@@ -269,10 +350,11 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`E${top}`] = masuk.m;
     cells[`D${bottom}`] = masihKerja ? '現在' : keluar.y;
     cells[`E${bottom}`] = masihKerja ? '' : keluar.m;
-    cells[`F${top}`] = s(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
+    cells[`F${top}`] = s(p.perusahaan_jp) || s(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
     cells[`J${top}`] = currency(p.gaji ?? p.penghasilan);
-    cells[`L${top}`] = s(p.jabatan ?? p.jabatan_id);
-    cells[`O${top}`] = s(p.jenis ?? p.status_kerja ?? p.jenis_pekerjaan);
+    /* 職種 + 雇用形態 — dua kolom yang ditandai pemilik 2026-11-16. */
+    cells[`L${top}`] = jpTerm(s(p.jabatan_jp) || s(p.jabatan ?? p.jabatan_id));
+    cells[`O${top}`] = bentukKerjaJp(s(p.jenis_jp) || s(p.jenis ?? p.status_kerja ?? p.jenis_pekerjaan));
   }
 
   /* ── keluarga: 7 baris (24-30) ─────────────────────────────────────────── */
@@ -280,14 +362,18 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const row = FAM_START + i;
     const p = (data.keluarga[i] || {}) as Record<string, unknown>;
     cells[`A${row}`] = hubunganJp(p.hubungan);
-    /* 氏名: katakana bila sudah diterjemahkan (kolom sejak migrasi 046). */
-    const ktKeluarga = s(p.katakana);
-    cells[`C${row}`] = /[ぁ-ヿ一-龯]/.test(ktKeluarga) ? ktKeluarga : s(p.nama);
+    /* 姓名: nama INDONESIA (Latin). Keputusan pemilik 2026-11-16 — dulu kolom
+       `katakana` didahulukan, sehingga ayah/ibu tercetak `カツジ`/`アプマ・
+      サフルディン` di form yang dibaca keluarganya sendiri. Katakana hanya
+       dipakai kalau nama Latinnya memang kosong. */
+    cells[`C${row}`] = bersih(p.nama) || bersih(p.katakana);
     cells[`G${row}`] = s(p.usia ?? p.umur).replace(/\D/g, '');
-    cells[`I${row}`] = s(p.pekerjaan);
-    cells[`L${row}`] = s(p.gaji ?? p.penghasilan).replace(/[^\d]/g, '')
-      ? `${s(p.gaji ?? p.penghasilan).replace(/[^\d]/g, '')}円`
-      : '';
+    /* 職業: `pekerjaan_jp` menang, lalu kamus (PETANI → 農家, PELAYAN → 接客). */
+    cells[`I${row}`] = jpTerm(s(p.pekerjaan_jp) || s(p.pekerjaan));
+    /* 月収: SATU jalur dengan kolom 月収 pekerjaan (`currency` = `fmtGajiYen`).
+       Dulu angka rupiah hanya ditempeli `円` — `1500000円` untuk penghasilan
+       Rp 1,5 juta, yaitu 110x nilai sebenarnya. */
+    cells[`L${row}`] = currency(p.gaji ?? p.penghasilan);
     cells[`N${row}`] = tinggalJp(p.tinggal ?? p.status_tinggal);
     cells[`O${row}`] = s(p.hp ?? p.telepon ?? p.no_hp);
   }
@@ -304,7 +390,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
   /* Baris 31-33: kolom kedua tiap baris (G/H, I/J, K) dulu dibiarkan kosong.
      Sekarang diisi dari kolom yang memang disediakan untuknya. */
   cells.D32 = bersih(data.sertifikasi.bahasa) || bersih(data.sertifikasi.level_bahasa_jepang);
-  cells.L31 = durasiJp(data.sertifikasi.lama_belajar_jp);
+  /* 日本語学習期間: RENTANG tanggal dari baris LPK (`2025年8月～2026年2月`).
+     Durasi (`6ヶ月`) hanya dipakai kalau baris LPK tidak ada — lihat
+     `rentangBelajar`. */
+  cells.L31 =
+    rentangBelajar((data.pendidikan || []) as Record<string, unknown>[]) ||
+    durasiJp(data.sertifikasi.lama_belajar_jp);
   cells.L32 = bersih(data.identitas.negara_lain);
   cells.K33 = bersih(data.sertifikasi.catatan_cv);
   const ken = data.kenalan_jepang;

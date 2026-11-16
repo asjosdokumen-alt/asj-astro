@@ -275,10 +275,81 @@ describe('rirekisho-firma · kolom migrasi 022 benar-benar masuk ke sel', () => 
 
   it('雇用形態 dan tiga kolom keluarga', () => {
     const c = buildValues(denganKolom());
-    expect(c.O16).toBe('KARYAWAN TETAP');
+    // 雇用形態 dicetak Jepang sejak 2026-11-16 (dulu `KARYAWAN TETAP` mentah).
+    expect(c.O16).toBe('正社員');
     expect(c.N24).toBe('同居');
     expect(c.O24).toBe('081234567');
-    expect(c.L24).toBe('150000円');
+    // 月収 keluarga memakai jalur yang sama dengan 月収 pekerjaan (`fmtGajiYen`),
+    // jadi `150000円` yang dulu ditempeli mentah kini `¥ 150.000`.
+    expect(c.L24).toBe('¥ 150.000');
+  });
+});
+
+/**
+ * BAHASA KOLOM — keputusan pemilik 2026-11-16.
+ *
+ * Pemilik menandai lima sel pada CV hasil generate: 専攻 学歴, 職種/雇用形態
+ * 職歴, 姓名/職業/月収 家族構成, dan 日本語学習期間. Semuanya soal BAHASA dan
+ * SATUAN — bukan tata letak — jadi yang diuji di sini adalah nilai selnya,
+ * bukan geometri (itu sudah dijaga blok pertama).
+ */
+describe('rirekisho-firma · bahasa kolom (2026-11-16)', () => {
+  /** Kandidat dengan LPK + jurusan Indonesia + keluarga bergaji rupiah. */
+  const lengkap = (): CandidateData => {
+    const d = kandidat();
+    d.pendidikan = [
+      { tingkat: 'SMK', masuk: '2022-07', lulus: '2025-06', sekolah: 'SMK NEGERI 1 PONOROGO', jurusan: 'MANAJEMEN PERKANTORAN & BISNIS' },
+      { tingkat: 'LPK', masuk: '2025-08', lulus: '2026-02', sekolah: 'LKP AMANAH SAKURA JAPAN', jurusan: 'BAHASA JEPANG' },
+    ];
+    d.pekerjaan = [
+      { masuk: '2024-04', keluar: '2024-09', perusahaan: 'KANTOR KECAMATAN SIMAN', jabatan: 'SEKRETARIS', jenis: 'MAGANG' },
+      { masuk: '2025-07', keluar: '2025-10', perusahaan: 'KONVEKSI TEENMODE', jabatan: 'OPERATOR PRODUKSI', gaji: '1500000', jenis: 'KARYAWAN KONTRAK' },
+    ];
+    d.keluarga = [
+      { hubungan: 'AYAH', nama: 'KATSUJI', katakana: 'カツジ', usia: '53', pekerjaan: 'PETANI', gaji: '1500000', tinggal: 'SERUMAH' },
+      { hubungan: 'KAKAK', nama: 'APUMA SAFRUDIN', katakana: 'アプマ・サフルディン', usia: '29', pekerjaan: 'PELAYAN / WAITER', gaji: '1700000', tinggal: 'SERUMAH' },
+    ];
+    return d;
+  };
+
+  it('学歴: 専攻 Jepang dan LPK berlabel 日本語学校', () => {
+    const c = buildValues(lengkap());
+    expect(c.I11).toBe('職業高校 SMK');
+    expect(c.O11).toBe('事務管理・ビジネス');
+    expect(c.I12).toBe('日本語学校'); // dulu tercetak `LPK` mentah
+    expect(c.O12).toBe('日本語');
+    // Nama sekolah tetap huruf Latin — nama diri, tidak punya padanan kanji.
+    expect(c.J12).toBe('LKP AMANAH SAKURA JAPAN');
+  });
+
+  it('職歴: 職種 dan 雇用形態 Jepang', () => {
+    const c = buildValues(lengkap());
+    expect(c.L16).toBe('秘書');
+    expect(c.O16).toBe('インターン');
+    expect(c.L18).toBe('製造オペレーター');
+    expect(c.O18).toBe('契約社員');
+    // 月収 pekerjaan tetap satu jalur konversi (Rp 1,5 jt ≈ ¥ 13.636).
+    expect(c.J18).toBe('¥ 13.636');
+  });
+
+  it('家族構成: nama Indonesia, 職業 Jepang, 月収 yen', () => {
+    const c = buildValues(lengkap());
+    expect(c.C24).toBe('KATSUJI'); // bukan カツジ
+    expect(c.I24).toBe('農家'); // bukan PETANI
+    expect(c.L24).toBe('¥ 13.636'); // bukan 1500000円
+    expect(c.C25).toBe('APUMA SAFRUDIN');
+    expect(c.I25).toBe('接客');
+    expect(c.L25).toBe('¥ 15.455');
+  });
+
+  it('日本語学習期間: rentang tanggal dari baris LPK, bukan durasi', () => {
+    expect(buildValues(lengkap()).L31).toBe('2025年8月～2026年2月');
+  });
+
+  it('tanpa baris LPK, 学習期間 jatuh ke durasi (sel kosong lebih buruk)', () => {
+    const d = kandidat();
+    d.sertifikasi = { ...d.sertifikasi, lama_belajar_jp: '6 bulan' };
+    expect(buildValues(d).L31).toBe('6ヶ月');
   });
 });
 
