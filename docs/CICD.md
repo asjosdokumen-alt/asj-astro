@@ -344,6 +344,7 @@ Apply the same checks to `develop`, minus the reviewer requirement.
 
 | Action | How |
 |---|---|
+| Bootstrap local environment | `npm run env:bootstrap` — copies `.env.example` to `.env.local` once, refuses to overwrite, then audits key names (values stay placeholders until you fill them) |
 | Deploy staging | Push to `develop`, or **Run workflow** on `Deploy · Staging` |
 | Deploy production | Push a `v*` tag, publish a Release, or **Run workflow** (type `deploy` to confirm) |
 | Roll back | **Run workflow** on `Rollback` — choose environment, optional deploy id |

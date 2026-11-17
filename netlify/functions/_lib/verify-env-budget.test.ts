@@ -1,5 +1,6 @@
-import { describe, expect, it, afterEach, beforeEach } from 'vitest';
+import { describe, expect, it, afterEach, beforeEach, vi } from 'vitest';
 import { envBudget, PROFILES, LAMBDA_ENV_LIMIT, BUDGET_WARN_RATIO } from '../../../scripts/ci/verify-env.mjs';
+import { parseEnvDefinitions, bootstrapEnvFile } from '../../../scripts/ci/env-audit.local.mjs';
 
 // The 4 KB Lambda env ceiling is a PLATFORM limit that no other gate can see:
 // it is invisible to typecheck, bundling, boundary checks and the test suite,
@@ -108,5 +109,65 @@ describe('the guard that prevents this class of bug recurring', () => {
     // already at 88 % with the receiver variables still to come.
     expect(BUDGET_WARN_RATIO).toBeGreaterThan(0.5);
     expect(BUDGET_WARN_RATIO).toBeLessThan(1);
+  });
+});
+
+// ── Local environment provisioning ──────────────────────────────────────────
+// `.env.example` is committed and shape-only; `.env.local` is gitignored and
+// holds real values. Automating the COPY is safe (no value is ever printed),
+// but automating the OVERWRITE is not — a developer's real credentials must
+// never be replaced by template placeholders. These tests pin both sides.
+// Kept in this existing suite on purpose: a new `.test.ts` in netlify/functions
+// would move the frozen indexer inventory (R15).
+describe('local environment bootstrap', () => {
+  it('parses KEY=value lines but flags bare values and empties', () => {
+    const { defined, bareValueLines } = parseEnvDefinitions(
+      ['# comment', 'PUBLIC_X=https://example.test', 'EMPTY=', '  spaced=value', 'bare-secret'].join('\n'),
+    );
+    expect(defined.get('PUBLIC_X')?.empty).toBe(false);
+    expect(defined.get('EMPTY')?.empty).toBe(true);
+    expect(defined.has('spaced')).toBe(true);
+    expect(bareValueLines).toEqual([5]);
+  });
+
+  it('refuses to overwrite an already provisioned .env.local', () => {
+    const copy = vi.fn();
+    const r = bootstrapEnvFile({
+      templatePath: '.env.example',
+      targetPath: '.env.local',
+      exists: () => true,
+      copy,
+      chmod: vi.fn(),
+    });
+    expect(r.status).toBe('exists');
+    expect(copy).not.toHaveBeenCalled();
+  });
+
+  it('creates the target from the template and tightens permissions', () => {
+    const copy = vi.fn();
+    const chmod = vi.fn();
+    const r = bootstrapEnvFile({
+      templatePath: '.env.example',
+      targetPath: '.env.local',
+      exists: (p: string) => p === '.env.example',
+      copy,
+      chmod,
+    });
+    expect(r.status).toBe('created');
+    expect(copy).toHaveBeenCalledWith('.env.example', '.env.local');
+    expect(chmod).toHaveBeenCalledWith('.env.local', 0o600);
+  });
+
+  it('reports a missing template instead of creating an empty target', () => {
+    const copy = vi.fn();
+    const r = bootstrapEnvFile({
+      templatePath: '.env.example',
+      targetPath: '.env.local',
+      exists: () => false,
+      copy,
+      chmod: vi.fn(),
+    });
+    expect(r.status).toBe('template-missing');
+    expect(copy).not.toHaveBeenCalled();
   });
 });

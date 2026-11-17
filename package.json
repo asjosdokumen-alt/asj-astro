@@ -48,6 +48,7 @@
     "verify:batteries:list": "node scripts/ci/run-batteries.mjs --list",
     "verify:review-manifest": "node scripts/ci/verify-review-manifest.mjs",
     "verify:env": "node scripts/ci/verify-env.mjs",
+    "env:bootstrap": "node scripts/ci/env-audit.local.mjs --bootstrap",
     "verify:env:local": "node scripts/ci/env-audit.local.mjs",
     "verify:env:resolve": "node --experimental-strip-types scripts/ci/env-resolve.local.mjs",
     "verify:env:validate": "node --experimental-strip-types scripts/ci/env-validate.local.mjs",
