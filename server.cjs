@@ -82,6 +82,14 @@ const MIME = {
   // `Range`/prefetch tidak, dan setiap pengukuran lokal jadi berbeda dari
   // Netlify yang menyajikannya benar.
   '.mp4': 'video/mp4',
+  // Godot Web assets under `public/godot/` (tracked and copied into dist/ even
+  // while the in-page game is parked behind GODOT_AKTIF=false). `serve.cjs`
+  // already declared both types; `server.cjs` did not, so every local probe
+  // served the 39 MB .wasm and the .pck as application/octet-stream while
+  // Netlify served them correctly. `src/lib/serverMime.test.ts` derives this
+  // from dist/ and caught the gap on 2026-11-18.
+  '.wasm': 'application/wasm',
+  '.pck': 'application/octet-stream',
 };
 
 /** Check if a port is available */

@@ -1151,6 +1151,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.candidate_database": "Biodata Kandidat",
     "admin.loading_candidates": "Memuat biodata...",
     "admin.no_candidates": "Belum ada pelamar.",
+    "admin.id_kandidat_kosong": "Nomor kandidat (ASJ) belum terisi — yang tampil adalah id baris. Jalankan migrasi 060.",
     "admin.of": "dari",
     "admin.candidates": "kandidat",
     "admin.title_input_loker": "Form Input Loker Baru",

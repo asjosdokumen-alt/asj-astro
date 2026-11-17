@@ -367,7 +367,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
                       {k.idKandidatTerisi === false ? (
                         <span
                           class="text-amber-400"
-                          title="Nomor kandidat (ASJ) belum terisi — yang tampil adalah id baris. Jalankan migrasi 060."
+                          title={t('admin.id_kandidat_kosong')}
                         >
                           {k.id || k.wa || '-'} ⚠
                         </span>

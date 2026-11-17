@@ -142,6 +142,12 @@ const LIB_GLOBALS = new Set<string>([
   // The compiler binds it to the lib declaration of the same name, so the lib pass
   // graduates it into a lib ref exactly like `Image` above.
   'createImageBitmap',
+  // `CanvasRenderingContext2D` (lib.dom.d.ts) — first PRODUCTION use landed in
+  // `src/components/DocumentPreviewModal.tsx:217` with the 2026-11-16 pdf.js
+  // renderer. The name was already a documented `global-unknown` gap in TEST
+  // mocks (build.test.ts §prodGenuine), so a production use made the strict
+  // zero-unresolved assertion red. Same class as createImageBitmap above.
+  'CanvasRenderingContext2D',
   'DOMParser', 'XMLHttpRequest', 'Storage', 'NodeList', 'HTMLCollection', 'Document', 'crypto',
   'matchMedia', 'getComputedStyle', 'getSelection', 'scrollTo', 'postMessage', 'queueMicrotask',
   // MessageChannel / MessageEvent (lib.dom.d.ts) — the tab-to-tab version channel in

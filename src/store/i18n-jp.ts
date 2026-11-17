@@ -2428,6 +2428,7 @@ export const jpTranslations: Record<string, string> = {
     "admin.candidate_database": "応募者データベース",
     "admin.loading_candidates": "応募者データを読み込み中...",
     "admin.no_candidates": "応募者はまだいません。",
+    "admin.id_kandidat_kosong": "応募者番号（ASJ）が未入力です。表示されているのは行IDです。マイグレーション060を実行してください。",
     "admin.of": "/",
     "admin.candidates": "名の候補者",
     "admin.title_input_loker": "新規求人登録フォーム",

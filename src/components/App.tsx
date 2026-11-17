@@ -131,8 +131,10 @@ const HERO_STATS: ReadonlyArray<{ value?: string; valueKey?: string; labelKey: s
  * justru sudah dihapus atas keputusan owner.
  *
  * `href` menunjuk id seksi yang SUDAH ada dan sudah dijaga `e2e:landing`
- * ("every in-page link resolves to a real element"), jadi tidak ada anchor
- * mati yang bisa lolos.
+ * ("every in-page link resolves to a real element"). Tautan di dalam island
+ * ini memakai bentuk ABSOLUT (`/#…`) — komponen yang sama dirender di lebih
+ * dari satu halaman, jadi anchor relatif mati di halaman tanpa seksi itu
+ * (dicatat oleh `e2e/shared-anchor-targets.test.ts`).
  */
 const SECTION_LINKS: ReadonlyArray<{ href: string; key: string }> = [
   { href: '#alur', key: 'profile.nav_flow' },
@@ -1307,7 +1309,7 @@ export default function App(
                     untuk mitra MoU (owner 2026-09-24) tetapi tidak punya satu
                     pun jalur untuk mereka. Satu tombol hantu sudah cukup. */}
                 <a
-                  href="#kontak"
+                  href="/#kontak"
                   class="inline-flex items-center px-7 py-3.5 rounded-pill bg-white/10 hover:bg-white/20 border border-white/25 text-white font-bold text-sm backdrop-blur-sm transition"
                 >
                   <Icon name="handshake" class="mr-2" />
@@ -1385,7 +1387,7 @@ export default function App(
                   </span>
                 ) : null}
                 <a
-                  href="#legalitas"
+                  href="/#legalitas"
                   class="inline-flex min-h-[44px] items-center gap-1.5 text-pink-300 hover:text-pink-200 font-bold underline-offset-4 hover:underline transition"
                 >
                   {t("profile.hero_proof_check")}
