@@ -149,3 +149,32 @@ describe('agenda-reminders.ts — the trigger', () => {
     expect(src).not.toMatch(/reminder_h7_sent|markReminderSent|parseWaList/);
   });
 });
+
+/**
+ * QUOTA TRIPWIRE (2026-11-18) — `sweep-queue.ts` used to run every 2 minutes.
+ * Neon suspends compute only after 5 minutes idle, so that schedule kept the
+ * instance permanently warm (0.25 CU × 24 h ≈ 6 CU-hrs/day) and burned the
+ * 100 CU-hr free allowance in ~17 days; the project was PAUSED and every data
+ * read returned HTTP 402. Agenda's test above guards only half the union, so
+ * this second trigger is checked here, in the same file, with no new test file
+ * (the frozen indexer inventory excludes test files).
+ */
+describe('sweep-queue.ts — the Neon compute tripwire', () => {
+  const cronPath = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'sweep-queue.ts');
+  const src = readFileSync(cronPath, 'utf8');
+
+  it('keeps the schedule at 15 minutes, not 2', () => {
+    const m = src.match(/export\s+const\s+config\s*=\s*\{\s*schedule:\s*'([^']+)'/);
+    expect(m, 'sweep-queue must export config.schedule').toBeTruthy();
+
+    const expr = m?.[1] ?? '';
+    // Literal = tripwire against silently narrowing it back toward '*/2'.
+    expect(expr).toBe('*/15 * * * *');
+
+    // The real invariant: >= 15 keeps the duty cycle at ~33 % with Neon's
+    // 5-minute suspend window; < 60 still bounds queue latency to one hour.
+    const everyMinutes = Number(expr.split(' ')[0].replace('*/', ''));
+    expect(everyMinutes).toBeGreaterThanOrEqual(15);
+    expect(everyMinutes).toBeLessThan(60);
+  });
+});

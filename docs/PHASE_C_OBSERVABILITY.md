@@ -177,7 +177,7 @@ curl -s -o /dev/null -w '%{http_code}\n' "$SUPABASE_URL/rest/v1/job_queue?select
 curl -s "$SUPABASE_URL/rest/v1/job_queue?select=type,status&status=in.(pending,failed)" \
   -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Prefer: count=exact" -I | grep -i content-range
 ```
-Then group by `type` — a depth made of one job type is a stuck worker, not load. Check whether `sweep-queue` is running at all (`netlify.toml` → `[functions."sweep-queue"] schedule = "*/2 * * * *"`; scheduled functions only fire on **published** deploys). If `failed` dominates, read `last_error` on those rows.
+Then group by `type` — a depth made of one job type is a stuck worker, not load. Check whether `sweep-queue` is running at all (`netlify/functions/sweep-queue.ts` → `export const config = { schedule: '*/15 * * * *' }` since 2026-11-18; the old `*/2` in `netlify.toml` was removed because it exhausted Neon's compute quota; scheduled functions only fire on **published** deploys). If `failed` dominates, read `last_error` on those rows.
 
 **A6 — dead letters**
 A dead job is committed work that will never complete without a human. Do not delete the row:

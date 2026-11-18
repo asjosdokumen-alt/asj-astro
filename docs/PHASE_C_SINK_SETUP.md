@@ -370,7 +370,8 @@ netlify logs:function metrics-receiver --live
 ```
 
 If you pointed at Discord (Option A), you should see a message appear in the
-channel within ~2 minutes (`sweep-queue` runs on that schedule).
+channel within ~15 minutes (`sweep-queue` has run every 15 minutes since
+2026-11-18; it used to be 2 minutes before the Neon compute-quota fix).
 
 ---
 

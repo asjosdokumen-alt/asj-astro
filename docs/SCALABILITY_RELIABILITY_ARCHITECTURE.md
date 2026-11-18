@@ -135,7 +135,9 @@ netlify/functions/
 │                                     rate-limit, validate, events, db, job-queue,
 │                                     optimistic, request-helpers
 ├── *.js                 29 files  ❌ legacy fat entry points, still deployed
-└── sweep-queue.ts                 ✅ scheduled worker (*/2 * * * *)
+└── sweep-queue.ts                 ✅ scheduled worker (*/15 * * * * since 2026-11-18;
+                                     was */2 — see the Neon compute-quota note in
+                                     netlify/functions/sweep-queue.ts)
 ```
 
 This is the **highest-priority item in the whole design**, because it is the difference between the refactor's benefits being realised and being merely present in the repository.
