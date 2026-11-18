@@ -21,6 +21,8 @@ type Row = { id: number; status: string };
 
 let forms: Row[] = [];
 const deletedIds: Array<string | number> = [];
+const deleteBatches: Array<Array<string | number>> = [];
+let batchDeleteFails = false;
 
 /** Pencatat: berapa kali resolve dipanggil vs delete — untuk bukti urutan fase. */
 const callLog: string[] = [];
@@ -96,6 +98,16 @@ vi.mock('./repository', async () => {
       const at = forms.findIndex((f) => f.id === Number(id));
       if (at >= 0) forms.splice(at, 1); // ← pergeseran nyata
     },
+    deleteFormsByIds: async (ids: Array<string | number>) => {
+      callLog.push(`deleteBatch:${ids.join(',')}`);
+      deleteBatches.push(ids);
+      if (batchDeleteFails) throw new Error('PostgREST mati');
+      deletedIds.push(...ids);
+      for (const id of ids) {
+        const at = forms.findIndex((f) => f.id === Number(id));
+        if (at >= 0) forms.splice(at, 1);
+      }
+    },
     patchForm: async (id: unknown, body: Record<string, unknown>) => {
       patches.push({ id, body });
     },
@@ -125,6 +137,8 @@ beforeEach(() => {
     { id: 105, status: 'MENUNGGU' },
   ];
   deletedIds.length = 0;
+  deleteBatches.length = 0;
+  batchDeleteFails = false;
   callLog.length = 0;
 });
 
@@ -174,7 +188,7 @@ describe('handleHapusFormTerpilih — pergeseran index', () => {
 
   it('SEMUA index diselesaikan lebih dulu, baru ada delete (fase terpisah)', async () => {
     await handleHapusFormTerpilih([[0, 2, 4]], 'admin-ok');
-    const firstDelete = callLog.findIndex((c) => c.startsWith('delete:'));
+    const firstDelete = callLog.findIndex((c) => c.startsWith('delete'));
     const lastResolve = callLog.map((c) => c.startsWith('resolve:')).lastIndexOf(true);
     expect(firstDelete).toBeGreaterThan(lastResolve);
   });
@@ -192,6 +206,22 @@ describe('handleHapusFormTerpilih — idempotensi & input kotor', () => {
     expect(res.success).toBe(true);
     expect(res.notFound).toEqual([99]);
     expect(deletedIds).toEqual([101]);
+  });
+
+  it('M-3: N baris hanya satu DELETE, bukan 2N round-trip', async () => {
+    const res: any = await handleHapusFormTerpilih([[0, 1, 2]], 'admin-ok');
+    expect(res.deleted).toBe(3);
+    expect(deleteBatches).toEqual([[101, 102, 103]]);
+    expect(callLog.filter((c) => c.startsWith('delete'))).toHaveLength(1);
+  });
+
+  it('M-3: DELETE gagal ⇒ semua baris dilaporkan gagal, tidak ada yang hilang diam-diam', async () => {
+    batchDeleteFails = true;
+    const res: any = await handleHapusFormTerpilih([[0, 1]], 'admin-ok');
+    expect(res.success).toBe(false);
+    expect(res.deleted).toBe(0);
+    expect(res.failed.map((f: { idx: number }) => f.idx).sort()).toEqual([0, 1]);
+    expect(forms.map((f) => f.id)).toEqual([101, 102, 103, 104, 105]);
   });
 
   it('index di luar jangkauan saja → deleted 0, tidak melempar', async () => {

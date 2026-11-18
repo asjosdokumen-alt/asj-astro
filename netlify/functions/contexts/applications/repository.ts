@@ -55,6 +55,35 @@ export async function deleteForm(id: string | number, sessionToken?: string): Pr
   } as Record<string, unknown>);
 }
 
+/**
+ * M-3: one DELETE for the whole selection. The previous per-id loop cost
+ * 2N PostgREST round-trips (resolve + delete) and could 504 halfway through,
+ * leaving rows gone with no report. PostgREST's `in.(…)` makes the delete
+ * atomic from the caller's point of view.
+ *
+ * IDs come from the database, but they are still interpolated into a query
+ * string — only digits or a tight alphanumeric set are allowed, and string
+ * ids are quoted so a comma cannot become an extra filter value.
+ */
+export async function deleteFormsByIds(ids: Array<string | number>, sessionToken?: string): Promise<void> {
+  if (ids.length === 0) return;
+  const values = ids.map((raw) => {
+    const id = String(raw);
+    if (/^\d+$/.test(id)) return id;
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
+      throw new Error('ID form tidak valid untuk penghapusan massal.');
+    }
+    return `"${id}"`;
+  });
+  const client = clientFor('applications.deleteFormsByIds', sessionToken);
+  await supabaseJson('DELETE', 'database_asj_form', {
+    query: { id: 'in.(' + values.join(',') + ')' },
+    headers: { Prefer: 'return=minimal' },
+    overrideKey: client.apikey,
+    overrideAuthKey: client.authKey,
+  } as Record<string, unknown>);
+}
+
 export async function upsertForm(body: Record<string, unknown>): Promise<void> {
   await upsertFormRow(body);
 }

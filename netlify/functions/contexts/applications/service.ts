@@ -22,6 +22,7 @@ import {
   getFormsByWa,
   patchForm,
   deleteForm,
+  deleteFormsByIds,
   upsertForm,
   mapForm,
   supabaseJson,
@@ -458,15 +459,20 @@ export async function handleHapusFormTerpilih(payload: unknown[], sessionToken?:
     }
   }
 
-  // TAHAP 2 — hapus by id.
+  // TAHAP 2 — satu DELETE untuk semua id yang berhasil di-resolve.
+  // M-3: dulu loop N× `deleteForm` ⇒ 2N round-trip dan bisa 504 di tengah,
+  // dengan sebagian baris sudah hilang tanpa laporan. Sekarang satu query;
+  // kalau gagal, SEMUA masuk `failed` (jujur, bukan setengah hilang).
   const deleted: number[] = [];
   const failed: Array<{ idx: number; error: string }> = [];
-  for (const { idx, id } of resolved) {
+  const ids = resolved.map((r) => r.id);
+  if (ids.length > 0) {
     try {
-      await deleteForm(id, sessionToken);
-      deleted.push(idx);
+      await deleteFormsByIds(ids, sessionToken);
+      deleted.push(...resolved.map((r) => r.idx));
     } catch (e: unknown) {
-      failed.push({ idx, error: safeError('Gagal menghapus.', e) });
+      const message = safeError('Gagal menghapus.', e);
+      for (const { idx } of resolved) failed.push({ idx, error: message });
     }
   }
 
