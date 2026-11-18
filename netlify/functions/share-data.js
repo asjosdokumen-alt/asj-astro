@@ -36,12 +36,12 @@ async function handler(event) {
   // `/.netlify/functions/share-data`), so a wildcard CORS header buys nothing
   // and lets any site read a candidate list by job code. Reflect the request's
   // own host/scheme instead — a third-party origin will not match it.
-  const headers = (event && event.headers) || {};
+  const headers = event?.headers || {};
   const host = String(headers.host || headers.Host || '').split(',')[0].trim();
   const proto = String(headers['x-forwarded-proto'] || headers['X-Forwarded-Proto'] || 'https')
     .split(',')[0]
     .trim();
-  const ownOrigin = host ? proto + '://' + host : 'https://amanahsakura.netlify.app';
+  const ownOrigin = host ? `${proto}://${host}` : 'https://amanahsakura.netlify.app';
   let out;
   try {
     out = await handleShareData(job);

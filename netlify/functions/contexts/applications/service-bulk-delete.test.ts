@@ -24,7 +24,14 @@ const deletedIds: Array<string | number> = [];
 const deleteBatches: Array<Array<string | number>> = [];
 let batchDeleteFails = false;
 
-/** Pencatat: berapa kali resolve dipanggil vs delete — untuk bukti urutan fase. */
+/** Bentuk hasil bulk delete yang dipakai dua tes M-3 di bawah. */
+type BulkResult = {
+  success: boolean;
+  deleted?: number;
+  failed?: Array<{ idx: number }>;
+  notFound?: number[];
+  error?: string;
+};
 const callLog: string[] = [];
 
 /**
@@ -209,7 +216,7 @@ describe('handleHapusFormTerpilih — idempotensi & input kotor', () => {
   });
 
   it('M-3: N baris hanya satu DELETE, bukan 2N round-trip', async () => {
-    const res: any = await handleHapusFormTerpilih([[0, 1, 2]], 'admin-ok');
+    const res = (await handleHapusFormTerpilih([[0, 1, 2]], 'admin-ok')) as unknown as BulkResult;
     expect(res.deleted).toBe(3);
     expect(deleteBatches).toEqual([[101, 102, 103]]);
     expect(callLog.filter((c) => c.startsWith('delete'))).toHaveLength(1);
@@ -217,10 +224,10 @@ describe('handleHapusFormTerpilih — idempotensi & input kotor', () => {
 
   it('M-3: DELETE gagal ⇒ semua baris dilaporkan gagal, tidak ada yang hilang diam-diam', async () => {
     batchDeleteFails = true;
-    const res: any = await handleHapusFormTerpilih([[0, 1]], 'admin-ok');
+    const res = (await handleHapusFormTerpilih([[0, 1]], 'admin-ok')) as unknown as BulkResult;
     expect(res.success).toBe(false);
     expect(res.deleted).toBe(0);
-    expect(res.failed.map((f: { idx: number }) => f.idx).sort()).toEqual([0, 1]);
+    expect((res.failed || []).map((f) => f.idx).sort()).toEqual([0, 1]);
     expect(forms.map((f) => f.id)).toEqual([101, 102, 103, 104, 105]);
   });
 

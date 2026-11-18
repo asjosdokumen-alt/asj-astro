@@ -37,7 +37,7 @@ export async function getFormsByWa(wa: string): Promise<import("../../_lib/db/ro
 export async function patchForm(id: string | number, body: Record<string, unknown>, sessionToken?: string): Promise<void> {
   const client = clientFor('applications.patchForm', sessionToken);
   await supabaseJson('PATCH', 'database_asj_form', {
-    query: { id: 'eq.' + id },
+    query: { id: `eq.${id}` },
     body,
     headers: { Prefer: 'return=minimal' },
     overrideKey: client.apikey,
@@ -48,7 +48,7 @@ export async function patchForm(id: string | number, body: Record<string, unknow
 export async function deleteForm(id: string | number, sessionToken?: string): Promise<void> {
   const client = clientFor('applications.deleteForm', sessionToken);
   await supabaseJson('DELETE', 'database_asj_form', {
-    query: { id: 'eq.' + id },
+    query: { id: `eq.${id}` },
     headers: { Prefer: 'return=minimal' },
     overrideKey: client.apikey,
     overrideAuthKey: client.authKey,
@@ -77,7 +77,7 @@ export async function deleteFormsByIds(ids: Array<string | number>, sessionToken
   });
   const client = clientFor('applications.deleteFormsByIds', sessionToken);
   await supabaseJson('DELETE', 'database_asj_form', {
-    query: { id: 'in.(' + values.join(',') + ')' },
+    query: { id: `in.(${values.join(',')})` },
     headers: { Prefer: 'return=minimal' },
     overrideKey: client.apikey,
     overrideAuthKey: client.authKey,
