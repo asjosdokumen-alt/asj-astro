@@ -18,10 +18,11 @@
 
 ---
 
-## 🟢 Status terbaru — 2026-11-18 21:52 WIB
+## 🟢 Status terbaru — 2026-11-19 00:15 WIB
 
-Verdict **masih NO-GO**, tetapi sebagian besar blocker kode sudah ditutup secara lokal.
-Sepuluh commit lokal belum di-push (`origin/main...HEAD` = **0 / 10**) sesuai R19.
+Verdict **masih NO-GO**, tetapi seluruh blocker kode yang bisa ditutup tanpa keputusan
+owner sudah ditutup secara lokal. **Lima belas commit lokal belum di-push**
+(`origin/main...HEAD` = **0 / 15**) sesuai R19.
 
 | Temuan | Status | Bukti |
 |---|---|---|
@@ -30,7 +31,7 @@ Sepuluh commit lokal belum di-push (`origin/main...HEAD` = **0 / 10**) sesuai R1
 | C-3 bucket dokumen publik | 🔴 Buka | Butuh bucket privat + signed URL; tidak diubah tanpa keputusan owner |
 | H-1 IDOR tulis dokumen | ✅ Tutup | `8545ef4d` + `02db7888`: folder & nama dari baris DB, label divalidasi sebelum upload; 2 tes regresi |
 | H-2 PIN 4 digit | 🔴 Buka | Butuh rotate nilai env production — bukan keputusan kode |
-| H-3 revokasi sesi | 🟡 Sebagian | `4c66f4f5`: refresh fail-closed saat epoch tak bisa dibaca; `changePassword` membalik urutan tulis dan menolak bila bump gagal. `requireRole`/`isOwnerOrAdmin` masih sinkron dan tidak membaca epoch per aksi |
+| H-3 revokasi sesi | ✅ Tutup | `4c66f4f5` (refresh fail-closed, `changePassword` menulis epoch dulu) + `97ffa1cc`: gerbang terpusat di `handleAction` menolak refresh-token, menolak `iat < revoked_at`, **fail-closed** bila tabel tak terbaca; cache 15 dtk + invalidasi saat logout. 11 tes baru |
 | H-4 tulis anonim tanpa throttle | ✅ Tutup | `576d68b`: bucket `publicWrite:*` + global untuk `submitApply`/`submitDaftarSiswa` |
 | H-5 tes menulis produksi | ✅ Tutup | `1a15be5`: butuh `ALLOW_DB_WRITING_TESTS=1`; 2 tes kini diskip |
 | H-6 prefill PII per WA | 🟡 Dimiter | Sudah ada allowlist + bucket `prefill:*` 20/menit; masih mengembalikan nama/TL/pendidikan |
@@ -38,14 +39,19 @@ Sepuluh commit lokal belum di-push (`origin/main...HEAD` = **0 / 10**) sesuai R1
 | M-2 plafon Combo | ✅ Tutup | `c711ee5`: `batasSkor` menerima `kalimat` hasil replay sebagai penanda sesi panjang |
 | M-4 push ganda per upload | ✅ Tutup | `a5977ed`: satu notifikasi untuk N baris |
 | M-5 `null` vs `''` | ✅ Tutup | `a5977ed`: canonical empty value `''` |
+| M-3 bulk-delete 2N | ✅ Tutup | `df7e4fbd`: satu `DELETE id=in.(…)`; gagal ⇒ semua baris dilaporkan gagal, bukan partial tanpa laporan. 2 tes baru |
+| M-6 CORS share-data | ✅ Tutup | `a7416d59`: origin situs sendiri + `Vary: Origin`, bukan `*`; 1 tes baru |
+| M-7 CSP | 🟡 Observasi | `a7416d59`: `Content-Security-Policy-Report-Only` aktif. **Belum enforcement** sampai violation build nyata diamati |
 
-Gate setelah perbaikan: **vitest 279/279 file · 3 942 lulus + 2 skip · exit 0** (pada `67f6acd9`),
-tsc main/indexer 0/0, lint-ratchet PASS 1 957/1 968, memory:check dry-run PASS.
-Satu commit terakhir (`02db7888`) hanya mengganti satu ekspresi optional-chain; diuji ulang
-targeted 7/7 + lint + tsc. Tidak ada push dan tidak ada build produksi baru dari sesi ini.
+Gate setelah perbaikan: **vitest 280/280 file · 3 956 lulus + 2 skip · exit 0** (8m29s,
+`eb6c09d2`), tsc main/indexer 0/0, lint-ratchet PASS (debt −13 vs baseline),
+memory:check dry-run PASS. Indexer: 666 berkas · 36 625 simbol (plafon 37 000) ·
+39 unresolved refs (tidak berubah). Tidak ada push dan tidak ada build produksi baru
+dari sesi ini.
 
 Masih terbuka sebelum status GO: **C-2 history/fork, C-3 signed URL + bucket privat, H-2 rotasi PIN,
-H-6 keputusan eksposur prefill, M-3 bulk-delete 2N round-trip, M-6 CORS, M-7 CSP, M-8 dependency**.
+H-6 keputusan eksposur prefill, M-7 CSP enforcement, M-8 dependency**. Rincian langkah owner:
+`deliverables/gstack/owner-decisions-no-go-2026-11-18.md`.
 
 ---
 
