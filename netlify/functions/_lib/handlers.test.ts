@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { docTypeOf } from '../contexts/catalog';
-import { rateLimitChecks, ADMIN_READ_ACTIONS } from './handlers';
+import { rateLimitChecks, ADMIN_READ_ACTIONS, PUBLIC_WRITE_ACTIONS } from './handlers';
 import { signToken } from './session';
 
 describe('docTypeOf — pola baru (prefix kapital)', () => {
@@ -75,6 +75,21 @@ describe('rateLimitChecks — endpoint anonim termeter', () => {
     const checks = rateLimitChecks('getExistingCandidateJsonByWa', {}, '');
     expect(checks).toHaveLength(1);
     expect(checks[0].key).toBe('prefill:anon');
+  });
+
+  it('H-4: submitApply / submitDaftarSiswa punya bucket tulis anonim', () => {
+    const ip = '203.0.113.7';
+    for (const action of PUBLIC_WRITE_ACTIONS) {
+      const checks = rateLimitChecks(action, { ip }, '');
+      expect(checks.length, action).toBeGreaterThanOrEqual(1);
+      expect(checks.some((c) => c.key === `publicWrite:${ip}`), action).toBe(true);
+      expect(checks.some((c) => c.key === 'publicWriteGlobal'), action).toBe(true);
+    }
+  });
+
+  it('H-4: daftar tulis anonim tidak bisa dikosongkan diam-diam', () => {
+    expect(PUBLIC_WRITE_ACTIONS.has('submitApply')).toBe(true);
+    expect(PUBLIC_WRITE_ACTIONS.has('submitDaftarSiswa')).toBe(true);
   });
 });
 

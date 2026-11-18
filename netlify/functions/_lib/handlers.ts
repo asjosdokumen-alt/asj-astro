@@ -116,6 +116,19 @@ const CONTACT_ACTIONS = new Set(['kirimPesanKontak']);
  */
 const PREFILL_ACTIONS = new Set(['getExistingCandidateJsonByWa']);
 
+/**
+ * H-4: the two anonymous registration writes used to fall through to
+ * `return []` — completely unmetered while each one forced a public cache
+ * invalidation and an admin push. IP-only by necessity (there is no session),
+ * with a global bucket so one host cannot rotate IPs freely. Deliberately
+ * looser than the contact form: a real applicant submits once, while a typo
+ * retry is normal and must not be punished.
+ */
+export const PUBLIC_WRITE_ACTIONS: ReadonlySet<string> = new Set([
+  'submitApply',
+  'submitDaftarSiswa',
+]);
+
 const NOT_IMPLEMENTED =
   'Fungsi ini belum diimplementasi di backend rebuild (repo GitHub hanya berisi frontend).';
 
@@ -202,6 +215,14 @@ export function rateLimitChecks(
     return [
       { key: `contactIp:${ip}`, opts: { limit: 10, windowMs: 60000 } },
       { key: `contactGlobal:${ip}`, opts: { limit: 30, windowMs: 60000 } },
+    ];
+  }
+  // H-4: anonymous writes are public by design, but never unmetered. Checked
+  // before the identity branches — these actions carry no usable session.
+  if (PUBLIC_WRITE_ACTIONS.has(action)) {
+    return [
+      { key: `publicWrite:${ip}`, opts: { limit: 6, windowMs: 60000, lockoutAfter: 12, lockoutMs: 300000 } },
+      { key: 'publicWriteGlobal', opts: { limit: 120, windowMs: 60000 } },
     ];
   }
   // Anonymous candidate prefill — public by design, PII-returning, IP-only.
