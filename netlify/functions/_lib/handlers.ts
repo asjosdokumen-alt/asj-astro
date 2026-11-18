@@ -7,6 +7,7 @@ import { supabaseJson } from './db/client';
 import { IDEMPOTENCY_KEY_COLS } from './db/projections';
 import { enqueue } from './kernel/job-queue';
 import { admit, release, shedResponse, logShed, snapshot, deferralJobTypeFor } from './kernel/admission';
+import { checkSessionGate } from './session-gate';
 
 // Register domain event handlers (side-effect import)
 import { initEventHandlers } from './event-handlers';
@@ -309,6 +310,14 @@ async function handleAction(action: string, payload: unknown[], sessionToken: st
   }
 
   try {
+    // H-3: enforce the revocation epoch ONCE at dispatch, before the limiter.
+    // A revoked session must not be able to fill someone else's identity-scoped
+    // bucket, and `requireRole` / `isOwnerOrAdmin` stay synchronous for their
+    // ~67 existing call sites. Fail-closed lives in session-gate.ts.
+    const gate = await checkSessionGate(action, sessionToken);
+    if (!gate.ok) {
+      return { success: false, error: gate.error, sessionInvalid: true };
+    }
     const checks = rateLimitChecks(action, meta, sessionToken);
     for (const c of checks) {
       const r = await rateLimit.check(c.key, c.opts);

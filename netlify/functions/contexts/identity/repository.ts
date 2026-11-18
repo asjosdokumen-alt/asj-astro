@@ -10,6 +10,7 @@
 import { supabaseJson } from '../../_lib/db/client';
 import { CAND_AUTH_COLS } from '../../_lib/db/projections';
 import { nextCandidateId } from '../../_lib/candidate-helpers';
+import { invalidateSessionGateSubject } from '../../_lib/session-gate';
 
 // ── Admin credentials ────────────────────────────────────────────────────────
 //
@@ -155,6 +156,10 @@ export async function revokeSessionSubject(subject: string): Promise<boolean> {
       headers: { Prefer: 'resolution=merge-duplicates' },
       body: { subject, revoked_at: new Date().toISOString() },
     });
+    // H-3: the dispatch gate caches "not revoked" briefly to spare Neon reads.
+    // A successful kill switch must invalidate that cache immediately on this
+    // instance or logout would look successful while old tokens still work.
+    invalidateSessionGateSubject(subject);
     return true;
   } catch {
     return false;
