@@ -142,6 +142,10 @@ describe('papan peringkat — urutan total tanpa seri', () => {
     expect(batasSkor({ loop: 1 })).toBe(10_000_000);
     expect(batasSkor({ loop: 0 })).toBe(1_000_000);
     expect(batasSkor({ loop: 'bukan angka' })).toBe(1_000_000);
+    // M-2: Combo memakai `kalimat`, bukan `loop`. Nilai ini ditimpa hasil
+    // replay sebelum plafon dihitung, jadi bukan jalur curang.
+    expect(batasSkor({ kalimat: 1 })).toBe(10_000_000);
+    expect(batasSkor({ kalimat: 0 })).toBe(1_000_000);
   });
 
   it('skor sama tapi reaksi beda 1 ms → urutan berbeda', () => {

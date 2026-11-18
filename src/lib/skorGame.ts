@@ -78,6 +78,7 @@ export async function kirimSkor(
   game: GameSkor,
   skor: number,
   detail?: Record<string, unknown>,
+  onResult?: (ok: boolean) => void,
 ): Promise<number | null> {
   const wa = waSiswa();
   if (!wa) return null;
@@ -90,9 +91,14 @@ export async function kirimSkor(
       // mengeluarkan siswa dari sesinya di tengah latihan.
       { onSessionInvalid: 'throw', silent: true },
     );
-    if (!r || r.success === false) return null;
+    if (!r || r.success === false) {
+      onResult?.(false);
+      return null;
+    }
+    onResult?.(true);
     return typeof r.terbaik === 'number' ? r.terbaik : null;
   } catch {
+    onResult?.(false);
     return null;
   }
 }
@@ -131,4 +137,9 @@ export function bolehKirim(kunci: string): boolean {
   if (sudahKirim.size > 200) sudahKirim.clear();
   sudahKirim.add(kunci);
   return true;
+}
+
+/** H-7: lepas kunci saat kiriman GAGAL, supaya pemain bisa mencoba lagi. */
+export function lepasKirim(kunci: string): void {
+  sudahKirim.delete(kunci);
 }

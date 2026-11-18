@@ -77,7 +77,15 @@ interface BarisSkor {
 /** Batas skor yang berlaku untuk satu kiriman. */
 export function batasSkor(detail: Record<string, unknown>): number {
   const loop = Number(detail.loop);
-  return Number.isFinite(loop) && loop >= 1 ? SKOR_MAKS_ULTIMATE : SKOR_MAKS;
+  // M-2: Combo tidak memakai `loop`; "kalimat selesai" adalah unit yang
+  // setara. Tanpa ini, ~190 kalimat sah sudah menembus 1 juta dan server
+  // menjawab "Skor tidak masuk akal" untuk permainan yang tidak curang.
+  // Angka kalimat sudah DIGANTI oleh hasil replay di cabang combo, jadi
+  // klien tidak bisa menaikkan plafon hanya dengan mengirim angka besar.
+  const kalimat = Number(detail.kalimat);
+  const panjang = (Number.isFinite(loop) && loop >= 1) ||
+    (Number.isFinite(kalimat) && kalimat >= 1);
+  return panjang ? SKOR_MAKS_ULTIMATE : SKOR_MAKS;
 }
 
 /** Detail dinormalisasi di server: klien tidak boleh menyelundupkan angka liar. */

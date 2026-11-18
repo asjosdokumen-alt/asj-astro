@@ -39,7 +39,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { t, useLang } from '../../store/i18n';
 import { authStore } from '../../store/authReactive';
-import { ambilPapanGame, bolehKirim, kirimSkor, waSiswa, type BarisPapanGame } from '../../lib/skorGame';
+import { ambilPapanGame, bolehKirim, lepasKirim, kirimSkor, waSiswa, type BarisPapanGame } from '../../lib/skorGame';
 import ArcadeIkon from '../ui/ArcadeIkon';
 import LoginGate from '../ui/LoginGate';
 import { alihBunyi, bunyi, bunyiHasil, bunyiKombo, bunyiMenyala, bunyiMulai, ucap } from '../../lib/tts';
@@ -935,10 +935,16 @@ export default function ArcadeGame() {
   const [kartu, setKartu] = useState<Kartu[]>([]);
   const [tray, setTray] = useState<string[]>([]);
   const [kombo, setKombo] = useState(1);
-  const [balas, setBalas] = useState('');
+  /** H-7: efek timer membaca ref, bukan state yang tersimpan saat efek dibuat. */
+  const komboRef = useRef(1);
   const [skorCombo, setSkorCombo] = useState(0);
+  const [balas, setBalas] = useState('');
   const [rekorCombo, setRekorCombo] = useState<number>(() => bacaRekor(KUNCI_REKOR_COMBO));
   const [kalimatSelesai, setKalimatSelesai] = useState(0);
+  const kalimatSelesaiRef = useRef(0);
+  /** Satu sesi Combo = satu kunci `bolehKirim`; ganti level tidak boleh
+      membuat skor yang sama tertolak sebagai "sudah dikirim". */
+  const comboSesiRef = useRef(1);
   const [kalimatGagal, setKalimatGagal] = useState(0);
   const [bonusTerakhir, setBonusTerakhir] = useState<number | null>(null);
   const [sisaKalimat, setSisaKalimat] = useState(100);
@@ -1001,6 +1007,16 @@ export default function ArcadeGame() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: muat ulang hanya saat LEVEL berganti; muatSoal dibuat ulang tiap render sehingga memasukkannya ke daftar akan mengulang tanpa henti
   useEffect(() => {
+    // H-7/M-2: satu level = satu sesi skor. Tanpa ini ronde dan kalimat
+    // menumpuk dari level sebelumnya sampai plafon replay 1 juta tercapai.
+    comboSesiRef.current += 1;
+    rondeComboRef.current = [];
+    setSkorCombo(0);
+    setKombo(1);
+    komboRef.current = 1;
+    setKalimatSelesai(0);
+    kalimatSelesaiRef.current = 0;
+    setKalimatGagal(0);
     muatSoal(0);
   }, [level]);
 
@@ -1074,15 +1090,23 @@ export default function ArcadeGame() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: jeda 5 detik hanya dipicu perubahan skorCombo
   useEffect(() => {
     if (skorCombo <= 0) return;
+    const kunci = `combo:${comboSesiRef.current}:${skorCombo}`;
+    if (!bolehKirim(kunci)) return;
     const id = window.setTimeout(() => {
-      if (!bolehKirim(`combo:${skorCombo}`)) return;
-      void kirimSkor('combo', skorCombo, {
-        level,
-        kombo,
-        kalimat: kalimatSelesai,
-        /* Sumber kebenaran skor Combo; server memutar ulang dari sini. */
-        ronde: rondeComboRef.current,
-      }).then(() => {
+      void kirimSkor(
+        'combo',
+        skorCombo,
+        {
+          level,
+          // H-7: baca state TERAKHIR dari ref. Closure lama mengirim kombo=2
+          // bersama ronde yang sudah berisi [0,0] ⇒ server replay kombo=1 dan
+          // menolak seluruh kiriman, tanpa bisa diulang karena kuncinya hilang.
+          kombo: komboRef.current,
+          kalimat: kalimatSelesaiRef.current,
+          ronde: rondeComboRef.current,
+        },
+        (ok) => { if (!ok) lepasKirim(kunci); },
+      ).then(() => {
         if (papanBuka) muatPapan('combo');
       });
     }, 5000);
@@ -1134,6 +1158,7 @@ export default function ArcadeGame() {
       setLangkah(l);
       setTray((tr) => [...tr, k.jp]);
       setKombo(komboBaru);
+      komboRef.current = komboBaru;
       setSkorCombo(skorBaru);
       catatRekorCombo(skorBaru);
       setKartu((ks) => ks.filter((_, i) => i !== indeks));
@@ -1152,7 +1177,11 @@ export default function ArcadeGame() {
         catatRekorCombo(skorBaru + bonus);
         setBonusTerakhir(bonus);
         setKalimatAktif(false);
-        setKalimatSelesai((n) => n + 1);
+        setKalimatSelesai((n) => {
+          const next = n + 1;
+          kalimatSelesaiRef.current = next;
+          return next;
+        });
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
             new CustomEvent('asj:combo', { detail: { aksi: 'selesai', indeks: -1, kombo: komboBaru } }),
@@ -1166,6 +1195,10 @@ export default function ArcadeGame() {
       bunyi(false);
       getar([20, 40, 20]);
       setKombo(1);
+      komboRef.current = 1;
+      // H-7: skor tidak berubah, jadi efek 5 detik tidak di-arm ulang — dan
+      // itu benar. Yang penting, kalau efek sudah tertunda dari ketukan
+      // sebelumnya, ia harus membaca kombo=1 dari ref, bukan nilai lama.
       rondeComboRef.current.push([0, 0]);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('asj:combo', { detail: { aksi: 'salah', indeks, kombo: 1 } }));

@@ -44,6 +44,7 @@ import {
   tandaSiswa,
   hitungGenba,
 } from './arcade';
+import { bolehKirim, lepasKirim } from './skorGame';
 
 /** RNG deterministik: urutan yang sama setiap kali, supaya tes tidak undian. */
 const rngDari = (biji: number[]) => {
@@ -658,5 +659,16 @@ describe('arcade — hitungGenba: replay ronde menjadi skor', () => {
   it('deterministik: ronde yang sama selalu menghasilkan skor yang sama', () => {
     const ronde = [r(true, 7311), r(true, 6222), r(false, 0), r(true, 5111)];
     expect(hitungGenba('magang', ronde)).toEqual(hitungGenba('magang', ronde));
+  });
+});
+
+describe('skorGame — kunci kirim H-7', () => {
+  it('kunci gagal bisa dilepas dan dipakai lagi', () => {
+    const kunci = `combo:test:${Date.now()}`;
+    expect(bolehKirim(kunci)).toBe(true);
+    expect(bolehKirim(kunci)).toBe(false);
+    lepasKirim(kunci);
+    expect(bolehKirim(kunci)).toBe(true);
+    lepasKirim(kunci);
   });
 });
