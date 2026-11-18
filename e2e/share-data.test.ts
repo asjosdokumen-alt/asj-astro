@@ -67,7 +67,7 @@ vi.mock('../netlify/functions/contexts/catalog/index.js', () => ({
 
 import shareDataHandler from '../netlify/functions/share-data.js';
 
-type Res = { statusCode: number; body: string };
+type Res = { statusCode: number; body: string; headers?: Record<string, string> };
 const handler = shareDataHandler as unknown as (e: unknown) => Promise<Res>;
 
 beforeEach(() => {
@@ -99,6 +99,16 @@ describe('A15/B06 — share-data GET endpoint delegates to real handler', () => 
     expect(mockHandle).toHaveBeenCalledWith('');
     expect(res.statusCode).toBe(400);
     expect(JSON.parse(res.body).error).toContain('Kode job');
+  });
+
+  it('M-6: CORS tidak wildcard — hanya origin situs sendiri', async () => {
+    const res = await handler({
+      queryStringParameters: { job: 'TG658' },
+      headers: { host: 'amanahsakura.netlify.app', 'x-forwarded-proto': 'https' },
+    });
+    expect(res.headers?.['Access-Control-Allow-Origin']).toBe('https://amanahsakura.netlify.app');
+    expect(res.headers?.['Access-Control-Allow-Origin']).not.toBe('*');
+    expect(res.headers?.Vary).toContain('Origin');
   });
 
   it('no longer returns the NOT_IMPLEMENTED stub body', async () => {

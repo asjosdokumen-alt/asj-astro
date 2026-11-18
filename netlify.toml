@@ -165,10 +165,13 @@
 # denied. If a future feature needs one of those, change it here deliberately —
 # do not drop the header.
 #
-# A Content-Security-Policy is deliberately ABSENT. Astro inlines boot scripts
-# and styles, so a CSP written without collecting violations on the real build
-# would either break the site or be so loose it means nothing. That task starts
-# by observing the deployed page, not by guessing here.
+# A Content-Security-Policy is deliberately ENFORCEMENT-ABSENT. Astro inlines
+# boot scripts and styles, so an enforced CSP written without collecting
+# violations on the real build would either break the site or be so loose it
+# means nothing. M-7 starts OBSERVATION instead: report-only is delivered by
+# the browser but never blocks a request. Once the console/violation report is
+# clean on the deployed build, promote the same string to an enforcing header.
+# `frame-ancestors 'none'` is already covered by X-Frame-Options below.
 #
 #   X-Content-Type-Options     stops a mis-served upload being sniffed as HTML/JS
 #   X-Frame-Options            this site is never legitimately framed
@@ -183,6 +186,7 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(self), geolocation=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'"
 
 # ─── Godot Web (2026-11-15) ──────────────────────────────────────────────────
 #

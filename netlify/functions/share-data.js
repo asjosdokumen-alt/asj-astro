@@ -32,6 +32,16 @@ import { handleShareData } from './contexts/catalog/index.js';
 async function handler(event) {
   const p = (event.queryStringParameters) || {};
   const job = p.job || '';
+  // M-6: the viewer is same-origin (ShareView.tsx fetches
+  // `/.netlify/functions/share-data`), so a wildcard CORS header buys nothing
+  // and lets any site read a candidate list by job code. Reflect the request's
+  // own host/scheme instead — a third-party origin will not match it.
+  const headers = (event && event.headers) || {};
+  const host = String(headers.host || headers.Host || '').split(',')[0].trim();
+  const proto = String(headers['x-forwarded-proto'] || headers['X-Forwarded-Proto'] || 'https')
+    .split(',')[0]
+    .trim();
+  const ownOrigin = host ? proto + '://' + host : 'https://amanahsakura.netlify.app';
   let out;
   try {
     out = await handleShareData(job);
@@ -45,7 +55,8 @@ async function handler(event) {
     statusCode: out.error ? 400 : 200,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': ownOrigin,
+      Vary: 'Origin',
     },
     body: JSON.stringify(out),
   };
