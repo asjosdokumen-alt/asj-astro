@@ -10,6 +10,10 @@ huruf drive berubah mesin). Jangan jalankan `git add -A`, jangan push.
 > berbeda dari ASTRO (sudah diuji, login ditolak). Simpan string itu ke `F:/tmp/db2-connection.txt`
 > (di luar repo) lalu jalankan `F:/tmp/db2/restore.sh`.
 
+> **Selesai 2026-11-18 17:55 WIB.** Restore exit 0 · parity **35/35 identik** · `verify:schema`
+> dan `verify:rls` hijau · Data API DB2 balas **200** + baris.
+> Cutover tinggal mengubah `SUPABASE_URL` di Netlify (belum dilakukan; butuh akses owner).
+
 ---
 
 ## 0. Siapkan `pg_dump` 18 (sudah terpasang di mesin ini)
@@ -114,6 +118,33 @@ pg_restore --no-owner --exit-on-error \
 ```
 
 Kalau error "role ... does not exist", buat role itu di DB NO 2 lalu ulangi `pg_restore` dari awal.
+
+### Catatan restore aktual 2026-11-18
+
+Dump ASTRO ikut membawa objek milik Neon (`neon_auth`, `backup`, `pgrst`,
+`pg_session_jwt`, `DEFAULT ACL`) yang **sudah ada di project tujuan**. `pg_restore`
+polos berhenti berurutan di `must be owner of extension pg_session_jwt`,
+`schema neon_auth already exists`, `schema backup already exists`,
+`role "anon" does not exist`, dan `permission denied to change default privileges`.
+Urutan yang berhasil:
+
+```bash
+grep -vE 'neon_auth|SCHEMA - backup|pgrst' /f/tmp/db2/dump-list.txt \
+  | grep -v 'pg_session_jwt' | grep -v 'DEFAULT ACL' > /f/tmp/db2/dump-apply3.list
+psql "$NEW_URL" -c 'CREATE ROLE anon NOLOGIN'   # kalau belum ada
+pg_restore --clean --if-exists --use-list=/f/tmp/db2/dump-apply3.list \
+  --no-owner --exit-on-error --dbname="$NEW_URL" /f/tmp/db2/astro-2026-11-18.dump
+psql "$NEW_URL" -c 'GRANT asj_service TO authenticator'
+psql "$NEW_URL" -c 'ALTER ROLE asj_service NOLOGIN'
+```
+
+`GRANT asj_service TO authenticator` **wajib**: tanpa itu Data API balas
+`403 42501 permission denied to set role "asj_service"`. `pg_dump` tidak membawa
+keanggotaan role, jadi ini tidak ikut ter-restore.
+
+Kalau Data API masih `404 PGRST205` padahal tabel sudah ada → **Refresh schema cache**
+di Neon Console → Data API. `NOTIFY pgrst, 'reload schema'` tidak berpengaruh pada
+PostgREST yang dikelola Neon.
 
 ---
 
