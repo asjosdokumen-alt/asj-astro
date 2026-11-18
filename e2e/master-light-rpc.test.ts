@@ -222,7 +222,15 @@ describe('fetchMasterLightByWa — urutan panggilan', () => {
 // Dijalankan hanya kalau kredensial DB langsung tersedia (.env.local di mesin
 // pemilik / CI rahasia). Tanpa itu tes DILEWATI, bukan gagal — jalur ini bukan
 // milik CI, dan repo memang tidak punya tes lain yang menyentuh DB nyata.
+// H-5 (2026-11-18): `.env.local` di mesin pemilik mengarah ke PRODUKSI. Dulu
+// keberadaan connection string SAJA sudah cukup untuk menjalankan blok yang
+// melakukan INSERT ke `master_database_candidate` lewat `pg.Client` mentah —
+// pagar `catatTulisDb` tidak melihatnya. Sekarang dibutuhkan opt-in eksplisit;
+// satu baris env yang terlewat tidak boleh lagi menjadi alasan menulis ke data
+// kandidat nyata.
+const dbOptIn = process.env.ALLOW_DB_WRITING_TESTS === '1';
 const dbUrl = (() => {
+  if (!dbOptIn) return '';
   initDbEnv();
   return process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || '';
 })();
