@@ -95,7 +95,11 @@ async function fetchAll(table) {
 }
 
 async function readSupabase() {
+  // Neon Data API kini menolak GET /rest/v1/ (404 PGRST205) sehingga daftar tabel
+  // dari OpenAPI tidak bisa dipakai. Kalau koneksi SQL lama tersedia, baca langsung.
+  if (process.env.OLD_DIRECT_URL) return readDb(process.env.OLD_DIRECT_URL);
   const spec = await (await fetch(`${SU}/rest/v1/`, { headers: H })).json();
+  if (!spec.paths) throw new Error('OpenAPI PostgREST tidak tersedia — set OLD_DIRECT_URL');
   const tables = Object.keys(spec.paths || {})
     .filter((p) => p !== '/')
     .map((p) => p.slice(1))
@@ -112,10 +116,10 @@ async function readSupabase() {
   return out;
 }
 
-// ── sisi baru: pg langsung ke Neon ────────────────────────────────────────
-async function readNeon() {
+// ── sisi DB: pg langsung ──────────────────────────────────────────────────
+async function readDb(CONN) {
   const c = new pg.Client({
-    connectionString: NEON,
+    connectionString: CONN,
     ssl: { rejectUnauthorized: false, checkServerIdentity: () => undefined },
   });
   await c.connect();
@@ -156,7 +160,7 @@ async function readNeon() {
 
 // ── bandingkan ────────────────────────────────────────────────────────────
 const oldDb = await readSupabase();
-const newDb = await readNeon();
+const newDb = await readDb(NEON);
 const names = [...new Set([...Object.keys(oldDb), ...Object.keys(newDb)])].sort();
 
 const rows = [];
