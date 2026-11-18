@@ -940,7 +940,7 @@ export async function handleSimpanBerkasTahapan(
     // guard sesi di atas. Fallback dipakai hanya jika kedua baris belum ada.
     const nama = String(
       pick(candRow || {}, ["nama_lengkap", "nama"]) ||
-        (mRow && mRow.nama_lengkap) ||
+        mRow?.nama_lengkap ||
         "KANDIDAT",
     )
       .trim()
