@@ -119,7 +119,7 @@ export async function findCandidateForRefresh(wa: string): Promise<CandidateAuth
  * applied before the code ships (repo rule), so the null path is a safety net,
  * not the normal path.
  */
-export async function getSessionRevokedAt(subject: string): Promise<number | null> {
+export async function getSessionRevokedAt(subject: string): Promise<number | null | undefined> {
   try {
     const rows = await supabaseJson('GET', 'session_revocations', {
       query: { select: 'revoked_at', subject: `eq.${subject}`, limit: '1' },
@@ -129,7 +129,10 @@ export async function getSessionRevokedAt(subject: string): Promise<number | nul
     const ms = Date.parse(String(raw || ''));
     return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
   } catch {
-    return null;
+    // H-3: "no row" (null) and "query failed" (undefined) must not collapse
+    // into one value. A refresh cannot prove it is still authorised when the
+    // revocation table is unreachable, so the caller must fail closed there.
+    return undefined;
   }
 }
 

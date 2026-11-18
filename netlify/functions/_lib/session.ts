@@ -58,6 +58,8 @@ function signToken(payload: SessionPayload): string {
   // minted before this field existed has no `iat`, which reads as 0 — i.e. it
   // is treated as older than any revocation, so it dies on the first bump.
   // That is the correct default: "unknown age" must not outlive a kill switch.
+  // NOTE: the comparison lives in identity/service.ts, NOT in verifyToken;
+  // this function only authenticates the signature and expiry.
   if (typeof tokenPayload.iat !== 'number') {
     tokenPayload.iat = Math.floor(Date.now() / 1000);
   }

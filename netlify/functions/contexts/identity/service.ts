@@ -112,6 +112,16 @@ async function revokedRefreshError(t: session.SessionPayload) {
   const subject = subjectOf(t);
   if (!subject) return null;
   const revokedAt = await repo.getSessionRevokedAt(subject);
+  // H-3: undefined = the revocation table could not be read. A refresh is the
+  // one action that must NOT fail open, or a revoked 7-day token survives the
+  // exact database blip that hid the kill switch.
+  if (revokedAt === undefined) {
+    return {
+      success: false as const,
+      sessionInvalid: true,
+      message: 'Sesi tidak dapat diverifikasi. Silakan masuk lagi.',
+    };
+  }
   if (!isRevoked(t.iat, revokedAt)) return null;
   return {
     success: false as const,
@@ -397,18 +407,23 @@ export async function changePassword(wa: string, lama: string, baru: string) {
   const built = await buildPasswordPatch(String(cand.password_kandidat || ''), lama, baru);
   if (!built.ok) return { success: false, message: built.error };
   const { supabaseJson } = await import('./repository');
+  // H-3: bump the revocation epoch BEFORE changing the password and abort if
+  // the bump did not land. The old order changed the password first and then
+  // discarded the boolean, so the user was told "success" while old tokens
+  // stayed alive — and retrying was impossible because the old password was
+  // already gone. Reversing the two writes makes a failed bump harmless: the
+  // password is untouched and the user can simply try again.
+  const subject = `kandidat:${normalizeWa(wa)}`;
+  const revoked = await repo.revokeSessionSubject(subject);
+  if (!revoked) {
+    return { success: false, message: 'Gagal mengakhiri sesi lama. Password belum diubah.' };
+  }
   try {
     await supabaseJson('PATCH', 'database_candidate', {
       query: { no_wa: `eq.${wa}` },
       body: built.body,
       headers: { Prefer: 'return=minimal' },
     });
-    // A password change MUST kill the tokens issued under the old password —
-    // otherwise a stolen refresh token survives the one action a victim takes.
-    // Best-effort by design: the password IS changed, so a failed bump must not
-    // turn a successful change into an error the user cannot fix by retrying.
-    // (The reader fails open, so a missing migration does not break login.)
-    await repo.revokeSessionSubject(`kandidat:${normalizeWa(wa)}`);
     return { success: true };
   } catch (e: unknown) {
     return {

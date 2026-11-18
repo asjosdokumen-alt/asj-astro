@@ -7,6 +7,7 @@
 // tokens), not the legacy { sessionInvalid:true } shape.
 // ==========================================
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import bcrypt from 'bcryptjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
 
@@ -24,6 +25,10 @@ const revoked = vi.hoisted(() => ({
   candidateMissing: new Set<string>(),
   /** Simulates an unreachable DB: every lookup answers "unknown". */
   dbDown: false,
+  /** H-3: revocation epoch write did not land. */
+  revocationFails: false,
+  /** H-3: PATCHes to the candidate row (password change). */
+  candidatePatches: [] as Array<Record<string, unknown>>,
   /** Baris `fcm_tokens` yang dikembalikan GET (urut `last_used_at` desc). */
   fcmRows: [] as Array<{ id: string; token: string }>,
   /** Nilai query `id=in.(...)` dari setiap DELETE ke `fcm_tokens`. */
@@ -40,8 +45,10 @@ vi.mock('./repository', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('./repository');
   return {
     ...actual,
-    getSessionRevokedAt: async (subject: string) => revoked.subjects.get(subject) ?? null,
+    getSessionRevokedAt: async (subject: string) =>
+      revoked.dbDown ? undefined : revoked.subjects.get(subject) ?? null,
     revokeSessionSubject: async (subject: string) => {
+      if (revoked.revocationFails) return false;
       revoked.subjects.set(subject, Math.floor(Date.now() / 1000));
       return true;
     },
@@ -59,6 +66,10 @@ vi.mock('./repository', async () => {
     supabaseJson: async (method: string, table: string, opts?: { query?: Record<string, string>; body?: Record<string, unknown> }) => {
       if (table === 'database_candidate' && method === 'POST') {
         revoked.candidateInserts.push(opts?.body ?? {});
+        return [];
+      }
+      if (table === 'database_candidate' && method === 'PATCH') {
+        revoked.candidatePatches.push(opts?.body ?? {});
         return [];
       }
       if (table !== 'fcm_tokens') return [];
@@ -88,6 +99,7 @@ import {
   requireAdmin,
   isOwnerOrAdmin,
   registerKandidat,
+  changePassword,
 } from './service';
 import { signToken, verifyToken } from '../../_lib/session';
 
@@ -95,6 +107,8 @@ beforeEach(() => {
   revoked.subjects.clear();
   revoked.candidateMissing.clear();
   revoked.dbDown = false;
+  revoked.revocationFails = false;
+  revoked.candidatePatches.length = 0;
   revoked.candidateInserts.length = 0;
   revoked.nextId = 'ASJ01011';
   revoked.existingCandidate = null;
@@ -182,6 +196,31 @@ describe('registerKandidat — nomor kandidat tidak boleh hilang diam-diam', () 
     // tidak mengukur — bukan karena kode benar.
     expect(sites).toBeGreaterThanOrEqual(2);
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('changePassword — H-3 tidak boleh menjanjikan pencabutan yang gagal', () => {
+  const WA = '6281234567890';
+  const hashLama = bcrypt.hashSync('lama', 10);
+
+  it('mengubah password hanya setelah epoch pencabutan berhasil ditulis', async () => {
+    revoked.existingCandidate = { no_wa: WA, password_kandidat: hashLama };
+
+    const res = await changePassword(WA, 'lama', 'baru');
+
+    expect(res.success).toBe(true);
+    expect(revoked.candidatePatches).toHaveLength(1);
+    expect(revoked.subjects.has(`kandidat:${WA}`)).toBe(true);
+  });
+
+  it('gagal sebelum menulis password bila epoch tidak bisa ditulis', async () => {
+    revoked.existingCandidate = { no_wa: WA, password_kandidat: hashLama };
+    revoked.revocationFails = true;
+
+    const res = await changePassword(WA, 'lama', 'baru');
+
+    expect(res.success).toBe(false);
+    expect(revoked.candidatePatches).toHaveLength(0);
   });
 });
 
@@ -385,11 +424,13 @@ describe('refresh kandidat — baris yang sudah tidak ada', () => {
     expect((res as { sessionInvalid?: boolean }).sessionInvalid).toBe(true);
   });
 
-  it('KONTROL: DB tidak bisa dihubungi TIDAK mematikan sesi (fail-open)', async () => {
+  it('DB tidak bisa dihubungi MENOLAK refresh karena epoch tidak bisa dibuktikan', async () => {
     const rt = signToken({ role: 'kandidat', wa: WA, kind: 'refresh' });
     revoked.dbDown = true;
 
-    expect((await refreshKandidatSession(rt)).success).toBe(true);
+    const res = await refreshKandidatSession(rt);
+    expect(res.success).toBe(false);
+    expect((res as { sessionInvalid?: boolean }).sessionInvalid).toBe(true);
   });
 
   it('KONTROL: kandidat yang masih ada tetap bisa menyegarkan', async () => {
