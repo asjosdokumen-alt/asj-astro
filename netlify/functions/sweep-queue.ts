@@ -5,8 +5,8 @@
  * ---------------
  * Phase 5 added a Postgres-backed job queue (job_queue table) for async work
  * (AI parsing, bulk WA, document ingestion). The queue needs a periodic sweep
- * to claim and execute pending jobs. This scheduled function runs every 2 minutes
- * via Netlify's scheduled functions feature.
+ * to claim and execute pending jobs. This scheduled function runs every 15
+ * minutes via Netlify's scheduled functions feature.
  *
  * HOW IT WORKS
  * ------------
@@ -15,9 +15,9 @@
  * 3. Marks jobs as completed or failed
  * 4. Dead-letters jobs that exceed max_attempts
  *
- * NETLIFY CONFIG (netlify.toml):
- *   [functions."sweep-queue"]
- *     schedule = "@every 2m"
+ * SCHEDULE:
+ *   Declared in code below (`export const config`), not in netlify.toml.
+ *   It is 15 minutes, not 2 — see the quota note at the export.
  *
  * HANDLER REGISTRATION:
  *   Each job type maps to a function that receives the payload and executes it.
@@ -149,7 +149,16 @@ async function handler() {
 // Modern Netlify Functions declare it in code instead. SAME cron expression
 // as before — a change here is the single easiest way to stop the sweep
 // silently, so verify from the logs after deploying.
-export const config = { schedule: '*/2 * * * *' };
+//
+// QUOTA (2026-11-18): this used to be '*/2 * * * *'. Neon suspends a compute
+// instance after 5 minutes idle, so a 2-minute cron resets that timer forever
+// and the instance never scales to zero — 24/7 at 0.25 CU ≈ 6 CU-hrs/day, which
+// burned the 100 CU-hr monthly allowance in ~17 days and PAUSED the project
+// (every data read then returned HTTP 402). The DUTY CYCLE is what costs, not
+// the interval: at a 5-minute suspend window even '*/7' would still be 71 %
+// awake. 15 minutes puts this function at 33 %. Do not narrow it back toward
+// '*/2' without checking the compute meter.
+export const config = { schedule: '*/15 * * * *' };
 
 export default adapt(handler);
 

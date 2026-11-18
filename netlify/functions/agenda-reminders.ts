@@ -136,9 +136,13 @@ function agendaReminderMetrics(fields: {
   };
 }
 
-// Every 10 minutes. See the header for why this is narrower than the h0 window
-// (60 min) and looser than sweep-queue's */2. Changing this line is the single
-// easiest way to stop reminders silently — verify from the logs after deploying.
-export const config = { schedule: '*/10 * * * *' };
+// Every 30 minutes. See the header for why this must stay narrower than the h0
+// window (60 min) — 30 still satisfies that with margin to spare. It was 10 until
+// 2026-11-18: with Neon suspending only after 5 minutes idle, a 10-minute cron
+// held a permanent 50 % duty cycle and helped exhaust the monthly compute
+// allowance (the project was paused; data reads returned HTTP 402). Changing this
+// line is still the easiest way to stop reminders silently — verify from the logs
+// after deploying.
+export const config = { schedule: '*/30 * * * *' };
 
 export default adapt(handler);

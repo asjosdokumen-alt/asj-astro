@@ -120,7 +120,11 @@ describe('agenda-reminders.ts — the trigger', () => {
     expect(m, 'agenda-reminders must export config.schedule').toBeTruthy();
 
     const expr = m![1];
-    expect(expr).toBe('*/10 * * * *');
+    // 30 since 2026-11-18 (was 10): Neon suspends only after 5 minutes idle, so a
+    // 10-minute cron held a permanent 50 % compute duty cycle and helped pause the
+    // project on quota. The invariant below is what actually protects the feature;
+    // this literal is a tripwire against silent drift.
+    expect(expr).toBe('*/30 * * * *');
 
     // The interval must be strictly inside the narrowest reminder window (h0 =
     // 60 min) or a schedule could enter and leave the window between two runs

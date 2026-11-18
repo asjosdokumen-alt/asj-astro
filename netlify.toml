@@ -31,22 +31,25 @@
     # See docs/archive/RENCANA_KELUAR_DARI_LAMBDA_MODE.md.
   ]
 
-# Phase 5: Job queue sweep every 2 minutes
+# Phase 5: Job queue sweep every 15 minutes
 #
 # The schedule is NOT here any more. Modern Netlify Functions declare it in the
 # function's own config (netlify/functions/sweep-queue.ts):
 #
-#   export const config = { schedule: '*/2 * * * *' };
+#   export const config = { schedule: '*/15 * * * *' };
 #
-# Same expression as the line this block used to hold. If the sweep ever stops
-# running, check that export first — a schedule that moves without being
-# verified is the quietest way to break the queue.
+# It was '*/2' until 2026-11-18: a 2-minute cron resets Neon's 5-minute idle timer
+# forever, so the compute never scaled to zero, and the project was paused after
+# exhausting its monthly compute allowance. If the sweep ever stops running, check
+# that export first — a schedule that moves without being verified is the quietest
+# way to break the queue.
 #
 # There are TWO scheduled functions now. The second is
-# netlify/functions/agenda-reminders.ts at '*/10 * * * *' (agenda reminders,
-# added 2026-09-13). It is looser than the sweep on purpose: its narrowest window
-# is one hour wide, so minute-level latency does not matter. Reminders not
-# arriving is the symptom; that export is the first thing to check.
+# netlify/functions/agenda-reminders.ts at '*/30 * * * *' (agenda reminders, added
+# 2026-09-13; widened from '*/10' on 2026-11-18 for the same quota reason). It is
+# looser than the sweep on purpose: its narrowest window is one hour wide, so
+# minute-level latency does not matter. Reminders not arriving is the symptom; that
+# export is the first thing to check.
 
 # Cache headers
 [[headers]]
