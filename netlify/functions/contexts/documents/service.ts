@@ -905,7 +905,13 @@ export async function handleSimpanBerkasTahapan(
     if (dWa && normalizeWa(String(t.wa || "")) !== dWa)
       return { success: false, error: "Nomor WA tidak sesuai sesi." };
   }
-  const wa = normalizeWa(String(d.wa || ""));
+  // H-1 (2026-11-18): a candidate's WA ALWAYS comes from the session. The
+  // payload's `wa` is only allowed to agree with it; an admin may target a
+  // different WA, but the storage folder below is still derived from the DB
+  // row for that WA — never from client-supplied `nama`.
+  const wa = t.role === "kandidat"
+    ? normalizeWa(String(t.wa || ""))
+    : normalizeWa(String(d.wa || ""));
   const jenis = String(d.jenisBerkas || "")
     .trim()
     .toUpperCase();
@@ -926,17 +932,40 @@ export async function handleSimpanBerkasTahapan(
     };
   }
   try {
-    const nama = String(d.nama || "KANDIDAT")
+    const candRow = await findCandidateRow(wa);
+    const mRow = await findMasterByWa(wa);
+    // H-1: sebelumnya folder diambil dari `d.nama` klien. Kandidat A cukup
+    // mengirim nama kandidat B untuk menimpa/menghapus varian di folder B.
+    // Sekarang nama dan folder turun dari baris DB milik WA yang sudah lolos
+    // guard sesi di atas. Fallback dipakai hanya jika kedua baris belum ada.
+    const nama = String(
+      pick(candRow || {}, ["nama_lengkap", "nama"]) ||
+        (mRow && mRow.nama_lengkap) ||
+        "KANDIDAT",
+    )
       .trim()
       .toUpperCase();
     const folder = masterFolder(nama);
+
+    // H-1: validasi label dilakukan SEBELUM upload. Sebelumnya jenis tanpa
+    // kolom tujuan tetap mengunggah byte, menghapus varian lama, memicu
+    // cacheClear(), baru lalu mengembalikan error — pembayaran penuh untuk
+    // sebuah penolakan.
+    const labelKey = fileLabelKey(jenis);
+    const map = labelKey ? FILE_LABEL_COLUMNS[labelKey] : null;
+    if (!map) {
+      return {
+        success: false,
+        error: `Jenis berkas "${jenis || "-"}" belum punya kolom penyimpanan — berkas tidak disimpan.`,
+      };
+    }
+
     const ext =
       String(f.name || "file")
         .split(".")
         .pop() || "jpg";
     let fileName = (jenis || "DOKUMEN") + "." + ext;
     const isCv = jenis === "CV" || jenis === "CV_REVISI";
-    const candRow = await findCandidateRow(wa);
     if (isCv && candRow) {
       const jobCode = String(
         pick(candRow, ["id_loker_pilihan", "id_loker"]) || "",
@@ -982,47 +1011,32 @@ export async function handleSimpanBerkasTahapan(
     } catch {
       /* non-fatal */
     }
-    const labelKey = fileLabelKey(jenis);
-    const map = labelKey ? FILE_LABEL_COLUMNS[labelKey] : null;
-    // Jenis berkas yang tidak punya kolom tujuan TIDAK boleh dilaporkan sukses.
-    // Sebelumnya blok di bawah hanya dilewati dan fungsinya tetap
-    // `return { success: true }`, jadi admin melihat "berhasil" padahal berkasnya
-    // tidak tercatat di mana pun — kegagalan yang menyamar sebagai hasil normal.
-    if (!map) {
-      return {
-        success: false,
-        error: `Jenis berkas "${jenis || "-"}" belum punya kolom penyimpanan — berkas tidak disimpan.`,
-      };
+    if (map.cand && candRow && candRow.id !== undefined) {
+      await supabaseJson("PATCH", "database_candidate", {
+        query: { id: "eq." + candRow.id },
+        body: { [map.cand]: url },
+        headers: { Prefer: "return=minimal" },
+      });
     }
-    if (map) {
-      if (candRow && candRow.id !== undefined && map.cand) {
-        await supabaseJson("PATCH", "database_candidate", {
-          query: { id: "eq." + candRow.id },
-          body: { [map.cand]: url },
-          headers: { Prefer: "return=minimal" },
-        });
-      }
-      const m = await findMasterByWa(wa);
-      if (m && m.id !== undefined && map.master) {
-        await supabaseJson("PATCH", "master_database_candidate", {
-          query: { id: "eq." + m.id },
-          body: { [map.master]: url },
-          headers: { Prefer: "return=minimal" },
-        });
-      }
-      if (map.pemberkasan) {
-        await supabaseJson("POST", "pemberkasan_checklist", {
-          query: { on_conflict: "wa,tahap" },
-          body: {
-            wa,
-            nama_lengkap: nama,
-            tahap: 1,
-            updated_at: new Date().toISOString(),
-            [map.pemberkasan]: url,
-          },
-          headers: { Prefer: "return=minimal,resolution=merge-duplicates" },
-        });
-      }
+    if (map.master && mRow && mRow.id !== undefined) {
+      await supabaseJson("PATCH", "master_database_candidate", {
+        query: { id: "eq." + mRow.id },
+        body: { [map.master]: url },
+        headers: { Prefer: "return=minimal" },
+      });
+    }
+    if (map.pemberkasan) {
+      await supabaseJson("POST", "pemberkasan_checklist", {
+        query: { on_conflict: "wa,tahap" },
+        body: {
+          wa,
+          nama_lengkap: nama,
+          tahap: 1,
+          updated_at: new Date().toISOString(),
+          [map.pemberkasan]: url,
+        },
+        headers: { Prefer: "return=minimal,resolution=merge-duplicates" },
+      });
     }
     // Item 7 (2026-09-25): parse dokumen kandidat bersifat admin-only — unggah
     // berkas tahapan tidak boleh memicu parsing otomatis, jadi ingest dihapus.

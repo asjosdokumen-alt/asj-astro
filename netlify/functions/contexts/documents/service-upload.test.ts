@@ -12,8 +12,26 @@ vi.mock('./repository', async (importOriginal) => {
     ...actual,
     hasBackend: () => true,
     supabaseUrl: () => 'https://supabase.example',
+    findCandidateRow: vi.fn(async () => ({
+      id: 1,
+      no_wa: '6285700000001',
+      nama_lengkap: 'KANDIDAT A',
+      id_loker_pilihan: 'JOB1',
+    })),
+    findMasterByWa: vi.fn(async () => ({
+      id: 2,
+      no_wa: '6285700000001',
+      nama_lengkap: 'KANDIDAT A',
+    })),
+    supabaseJson: vi.fn(async () => []),
   };
 });
+
+vi.mock('../applications', () => ({
+  syncFormMailDariUpload: vi.fn(async () => undefined),
+}));
+
+vi.mock('../../_lib/cache', () => ({ cacheClear: () => {} }));
 
 vi.mock('../../_lib/session', () => ({
   verifyToken: vi.fn(() => ({
@@ -39,13 +57,13 @@ vi.mock('../../_lib/storage', async (importOriginal) => {
     mimeFromName: () => 'application/octet-stream',
     stemAliases: (s: string) => [s],
     isVarianOf: () => false,
-    uploadBase64: async () => null,
+    uploadBase64: vi.fn(async () => 'https://cdn.example/object.jpg'),
     resolveFileUrl: (p: string) => p,
   };
 });
 
-import { handleGetUploadUrls } from './service';
-import { hapusJenisVarian, storageRequest } from '../../_lib/storage';
+import { handleGetUploadUrls, handleSimpanBerkasTahapan } from './service';
+import { hapusJenisVarian, storageRequest, uploadBase64 } from '../../_lib/storage';
 
 describe('handleGetUploadUrls — K3 folder upload kandidat dari sesi', () => {
   beforeEach(() => {
@@ -156,5 +174,49 @@ describe('handleGetUploadUrls — penandatanganan batch, di bawah batas bulkhead
     // 4 < 8 (bulkhead storage). Kalau ini naik, batch besar akan gagal total.
     expect(maxInflight).toBeLessThanOrEqual(4);
     expect(vi.mocked(storageRequest)).toHaveBeenCalledTimes(6);
+  });
+});
+
+describe('handleSimpanBerkasTahapan — H-1 folder dari DB, bukan dari klien', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('mengabaikan nama korban dari payload dan memakai nama baris DB', async () => {
+    const res = await handleSimpanBerkasTahapan(
+      [
+        {
+          wa: '6285700000001',
+          nama: 'KANDIDAT B',
+          jenisBerkas: 'KTP',
+          file: { data: 'ZmFrZQ==', name: 'ktp.jpg' },
+        },
+      ],
+      'token-kandidat',
+    );
+
+    expect(res.success).toBe(true);
+    const folder = vi.mocked(uploadBase64).mock.calls[0][1];
+    expect(folder).toBe('master/KANDIDAT_A');
+    expect(folder).not.toContain('KANDIDAT_B');
+    expect(vi.mocked(hapusJenisVarian).mock.calls[0][0]).toBe('master/KANDIDAT_A');
+  });
+
+  it('menolak jenis tanpa kolom SEBELUM mengunggah byte apa pun', async () => {
+    const res = await handleSimpanBerkasTahapan(
+      [
+        {
+          wa: '6285700000001',
+          nama: 'KANDIDAT B',
+          jenisBerkas: 'JENIS_TIDAK_ADA',
+          file: { data: 'ZmFrZQ==', name: 'ktp.jpg' },
+        },
+      ],
+      'token-kandidat',
+    );
+
+    expect(res.success).toBe(false);
+    expect(vi.mocked(uploadBase64)).not.toHaveBeenCalled();
+    expect(vi.mocked(hapusJenisVarian)).not.toHaveBeenCalled();
   });
 });
