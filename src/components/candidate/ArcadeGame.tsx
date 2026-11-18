@@ -1091,8 +1091,11 @@ export default function ArcadeGame() {
   useEffect(() => {
     if (skorCombo <= 0) return;
     const kunci = `combo:${comboSesiRef.current}:${skorCombo}`;
-    if (!bolehKirim(kunci)) return;
     const id = window.setTimeout(() => {
+      // Jangan mengklaim kunci di awal efek: efek bisa dibersihkan sebelum
+      // 5 detik lewat (ganti tab/level), dan kunci yang diklaim tapi tidak
+      // pernah dikirim membuat skor yang sama mustahil dikirim lagi.
+      if (!bolehKirim(kunci)) return;
       void kirimSkor(
         'combo',
         skorCombo,
