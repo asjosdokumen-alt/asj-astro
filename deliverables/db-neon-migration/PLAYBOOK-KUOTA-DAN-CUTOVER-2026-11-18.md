@@ -1,28 +1,32 @@
 # Playbook kuota Neon — inventaris key, cutover, dan pindah DB sebelum kena limit
 
-**Tanggal:** 2026-11-18 · **Status:** DB2 sudah ter-restore dan terverifikasi; cutover env sudah
-diubah owner di Netlify; **deploy belum terlihat** (lihat §1).
+**Tanggal:** 2026-11-18 · **Status akhir:** push sudah jalan, deploy terdeteksi, DB1 sudah
+di-downgrade owner. DB2 aktif sebagai target `SUPABASE_URL`. Lihat §1 untuk angka terukur dan
+§8 untuk desain alarm kuota.
 
 > ⚠️ **Dokumen ini sengaja tidak berisi satu pun nilai rahasia.** Hanya nama variabel dan lokasi
 > file. Repo ini **publik** — menempelkan connection string atau JWT ke sini = insiden.
 
 ---
 
-## 1. Status saat ini (terukur 18:02 WIB)
+## 1. Status saat ini (terukur 19:30 WIB)
 
-| Item | Nilai |
+| Item | Nilai terukur |
 |---|---|
-| `origin/main` | `031acf9` (2026-11-16) |
-| HEAD lokal | `29b6116` — **6 commit ahead, belum push** |
-| `/version.json` produksi | `asj-astro-8200fdbbe878`, built **2026-11-16T16:41Z** (cache-buster sudah dicoba) |
-| Artinya | **Deploy dengan kode baru belum jalan.** Env `SUPABASE_URL` sudah diganti owner, tapi build lama masih aktif |
-| DB1 (ASTRO) | Launch, data utuh, dipakai sebagai rollback |
-| DB2 (DB NO 2) | 35 tabel, parity 35/35 identik, Data API `200` + baris |
+| `origin/main` == HEAD lokal | `2fd0e24` — **0 ahead / 0 behind**, working tree bersih untuk file terlacak |
+| `/version.json` produksi | `asj-astro-5ed75aa6e432`, built **2026-11-18T11:06:36.650Z** (18:06 WIB) |
+| Health tanpa token | `200 {"status":"ok","detail":"gated"}` — artinya `HEALTH_TOKEN` Terpasang, BUKAN salah konfigurasi |
+| Health dengan token | `200`, `status=ok`, `reasons=["all dependencies healthy"]`, PostgREST reachable, `jobQueue depth=0` |
+| `ping` | `200` |
+| JWKS `kid` | `8169d1a4-8817-4426-b9ad-e6dbd814ecf2` — tidak berubah dari DB1 |
+| Cron di `HEAD` | `sweep-queue` `*/15`, `agenda-reminders` `*/30`; tripwire tes 9/9 hijau |
+| DB1 | Sudah di-downgrade owner ke Free; dump tetap di `F:/tmp/db2/astro-2026-11-18.dump` |
+| DB2 | 35 tabel, parity 35/35, schema & RLS terverifikasi; menjadi target `SUPABASE_URL` |
 
-**Konsekuensi penting:** kode yang masih ter-deploy memakai cron `sweep-queue` `*/2`.
-Itu yang membuat compute db1 kehabisan 100 CU-jam dalam ~17 hari. Perbaikan `*/15`/`*/30`
-ada di commit `2ca2729` + `50cd8b8`, **masih lokal**. Kalau db2 dipakai dengan kode lama,
-pola kehabisan yang sama akan terulang.
+**Catatan pembuktian:** scheduled functions Netlify tidak bisa dipanggil lewat URL pada deploy
+published, jadi jadwal `*/15`/`*/30` tidak bisa di-read dari publik. Bukti yang tersedia adalah
+commit `2ca2729` + `50cd8b8` sudah ikut ter-push dan build produksi terjadi setelah push itu.
+Jangan menganggap `detail:"gated"` sebagai degradasi — itu justru menandakan token health ada.
 
 ---
 
@@ -175,34 +179,97 @@ Tiga jebakan yang sudah terjadi dan harus dicek:
 
 ---
 
-## 6. Bolehkah db1 di-downgrade ke Free sekarang?
+## 6. Downgrade DB1 — sudah terjadi
 
-**Ya, secara teknis — tapi bukan sekarang.** Urutannya:
+Owner sudah men-downgrade DB1 ke Free setelah prasyarat terpenuhi:
 
-1. ✅ Dump db1 sudah ada (`F:/tmp/db2/astro-2026-11-18.dump`) — prasyarat downgrade terpenuhi.
-2. ✅ DB2 sudah terverifikasi penuh.
-3. ❌ **Deploy produksi belum berubah** (`version.json` masih 2026-11-16). Sebelum deploy baru
-   terlihat dan smoke test lolos, db1 adalah satu-satunya jalur produksi yang terbukti —
-   jangan diturunkan dulu.
-4. ❌ Commit perbaikan cron (`2ca2729`, `50cd8b8`) belum di-`push`, jadi Netlify tidak akan
-   pernah membangun kode `*/15`/`*/30` selama belum ada push. Ini keputusan owner (R19: jangan push
-   tanpa izin) — tapi WITHOUT itu, db2 akan menghabiskan kuota dengan pola yang sama.
+1. ✅ Dump db1 ada (`F:/tmp/db2/astro-2026-11-18.dump`), diambil **sebelum** downgrade.
+2. ✅ DB2 terverifikasi penuh (parity 35/35, schema, RLS, Data API).
+3. ✅ Push dan deploy sudah terjadi; build produksi `asj-astro-5ed75aa6e432` lebih baru dari push.
+4. ✅ Smoke test health/ping/JWKS hijau; tripwire cron 9/9 hijau.
 
-Setelah poin 3 dan 4 beres dan smoke test hijau: **boleh downgrade**. Data db1 tetap utuh;
-yang berubah hanya billing dan compute akan scale-to-zero saat idle. Simpan dump tetap di `F:/tmp`
-dan jangan hapus project lama sampai minimal satu siklus penuh terlalui.
+**Dua caveat yang masih berlaku:**
+
+- Jangan hapus project DB1 sampai **satu siklus billing penuh** terlewat. Rollback = kembalikan
+  `SUPABASE_URL` ke host DB1 lalu deploy ulang. Karena DB1 sekarang Free, compute bisa sudah
+  scale-to-zero — rollback tidak instan dan schema cache perlu diverifikasi ulang.
+- Jangan hapus/menimpa dump `F:/tmp/db2/astro-2026-11-18.dump`. Itu satu-satunya salinan
+  pre-downgrade yang sudah teruji.
 
 ---
 
 ## 7. Ringkasan aksi
 
-| # | Aksi | Siapa | Prioritas |
+| # | Aksi | Siapa | Status |
 |---|---|---|---|
-| 1 | Trigger deploy Netlify sampai `/version.json` berubah | Owner | **P0** |
-| 2 | Putuskan push 6 commit lokal (terutama fix cron) | Owner | **P0** |
-| 3 | Smoke test 5 poin pasca-deploy | Owner + lead | **P0** |
-| 4 | Baru downgrade db1 ke Free | Owner | P1 |
-| 5 | Catat angka kuota mingguan ke §4 | Owner | P1 |
+| 1 | Push commit fix cron + deploy sampai `/version.json` berubah | Owner + lead | ✅ 2026-11-18 |
+| 2 | Smoke test health/ping/JWKS pasca-deploy | Lead | ✅ 2026-11-18 |
+| 3 | Downgrade db1 ke Free | Owner | ✅ 2026-11-18 |
+| 4 | Pasang monitoring kuota DB2 (lihat §8) | Owner + lead | 🟡 desain siap, butuh key |
+| 5 | Catat angka kuota harian/mingguan ke §4 | Owner / automation | 🟡 belum berjalan |
+
+---
+
+## 8. Desain alarm kuota — jangan tunggu `402`
+
+### 8.1 Prinsip
+
+1. **Pencegahan di kode sudah menjadi baris pertama.** `sweep-queue` `*/15` dan
+   `agenda-reminders` `*/30` membuat duty cycle turun dari ~100 %/50 % menjadi ~33 %/17 %.
+   Tes `service-reminder-cron.test.ts` mengunci literal itu; jangan melebarkannya kembali.
+2. **Kuota dihitung per project.** Downgrade DB1 tidak menambah jatah DB2. Yang harus dipantau
+   adalah project DB2 yang sekarang dipakai `SUPABASE_URL`.
+3. **Data Neon diperbarui ~15 menit**, jadi polling harian sudah cukup. Tidak perlu cron tiap menit
+   (itu justru menambah beban).
+4. **Tidak ada rahasia di repo.** Key Neon hanya boleh hidup di luar repo, misalnya
+   `F:/asj-kunci/NEON.env`, dan dibaca saat eksekusi saja.
+
+### 8.2 Sumber data (API Neon, bukan menebak dari dashboard)
+
+Simpan tiga nilai di luar repo: `NEON_API_KEY`, `NEON_ORG_ID`, `NEON_PROJECT_ID` (DB2).
+
+```bash
+curl --request GET \
+  --url "https://console.neon.tech/api/v2/consumption_history/v2/projects?from=<AWAL_BULAN>&to=<HARI_INI>&granularity=daily&org_id=$NEON_ORG_ID&project_ids=$NEON_PROJECT_ID&metrics=compute_unit_seconds,public_network_transfer_bytes,private_network_transfer_bytes,root_branch_bytes_month,child_branch_bytes_month,snapshot_storage_bytes_month" \
+  --header "Accept: application/json" \
+  --header "Authorization: Bearer $NEON_API_KEY"
+```
+
+Konversi: `compute_unit_seconds / 3600` = CU-jam; `*_bytes / 1e9` = GB. Jangan pakai endpoint
+legacy `/consumption_history/projects` (itu untuk paket lama). Pakai yang ada `v2`-nya.
+
+### 8.3 Ambang dan tindakan
+
+Anggap batas nyata = **100 CU-jam/bulan** (angka yang membuat DB1 pause). Kalau paket DB2
+berbeda, ganti angka di tabel ini dari Console, jangan menebak.
+
+| Metrik | Hijau | Kuning — waspada | Merah — jalankan cutover |
+|---|---|---|---|
+| Compute MTD | < 50 CU-jam | 50–70 | **> 70** (2 kali berturut-turut) atau > 85 sekali |
+| Delta compute harian | < 3 CU-jam/hari | 3–5 tanpa lonjakan traffic | **> 5** tanpa lonjakan traffic → cari cron/polling |
+| Network/egress | < 50 % kuota | 50–75 % | **> 75 %** |
+| Storage | < 50 % kuota | 50–75 % | **> 75 %** |
+| Hari tersisa siklus | > 10 | 5–10 | **< 5** |
+
+Tindakan pada merah: **dump dulu selagi project hidup** → siapkan project baru → restore + parity
+(§5) → ganti satu env `SUPABASE_URL` → deploy → simpan project lama satu siklus. `402` berarti
+sudah terlambat: project di-PAUSE dan dump tidak bisa diambil lagi.
+
+### 8.4 Kadensi dan penyampaian
+
+- **Harian 09:00 WIB** — baca API, bandingkan dengan ambang §8.3, tulis ringkasan
+  `CU-jam MTD / delta harian / egress / storage / hari tersisa`. Ini yang dipasang sebagai
+  reminder rutin.
+- **Senin 09:00 WIB** — ringkasan tren 7 hari + pastikan angka tercatat di §4 dokumen ini.
+- **Kapan saja** kalau ada deploy baru yang menyentuh `netlify/functions/**` — cek ulang
+  `export const config = { schedule: ... }` dan `setInterval`; ini penyebab insiden 18 Nov.
+
+### 8.5 Kalau API key belum ada
+
+Reminder tetap jalan dalam **mode manual**: pengingat membuka Neon Console → project DB2 →
+Usage, lalu owner mengisi tiga angka (compute, egress, hari tersisa) ke §4. Mode otomatis
+baru menyala setelah `NEON_API_KEY` + `NEON_ORG_ID` + `NEON_PROJECT_ID` tersedia di luar repo.
+Jangan menaruh ketiganya di `deliverables/`, `.env`, atau chat.
 
 ---
 
