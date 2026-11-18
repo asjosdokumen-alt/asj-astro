@@ -170,7 +170,9 @@ export async function handleTandaiGagalJob(payload: unknown[], sessionToken?: st
     }
     await supabaseJson('PATCH', 'database_candidate', {
       query: { id: 'eq.' + row.id },
-      body: { status_kandidat: 'GAGAL', id_loker_pilihan: null, updated_at: new Date().toISOString() },
+      // M-5: '' is the canonical empty value (migrasi/059); null observable
+      // can stay forever in equality checks and in the admin UI.
+      body: { status_kandidat: 'GAGAL', id_loker_pilihan: '', updated_at: new Date().toISOString() },
       headers: { Prefer: 'return=minimal' },
     });
     let formUpdated: Record<string, unknown> | null = null;

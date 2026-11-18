@@ -427,6 +427,18 @@ describe('syncFormMailDariUpload — jenis baris tidak berubah karena unggahan',
     expect(upserts).toHaveLength(1);
     expect(upserts[0]).toMatchObject({ no_wa: WA, code_job: 'TG1ASJ', status: 'MENUNGGU' });
   });
+
+  it('M-4: dua baris form yang terkena satu unggahan → satu push, bukan dua', async () => {
+    formsByWa = [
+      { id: 31, no_wa: WA, code_job: 'TG1ASJ', status: 'MENUNGGU', feedback_berkas: '', keterangan: '' } as never,
+      { id: 32, no_wa: WA, code_job: 'TG1ASJ', status: 'MENUNGGU', feedback_berkas: '', keterangan: '' } as never,
+    ];
+
+    await syncFormMailDariUpload(WA, 'BUDI', 'PAS_PHOTO', 'https://cdn/x.jpg', 'TG1ASJ');
+
+    expect(patches).toHaveLength(2);
+    expect(notified).toHaveLength(1);
+  });
 });
 
 // ==========================================

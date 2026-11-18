@@ -144,7 +144,10 @@ async function syncCandidateDariForm(f: Record<string, unknown>, status: string)
   } else if (status === 'GAGAL' && row && row.id !== undefined) {
     const upd: Record<string, unknown> = { status_kandidat: 'GAGAL', updated_at: new Date().toISOString() };
     if (codeJob && String(row['id_loker_pilihan'] || row['id_loker'] || '') === codeJob) {
-      upd.id_loker_pilihan = null;
+      // M-5: canonical empty value for this column is '' (migrasi/059), not
+      // null. A null here makes downstream equality checks miss the cleared
+      // selection and leaves the row in a state no migration normalises.
+      upd.id_loker_pilihan = '';
     }
     await supabaseJson('PATCH', 'database_candidate', {
       query: { id: 'eq.' + row.id },
@@ -630,6 +633,10 @@ export async function syncFormMailDariUpload(
   }
   if (!targets.length) targets = [{}];
 
+  // M-4: one upload = at most one admin push. The notify used to sit INSIDE
+  // this loop, so a WA with N form rows produced N identical pushes for the
+  // same file.
+  let shouldNotify = false;
   for (const existing of targets) {
     const docs: Record<string, string> = {};
     const raw = String((existing && existing.keterangan) || '');
@@ -689,12 +696,14 @@ export async function syncFormMailDariUpload(
       await upsertForm(body);
     }
 
-    if (label && targets.length > 0) {
-      try {
-        const { notifyAdmins } = await import('../../_lib/fcm-helpers');
-        await notifyAdmins('Dokumen Baru Diupload', `${nama} (${want}) mengupload ${label}. Silakan review di Mail.`, '/admin#mail');
-      } catch { /* ignore */ }
-    }
+    if (label && targets.length > 0) shouldNotify = true;
+  }
+
+  if (shouldNotify) {
+    try {
+      const { notifyAdmins } = await import('../../_lib/fcm-helpers');
+      await notifyAdmins('Dokumen Baru Diupload', `${nama} (${want}) mengupload ${label}. Silakan review di Mail.`, '/admin#mail');
+    } catch { /* ignore */ }
   }
 }
 
