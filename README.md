@@ -19,8 +19,8 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions,
 | **`lint-ratchet`** | ✅ PASSED — **1.960 ≤ baseline 1.968** (2026-11-15, `debt reduced by 8`). 9 diagnostik dibersihkan **di sumber**; baseline sengaja tidak dinaikkan. Angka 1.997 / 2.001 di sini dulu sudah basi |
 | **Halaman publik** | **SNAPSHOT 2026-10-07, BUKAN status kini:** `/` 9,9 · `/public` 10,0 · `/loker` 9,9 · `/404` 10,0 — `deliverables/gstack/public-pages-review-2026-10-07.md`. Ukur ulang bila dipakai untuk keputusan |
 | **Deploy produksi** | **hidup** sejak 7 Okt 2026 di `amanahsakura.netlify.app` ⇒ push `main` = deploy berbayar yang langsung tayang. ⛔ **JANGAN PUSH** (R19): commit lokal saja |
-| **Berkas tracked** | **1.755 berkas** (2026-11-15, ukur dengan `git ls-files` lalu hitung barisnya). Terbesar: `deliverables/` bukti audit, `public/` aset |
-| **Counter beku** | Terukur 2026-11-15 dengan aturan `includePath()`: **655 berkas** = 369 ts + 135 tsx + 30 astro + 93 mjs + 6 cjs + 22 js; `files.length` / `fileCount` = **655**, plafon simbol **35.600**, `unresolvedRefs` **39**. **Hanya team-lead** yang boleh menggesernya (R15) |
+| **Berkas tracked** | **Ukur dengan `git ls-files \| wc -l`** — angka 1.755 (2026-11-15) sudah basi; ukuran terakhir 1.882. Terbesar: `deliverables/` bukti audit, `public/` aset |
+| **Counter beku** | **Jangan salin angka di sini — ukur** (`node node_modules/vitest/vitest.mjs run indexer/src/count-indexed.test.ts` + lihat asersi di `indexer/src/build.test.ts`). Angka 2026-11-15 (655 / 35.600) sudah basi; terukur 2026-11-18: **666 berkas** = 380 ts + 135 tsx + 30 astro + 93 mjs + 6 cjs + 22 js, plafon simbol **37.000**, `unresolvedRefs` **39**. **Hanya team-lead** yang boleh menggesernya (R15) |
 
 > ⚠️ **Dua butir yang butuh keputusan owner** — tercatat 2026-10-28, **ukur ulang sebelum ditindaklanjuti**, belum dikerjakan:
 >
