@@ -317,9 +317,9 @@ async function findCandidatesByIds(ids: (string | number)[]) {
 // dibaca mapCandidate tidak ikut. Fallback SELECT * bila proyeksi gagal.
 async function findCandidateByWaFiltered(wa: string) {
   const want = normalizeWa(wa);
-  // Fase 3.18: probe 3 kolom WA (no_wa / wa / whatsapp) dijalankan PARALEL —
-  // dulu berurutan (sampai 3 roundtrip serial bila kolom pertama tidak cocok
-  // skema). Prioritas hasil tetap no_wa → wa → whatsapp (urutan CAND_WA_COLS).
+  // Probe kolom WA secara SERVER-SIDE (CANDIDATE_WA_COL dari schema.generated.ts,
+  // satu kolom aktif). Dulu Fase 3.18 menjajaki 3 kolom (no_wa/wa/whatsapp)
+  // paralel; kini konfigurasi kolom ditentukan oleh skema, bukan hardcode.
   const cols = [CANDIDATE_WA_COL];
   /* `order` WAJIB. Tanpa itu PostgREST mengembalikan baris dalam urutan yang
      tidak dijanjikan, dan `.find()` di bawah memilih salah satunya — sehingga

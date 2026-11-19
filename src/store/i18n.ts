@@ -1,5 +1,6 @@
 /**
- * i18n.ts - Language toggle store (123 keys)
+ * i18n.ts - Language toggle store (key count ukur dari i18n.keys.test.ts,
+ * JANGAN dikunci di sini — angka lama 123 sudah basi sejak 2026-10)
  */
 import { persistentAtom } from '@nanostores/persistent';
 import { atom } from 'nanostores';
