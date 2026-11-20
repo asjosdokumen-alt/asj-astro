@@ -31,9 +31,9 @@
     "rootNames": 669,
     "options": {}
   },
-  "universe": 5160,
+  "universe": 5169,
   "counts": {
-    "agreeBound": 5160,
+    "agreeBound": 5169,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
@@ -42,7 +42,7 @@
     "libRefAgree": 1605,
     "libRefDisagree": 0,
     "libRefFramework": 2,
-    "skippedNonBindable": 2381,
+    "skippedNonBindable": 2382,
     "skippedJsxIntrinsic": 62,
     "skippedAstroTemplate": 74,
     "offsetMismatch": 0,
@@ -51,7 +51,7 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 5076,
+    "match": 5085,
     "alias-vs-chase": 57,
     "merged-declaration": 25,
     "shadowing-disagreement": 2,
@@ -186,11 +186,11 @@
     },
     {
       "path": "netlify/functions/sweep-queue.ts",
-      "universe": 158,
-      "agreeBound": 158,
+      "universe": 167,
+      "agreeBound": 167,
       "agreeUnresolved": 0,
       "lib": 16,
-      "skipped": 43,
+      "skipped": 44,
       "disagree": 0
     },
     {
@@ -666,12 +666,12 @@
     },
     {
       "path": "netlify/functions/sweep-queue.ts",
-      "line": 85,
+      "line": 89,
       "name": "payload",
       "role": "Read",
       "reason": "shadowing-disagreement",
       "indexer": "bound",
-      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 4321 · compiler netlify/functions/sweep-queue.ts:4191"
+      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 4616 · compiler netlify/functions/sweep-queue.ts:4486"
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
