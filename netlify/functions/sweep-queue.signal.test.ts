@@ -8,10 +8,19 @@
 //      boleh dibuat sama sekali di cabang ini — bukan "dibaca lalu diabaikan".
 //      `claimJob()` berputar seperti sebelumnya dan `cleanupIdempotencyKeys()`
 //      berjalan SETIAP sweep.
-//   2. `shadow` = jalur hari ini dijalankan PENUH, lalu gerbang dibaca hanya
-//      untuk dicatat (`sweep.signal.verdict`). `falseIdle` harus `true` TEPAT
-//      ketika `verdict === 'idle'` DAN ada job yang benar-benar ter-claim —
+//   2. `shadow` = gerbang dibaca DULU (keadaan AWAL sweep), jalur hari ini
+//      dijalankan PENUH, lalu gerbang DITULIS lewat `nextDueAt()` +
+//      `settle(observed, due)` persis seperti `on`, lalu dicatat
+//      (`sweep.signal.verdict`). `falseIdle` harus `true` TEPAT ketika verdict
+//      yang dibaca di awal `'idle'` DAN ada job yang benar-benar ter-claim —
 //      itulah bukti paritas (gate G1 di docs/RENCANA_ANTREAN_TANPA_NEON.md §10).
+//
+//      Dua hal di atas bukan detail: tanpa `settle()` kunci `asj:job:next`
+//      tidak pernah dibuat saat antrean kosong (keadaan normal repo ini), jadi
+//      `peek()` selamanya 'unknown' dan gate G2 (`sweep.gate.unknown` ≤ 1 %)
+//      terbaca 100 % selama tujuh hari; tanpa `peek()` lebih dulu, verdict
+//      menggambarkan keadaan pasca-kerja sehingga sweep yang baru memproses job
+//      melaporkan `wouldSkip=true`.
 //   3. `on` = tiga jalur yang masing-masing punya kewajiban biaya berbeda:
 //      'idle' ⇒ NOL request DB; 'due' ⇒ loop claim + nextDueAt + settle;
 //      'unknown' ⇒ jalur hari ini DAN cleanup tanpa lease (Redis mati tidak
@@ -302,21 +311,77 @@ describe('mode off — jalur hari ini, byte-for-byte', () => {
 
 // ── 2. Mode `shadow` — bukti paritas ────────────────────────────────────────
 
-describe('mode shadow — jalur hari ini penuh, gerbang hanya dicatat', () => {
-  it('shadow: claim + cleanup berjalan penuh, gerbang dibaca sekali, nextDueAt() tidak', async () => {
+describe('mode shadow — gerbang dibaca dulu, jalur hari ini penuh, gerbang ditulis', () => {
+  it('shadow: peek() mendahului claimJob() — gerbang dibaca di AWAL sweep', async () => {
     process.env.JOB_SIGNAL_MODE = 'shadow';
     whenPeek('due', 1_700_000_000_000);
 
     await runSweep();
 
+    expect(mocks.jobSignal).toHaveBeenCalledTimes(1);
+    expect(mocks.peek).toHaveBeenCalledTimes(1);
+    // `peek()` menerima `now` (epoch ms) sebagai argumen.
+    expect(typeof mocks.peek.mock.calls[0][0]).toBe('number');
+    // Verdict harus menggambarkan keadaan SEBELUM kerja. Dibaca setelah
+    // `claimLoop()` — apalagi setelah `settle()` — ia selalu menunjukkan
+    // keadaan pasca-kerja, sehingga sweep yang baru memproses job melaporkan
+    // `wouldSkip=true`. Bukti paritas yang mengukur saat yang salah adalah
+    // derau, bukan bukti.
+    expect(orderOf(mocks.peek)).toBeLessThan(orderOf(mocks.claimJob));
+  });
+
+  it('shadow: jalur hari ini tetap penuh — claim + cleanup tanpa syarat', async () => {
+    process.env.JOB_SIGNAL_MODE = 'shadow';
+    whenPeek('due', 1_700_000_000_000);
+    mocks.cleanupIdempotencyKeys.mockResolvedValue(3);
+
+    const { body } = await runSweep();
+
+    // Shadow tetap MEMBAYAR biaya hari ini; itulah yang membuatnya pembanding
+    // yang setara untuk `on`.
     expect(mocks.claimJob).toHaveBeenCalledTimes(1);
     expect(mocks.cleanupIdempotencyKeys).toHaveBeenCalledTimes(1);
-    expect(mocks.peek).toHaveBeenCalledTimes(1);
-    // `settle()`/`nextDueAt()` milik mode `on`: di shadow gerbang hanya dibaca,
-    // tidak pernah ditulis — kalau tidak, shadow sudah mengubah keadaan Redis.
-    expect(mocks.settle).not.toHaveBeenCalled();
-    expect(mocks.nextDueAt).not.toHaveBeenCalled();
+    expect(body.cleaned).toBe(3);
     expect(mocks.announce).not.toHaveBeenCalled();
+  });
+
+  it('shadow: nextDueAt() dan settle(observed, due) tepat sekali, SESUDAH kerja', async () => {
+    process.env.JOB_SIGNAL_MODE = 'shadow';
+    const OBSERVED = 1_700_000_000_000;
+    const DUE = 1_700_000_600_000;
+    whenPeek('due', OBSERVED);
+    mocks.claimJob.mockResolvedValueOnce(makeJob({ id: 'job-shadow' })).mockResolvedValue(null);
+    mocks.nextDueAt.mockResolvedValue(DUE);
+
+    await runSweep();
+
+    // Tanpa langkah ini `asj:job:next` tidak pernah dibuat saat antrean kosong
+    // (keadaan normal repo ini): `peek()` selamanya 'unknown' dan gate G2
+    // (`sweep.gate.unknown` ≤ 1 %) terbaca 100 % selama jendela bayangan.
+    expect(mocks.nextDueAt).toHaveBeenCalledTimes(1);
+    expect(mocks.settle).toHaveBeenCalledTimes(1);
+    expect(mocks.settle.mock.calls[0]).toEqual([OBSERVED, DUE]);
+
+    // Urutannya bermakna: `due` harus berasal dari pass ini, dan CAS memakai
+    // operand yang dibaca `peek()` pada handle yang sama.
+    expect(orderOf(mocks.cleanupIdempotencyKeys)).toBeLessThan(orderOf(mocks.nextDueAt));
+    expect(orderOf(mocks.nextDueAt)).toBeLessThan(orderOf(mocks.settle));
+
+    const verdictLog = mocks.logInfo.mock.calls.find((c) => c[0] === 'sweep.signal.verdict');
+    expect(verdictLog?.[1]).toMatchObject({ verdict: 'due', actualClaimed: 1, settled: true });
+  });
+
+  it('shadow: settle menerima observed=null saat kunci ABSEN (bangun ulang), bukan `now`', async () => {
+    process.env.JOB_SIGNAL_MODE = 'shadow';
+    whenPeek('unknown', null);
+
+    await runSweep();
+
+    // Kunci absen ⇒ operand CAS "kunci harus masih absen" ⇒ skrip MENULIS,
+    // sehingga kunci terbangun dalam SATU sweep. Menggantinya dengan `now`
+    // membuat CAS tidak pernah cocok dan gerbang terjebak 'unknown' selamanya.
+    expect(mocks.settle).toHaveBeenCalledTimes(1);
+    expect(mocks.settle.mock.calls[0]).toEqual([null, null]);
   });
 
   it('shadow: falseIdle=false saat gerbang idle dan tidak ada job ter-claim', async () => {

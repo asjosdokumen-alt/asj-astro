@@ -23,9 +23,13 @@
  * membacanya lebih dulu. Tiga mode, default `off`:
  *
  *   off    — jalur hari ini, byte-for-byte. Gerbang TIDAK dibaca sama sekali.
- *   shadow — jalur hari ini dijalankan penuh, LALU gerbang dibaca dan dicatat
- *            (`sweep.signal.verdict` + `falseIdle`). Ini bukti paritas: satu
- *            `falseIdle` = gerbang salah = jangan naikkan ke `on`.
+ *   shadow — gerbang dibaca DULU (keadaan awal sweep), lalu jalur hari ini
+ *            dijalankan penuh, lalu gerbang DITULIS lewat `settle()` persis
+ *            seperti `on`, lalu dicatat (`sweep.signal.verdict` + `falseIdle`).
+ *            Ini bukti paritas: satu `falseIdle` = gerbang salah = jangan
+ *            naikkan ke `on`. Menulis gerbang wajib: tanpa itu kunci tidak
+ *            pernah terbangun saat antrean kosong, sehingga `peek()` selamanya
+ *            'unknown' dan gate G2 terbaca 100 %.
  *   on     — gerbang dulu: 'idle' ⇒ nol request Neon; 'unknown' ⇒ jalur hari
  *            ini; 'due' ⇒ loop claim, lalu `next_job_due()` + `settle()`.
  *            Cleanup dan rekonsiliasi berjalan di balik lease 6 jam.
@@ -197,24 +201,63 @@ async function handler() {
     cleaned = await cleanupIdempotencyKeys();
   } else if (mode === 'shadow') {
     // ── BUKTI PARITAS ──────────────────────────────────────────────────────
-    // Jalur hari ini dijalankan SEPENUHNYA (claim + cleanup tanpa syarat), lalu
-    // gerbang dibaca dan dicatat apa yang AKAN dilakukannya. `falseIdle` adalah
+    // Jalur hari ini dijalankan SEPENUHNYA (claim + cleanup tanpa syarat) DAN
+    // gerbangnya benar-benar ditulis, persis seperti `on`. `falseIdle` adalah
     // inti bukti itu: gerbang menyatakan 'idle' padahal ada job ter-claim.
     // Satu saja bernilai true ⇒ gerbang salah ⇒ mode `on` jangan diaktifkan.
+    //
+    // KENAPA GERBANG DIBACA DULU (langkah 1), BUKAN SETELAH KERJA:
+    // Verdict harus menggambarkan keadaan pada AWAL sweep. Membacanya setelah
+    // `claimLoop()` — apalagi setelah `settle()` — selalu menunjukkan keadaan
+    // pasca-kerja, sehingga sweep yang baru saja memproses job akan melaporkan
+    // `wouldSkip=true`. Bukti paritas yang mengukur saat yang salah adalah
+    // derau: ia akan "membuktikan" gerbang salah justru pada sweep yang benar.
+    //
+    // KENAPA GERBANG JUGA DITULIS (langkah 3), padahal shadow hanya "membaca":
+    // Tanpa `settle()`, `asj:job:next` tidak pernah dibuat oleh mode shadow.
+    // Antrean kosong adalah keadaan NORMAL repo ini, dan pada keadaan itu
+    // `peek()` mengembalikan 'unknown' (kode -1: kunci tidak ada) untuk SETIAP
+    // sweep selama 7 hari jendela bayangan. Gate G2 (`sweep.gate.unknown`
+    // ≤ 1 %) karena itu akan terbaca 100 % dan tidak membuktikan apa pun
+    // tentang gerbang. Menulis lewat `settle(signal.observed, due)` membuat
+    // kunci terbangun pada sweep pertama (operand `null` = "kunci harus absen")
+    // dan terpelihara sesudahnya — dan itu justru jalur yang akan dipakai `on`.
+    // Shadow tetap MEMBAYAR biaya hari ini (claim + cleanup tanpa syarat); yang
+    // ditambahkan hanya satu RPC `next_job_due()` dan satu CAS, sama seperti `on`.
+
+    // (1) Gerbang DULU: satu handle untuk satu pass, dibaca sebelum satu pun
+    // request DB. `signal.observed` adalah operand CAS `settle()` di langkah 3.
+    const signal = jobSignal();
+    const gateVerdict = await signal.peek(now);
+    verdict = gateVerdict;
+
+    // (2) Jalur hari ini, byte-for-byte: claim + cleanup TANPA syarat.
+    // `mustRead = true` karena shadow SELALU membaca Neon — field ini di
+    // `sweep.complete` menjawab "apakah sweep ini dipaksa membaca?", dan di
+    // shadow jawabannya selalu ya. Membiarkannya `false` akan membuat log
+    // jendela bayangan melaporkan kebalikan dari yang terjadi.
+    mustRead = true;
     const r = await claimLoop();
     processed = r.processed;
     failed = r.failed;
     cleaned = await cleanupIdempotencyKeys();
 
-    const signal = jobSignal();
-    verdict = await signal.peek(now);
+    // (3) Tulis gerbang, persis seperti `on`: satu RPC, lalu CAS ketat.
+    // Operandnya `observed` APA ADANYA — termasuk `null` ("kunci harus absen"),
+    // yang justru jalur bangun-ulang kunci. Menggantinya dengan `now` membuat
+    // CAS tidak pernah cocok dan gerbang terjebak 'unknown' selamanya.
+    const due = await nextDueAt();
+    const settled = await signal.settle(signal.observed, due);
+
+    // (4) Catat verdict yang dibaca di langkah 1 — bukan keadaan pasca-kerja.
     const actualClaimed = processed + failed;
-    falseIdle = verdict === 'idle' && actualClaimed > 0;
+    falseIdle = gateVerdict === 'idle' && actualClaimed > 0;
     log.info('sweep.signal.verdict', {
-      verdict,
+      verdict: gateVerdict,
       actualClaimed,
-      wouldSkip: verdict === 'idle',
+      wouldSkip: gateVerdict === 'idle',
       falseIdle,
+      settled,
     });
   } else {
     // ── MODE 'on': GERBANG DULU ────────────────────────────────────────────
