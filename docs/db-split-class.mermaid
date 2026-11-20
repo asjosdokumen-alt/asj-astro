@@ -1,0 +1,95 @@
+classDiagram
+    direction LR
+
+    class DbTarget {
+        <<enumeration>>
+        core
+        compute
+    }
+
+    class Targets {
+        -DB_TARGETS: Record~string,DbTarget~
+        +targetOf(pathname) DbTarget
+        +targetUrl(t) string
+        +targetKey(t) string
+        +targetLabel(t) string
+    }
+
+    class DbClient {
+        -supabaseUrl() string
+        -supabaseKey() string
+        -storageUrl() string
+        -storageKey() string
+        +supabaseJson(method, pathname, opts) unknown
+        +supabaseUpsert(table, row, conflictCols, opts) unknown
+        +findTable(candidates, limit) FindTableResult
+        +hasBackend() boolean
+        +resolveSelect(table, requested) string
+        +writeBodyFor(table, body) WriteResult
+    }
+
+    class HttpKernel {
+        +request(url, init) Response
+        +detectDependency(url) string
+        -logDependencyCall(dep, action, budgetMs, durationMs, outcome, statusCode) void
+    }
+
+    class Resilience {
+        +DEPENDENCY_CONFIGS: Record~string,BreakerOpts~
+        +breaker: CircuitBreaker
+        +bulkhead: Bulkhead
+    }
+
+    class SchemaContract {
+        +SCHEMA_FINGERPRINT: string
+        +SCHEMA_LINES: string
+        +columnsOf(table) string[]
+        +allColumns(table) string
+    }
+
+    class MigrationLedger {
+        +schema_migrations: table
+        +up(url) void
+        +baseline(url, to) void
+        +status(url) Report
+    }
+
+    class HealthProbe {
+        -probePostgrest() ProbeResult
+        -countQueue(status) number
+        +classifyHealth(status, body, reachable) Verdict
+    }
+
+    class CoreDb {
+        <<project Neon 1>>
+        master_database_candidate
+        database_candidate
+        database_asj_form
+        database_schedule
+        session_revocations
+        sys_config
+        job_database
+        ...26 tabel
+    }
+
+    class ComputeDb {
+        <<project Neon 2>>
+        job_queue
+        idempotency_keys
+        dependency_calls
+        netlify_logs
+        rate_counters
+    }
+
+    DbClient ..> Targets : targetOf(pathname)
+    DbClient ..> SchemaContract : columnsOf / allColumns
+    DbClient ..> HttpKernel : request(url, dep)
+    HttpKernel ..> Resilience : breaker + bulkhead per dep label
+    HealthProbe ..> DbClient : supabaseJson
+    HealthProbe ..> Targets : targetOf(job_queue)
+    MigrationLedger ..> CoreDb : migrate up
+    MigrationLedger ..> ComputeDb : migrate up (ledger yang sama)
+    Targets ..> CoreDb : default core
+    Targets ..> ComputeDb : 5 tabel + 2 RPC
+    SchemaContract ..> CoreDb : OpenAPI CORE
+    SchemaContract ..> ComputeDb : fingerprint harus sama

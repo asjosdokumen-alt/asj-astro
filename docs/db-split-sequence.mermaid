@@ -1,0 +1,61 @@
+sequenceDiagram
+    autonumber
+    participant FE as Klien
+    participant FN as Netlify Function
+    participant C as DbClient (supabaseJson)
+    participant T as Targets
+    participant CORE as Neon CORE
+    participant CMP as Neon COMPUTE
+    participant HK as HttpKernel
+
+    Note over FE,CMP: Alur 1 — satu request menyentuh dua project
+
+    FE->>FN: POST getAppData
+    FN->>C: GET sys_config
+    C->>T: targetOf('sys_config')
+    T-->>C: 'core'
+    C->>HK: request(urlCORE, dep='postgrest')
+    HK->>CORE: GET /rest/v1/sys_config
+    CORE-->>HK: 200 rows
+    HK-->>C: Response
+    C-->>FN: rows
+
+    FN->>C: POST job_queue (enqueue)
+    C->>T: targetOf('job_queue')
+    T-->>C: 'compute'
+    C->>HK: request(urlCOMPUTE, dep='postgrest:compute')
+    HK->>CMP: POST /rest/v1/job_queue
+    CMP-->>HK: 201
+    HK-->>C: Response
+    C-->>FN: ok
+    FN-->>FE: 200
+
+    Note over HK,CMP: Breaker/bulkhead TERPISAH per label.
+    Note over HK,CMP: postgrest:compute terbuka TIDAK menolak postgrest (CORE).
+
+    Note over FE,CMP: Alur 2 — COMPUTE suspend, CORE tetap hidup
+
+    CMP--xHK: 5xx SQLSTATE 53000 (compute suspended)
+    HK->>HK: breaker.failure('postgrest:compute') x5
+    HK->>HK: breaker OPEN untuk 'postgrest:compute' saja
+    FE->>FN: POST loginKandidat
+    FN->>C: GET session_revocations
+    C->>T: targetOf('session_revocations')
+    T-->>C: 'core'
+    C->>HK: request(urlCORE, dep='postgrest')
+    HK->>CORE: GET /rest/v1/session_revocations
+    CORE-->>HK: 200 rows
+    HK-->>FN: rows
+    FN-->>FE: 200 (login tetap jalan)
+
+    Note over FE,CMP: Alur 3 — rotasi COMPUTE tanpa pg_dump
+
+    Note over CMP: project #2 suspend / dibuang
+    Note over CMP: project #3 dibuat
+    Note over CMP: role asj_service dibuat manual
+    Note over CMP: Data API + JWKS URL = situs yang sama
+    Note over CMP: migrate up (60 migrasi, ledger sama)
+    Note over CMP: verify:db + verify:rls
+    Note over CMP: gen-schema --compare-compute (fingerprint sama)
+    Note over CMP: ganti COMPUTE_SUPABASE_URL / _KEY
+    Note over CMP: deploy, ~15 menit, data COMPUTE memang dibuang
