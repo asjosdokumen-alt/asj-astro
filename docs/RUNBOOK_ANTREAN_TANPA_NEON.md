@@ -13,7 +13,7 @@ lagi). Sweep kosong = 2–3 perintah Redis, **nol request Neon**.
 
 | Hal | Nilai | Kenapa |
 |---|---|---|
-| Region Upstash | **`us-east-1`** (sama dengan region Netlify Functions) | RTT > 100 ms membuat setiap panggilan Redis menulis satu baris `dependency_calls` ke Neon — biaya yang justru ingin dihapus |
+| Region Upstash | **sama dengan region Netlify Functions** — ukur dulu, jangan tebak `us-east-1` | RTT > 100 ms membuat setiap panggilan Redis menulis satu baris `dependency_calls` ke Neon — biaya yang justru ingin dihapus. **Diukur 2026-11-20: Neon ada di `ap-southeast-1`, jadi region DB bukan acuan.** Yang memanggil Redis adalah fungsi, bukan DB |
 | Host Redis | harus berakhiran **`*.upstash.io`** | `detectDependency()` mengenali lewat substring itu; host lain jatuh ke label `other` dan memakai bulkhead bersama (insiden 2026-10-21) |
 | Env | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | server-only, jangan pernah `PUBLIC_*` |
 | Env | `JOB_SIGNAL_MODE=off` | kill switch; `off`/kosong/tak dikenal = perilaku hari ini |
@@ -21,7 +21,29 @@ lagi). Sweep kosong = 2–3 perintah Redis, **nol request Neon**.
 Tidak ada kunci Redis yang dibuat manual — semuanya dibuat kode saat pertama
 dibutuhkan.
 
-## 1. Terapkan migrasi 061 (sendirian, sebelum kode apa pun dipakai)
+### Baseline terukur (2026-11-20, sebelum gerbang menyala)
+
+| Yang diukur | Nilai | Sumber |
+|---|---|---|
+| Target DB | `ep-bold-sunset-…-pooler.c-4.**ap-southeast-1**.aws.neon.tech` · `neondb` · role `neondb_owner` | `npm run migrate:status` |
+| Ledger | 61 migrasi · 61 applied · 0 pending · 0 drifted | `npm run migrate:status` |
+| `next_job_due()` | **NULL** (antrean kosong) | probe `SELECT next_job_due()` |
+| Isi `job_queue` | **0 baris**, `dead` = 0 | probe `GROUP BY status` |
+| Predikat `next_job_due` vs `claim_next_job` | **identik** (keduanya `true` pada uji substring ternormalisasi) | `pg_get_functiondef` |
+| `verify:db` | `fn next_job_due required OK` · contract OK · 0 missing | `npm run verify:db` |
+| `db:schema` | **SCHEMA UNCHANGED** · 35 tabel (RPC tidak masuk kontrak tabel) | `npm run db:schema` |
+
+Arti baris ke-3 dan ke-4: gerbang akan langsung menulis sentinel setahun dan
+setiap sweep berikutnya berhenti di `idle` — nol request Neon — sampai ada
+`enqueue()` pertama. Antrean kosong bukan kasus tepi di repo ini; ia kondisi
+normalnya.
+
+## 1. Migrasi 061 — **sudah diterapkan** 2026-11-20T13:30:46Z
+
+`npm run migrate:up` → `applied 061_next_job_due.sql (248 ms)`. Ledger kini
+61/61, 0 pending, 0 drifted. Langkah di bawah disimpan untuk database lain
+(staging, atau COMPUTE project di runbook split) — bukan lagi tugas yang
+terbuka di produksi.
 
 ```
 npm run migrate:up          # 061_next_job_due.sql

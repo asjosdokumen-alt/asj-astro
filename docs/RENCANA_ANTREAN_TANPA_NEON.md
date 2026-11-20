@@ -1,6 +1,10 @@
 # Rencana: Sweep Antrean Job Tanpa Neon
 
-**Status:** desain, belum ada perubahan kode
+**Status:** diimplementasi (commit `22453fae`). Migrasi `061_next_job_due.sql`
+**sudah diterapkan** ke produksi 2026-11-20T13:30:46Z (61/61, 0 drifted) dan
+`verify:db` melaporkan `fn next_job_due required OK`. Gerbang masih **dorman**
+karena `JOB_SIGNAL_MODE` default `off` dan Upstash belum diprovision — lihat
+`docs/RUNBOOK_ANTREAN_TANPA_NEON.md`.
 **Tanggal:** 2026-11-20
 **Ruang lingkup:** `netlify/functions/sweep-queue.ts` + `_lib/kernel/job-queue.ts`
 **Di luar lingkup:** `agenda-reminders.ts` (lihat §11.1 — tidak bisa dipindah)
