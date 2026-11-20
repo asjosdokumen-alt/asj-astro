@@ -47,6 +47,17 @@ export const BUDGETS = {
   external:        5_000,
   /** AI chat — the longest legitimate call; bounded further by the ai tier cap */
   ai_chat:         8_000,
+  /**
+   * Upstash Redis REST (gate sinyal antrean, see kernel/job-signal.ts).
+   *
+   * Deliberately the SMALLEST budget in this table. A Redis gate is only worth
+   * having if it is cheaper than the Neon request it replaces; a slow Redis must
+   * fail FAST into 'unknown' (⇒ today's path) rather than hold a slot for
+   * seconds while the sweep waits for a hint it could have skipped. It is also
+   * the reason `upstash` must never fall into the 'other' dependency label — see
+   * the incident note in detectDependency() below.
+   */
+  redis:           300,
 } as const;
 
 export type BudgetKey = keyof typeof BUDGETS;
@@ -236,6 +247,24 @@ export async function requestJson<T = unknown>(
 // ── Dependency detection ──────────────────────────────────────────────────────
 
 export function detectDependency(url: string): string {
+  // ── Upstash Redis (2026-11-20) ────────────────────────────────────────────
+  //
+  // Checked FIRST, before every generic fallback, and the ordering is load
+  // bearing. An unrecognised host lands in 'other', and 'other' carries two
+  // costs that cancel the entire point of the queue gate:
+  //
+  //   1. `logDependencyCall()` only skips 'postgrest' (recursion break) and,
+  //      now, 'upstash'. A Redis call labelled 'other' that takes >100 ms would
+  //      therefore WRITE A ROW to `dependency_calls` — which is a Neon query.
+  //      The gate exists to remove Neon requests from empty sweeps; one write
+  //      per gate read puts them straight back.
+  //   2. 'other' has a documented incident (2026-10-21): a mislabelled
+  //      dependency consumed its 8 shared bulkhead slots and ordinary requests
+  //      died with "Bulkhead limit reached for other". A slow Redis would repeat
+  //      it exactly.
+  //
+  // Its own label gives Redis its own breaker, bulkhead and latency series.
+  if (url.includes('upstash.io')) return 'upstash';
   // P14 fix: Check 'storage' before 'supabase' — Storage URLs are
   // https://<project>.supabase.co/storage/v1/... which contain 'supabase'.
   if (url.includes('/storage/') || url.includes('storage/v1')) return 'storage';
@@ -289,7 +318,15 @@ async function logDependencyCall(
 ): Promise<void> {
   // B7 fix: Skip logging PostgREST calls to break the recursion cycle.
   // logDependencyCall → supabaseJson → request → logDependencyCall (unbounded).
-  if (dep === 'postgrest') return;
+  //
+  // 'upstash' is skipped for the SAME reason, one hop further out: this write
+  // goes to `dependency_calls` over PostgREST, i.e. it wakes Neon. A Redis call
+  // slower than 100 ms would then log itself, and logging would wake the compute
+  // instance the gate is supposed to keep asleep — the exact cost the queue gate
+  // was built to remove (kernel/job-signal.ts, §1 T2 of
+  // docs/RENCANA_ANTREAN_TANPA_NEON.md). Redis latency stays observable through
+  // `dependency.call.latency{dep=upstash}` instead, which costs nothing extra.
+  if (dep === 'postgrest' || dep === 'upstash') return;
   try {
     await supabaseJson('POST', 'dependency_calls', {
       body: {

@@ -109,6 +109,11 @@
       "migration": "netlify/functions/migrations/002_atomic_job_claim.sql",
       "note": "Reaps jobs orphaned by a crashed worker. Absent = jobs can hang in 'running' forever."
     },
+    "next_job_due": {
+      "severity": "required",
+      "migration": "migrations/061_next_job_due.sql",
+      "note": "Queue gate (2026-11-20). Returns min(run_after) with the SAME predicate as claim_next_job, so the cron sweep can skip Neon entirely when the queue is empty. Absent = nextDueAt() logs job.next-due-failed and returns null, the gate is settled to a one-year sentinel, and a job enqueued without a successful announce waits up to the 6 h reconcile lease. Deliberately required: this is the silent-failure class the gate exists to avoid, and `verify:db` going red until 061 is applied is the correct order (migration first, code second)."
+    },
     "master_light": {
       "severity": "optional",
       "migration": "migrations/018_master_light_rpc.sql",

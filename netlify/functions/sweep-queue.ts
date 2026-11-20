@@ -15,6 +15,24 @@
  * 3. Marks jobs as completed or failed
  * 4. Dead-letters jobs that exceed max_attempts
  *
+ * GERBANG ANTREAN (`JOB_SIGNAL_MODE`)
+ * ----------------------------------
+ * Sweep kosong tetap mengirim dua request Neon (claim + DELETE cleanup) yang
+ * membangunkan compute instance. `_lib/kernel/job-signal.ts` menaruh satu kunci
+ * skalar di Upstash Redis ("instant berikutnya antrean perlu dilihat") dan sweep
+ * membacanya lebih dulu. Tiga mode, default `off`:
+ *
+ *   off    — jalur hari ini, byte-for-byte. Gerbang TIDAK dibaca sama sekali.
+ *   shadow — jalur hari ini dijalankan penuh, LALU gerbang dibaca dan dicatat
+ *            (`sweep.signal.verdict` + `falseIdle`). Ini bukti paritas: satu
+ *            `falseIdle` = gerbang salah = jangan naikkan ke `on`.
+ *   on     — gerbang dulu: 'idle' ⇒ nol request Neon; 'unknown' ⇒ jalur hari
+ *            ini; 'due' ⇒ loop claim, lalu `next_job_due()` + `settle()`.
+ *            Cleanup dan rekonsiliasi berjalan di balik lease 6 jam.
+ *
+ * Ledger tidak berubah: `job_queue` dan `claim_next_job()` tidak disentuh, jadi
+ * `attempts`, dead-letter dan idempotensi tetap persis sama di ketiga mode.
+ *
  * SCHEDULE:
  *   Declared in code below (`export const config`), not in netlify.toml.
  *   It is 15 minutes, not 2 — see the quota note at the export.
@@ -25,8 +43,11 @@
  */
 
 import {
-  claimJob, completeJob, failJob, recordJobResult, cleanupIdempotencyKeys,
+  claimJob, completeJob, failJob, recordJobResult, cleanupIdempotencyKeys, nextDueAt,
 } from './_lib/kernel/job-queue';
+import { jobSignal } from './_lib/kernel/job-signal';
+import type { Verdict } from './_lib/kernel/job-signal';
+import { env } from './_lib/env';
 import { adapt } from './_lib/netlify-adapter.js';
 import { log } from './_lib/kernel/log';
 // Phase C item 11: this function never goes through a request wrapper, so it
@@ -100,14 +121,34 @@ async function processJob(job: Job): Promise<void> {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 
-async function handler() {
-  const startTime = Date.now();
+/** Mode gerbang antrean. Default `off` = perilaku sebelum gerbang ada. */
+type SignalMode = 'off' | 'shadow' | 'on';
+
+/**
+ * Baca kill switch `JOB_SIGNAL_MODE`.
+ *
+ * Sengaja dibaca ulang di sini, bukan lewat `jobSignal()`: mode `off` wajib
+ * TIDAK MEMBACA GERBANG SAMA SEKALI (bukan "membaca lalu mengabaikan"), jadi
+ * cabangnya harus diputuskan sebelum port disentuh. Nilai tak dikenal
+ * diperlakukan sebagai `off` — aksara salah ketik tidak boleh menyalakan jalur
+ * yang belum tervalidasi.
+ *
+ * Normalisasi ini sengaja identik dengan yang dipakai `jobSignal()` di
+ * `_lib/kernel/job-signal.ts`; keduanya harus menjawab mode yang sama untuk env
+ * yang sama.
+ */
+function readSignalMode(): SignalMode {
+  const raw = (env('JOB_SIGNAL_MODE') || 'off').trim().toLowerCase();
+  return raw === 'on' || raw === 'shadow' ? raw : 'off';
+}
+
+/**
+ * Klaim dan jalankan sampai 5 job. Ini loop yang SAMA dengan sebelumnya —
+ * dipakai oleh ketiga mode supaya tidak ada dua salinan yang bisa menyimpang.
+ */
+async function claimLoop(): Promise<{ processed: number; failed: number }> {
   let processed = 0;
   let failed = 0;
-
-  log.info('sweep.start', {});
-
-  // Process up to 5 jobs per sweep
   for (let i = 0; i < 5; i++) {
     const job = await claimJob();
     if (!job) break;
@@ -121,18 +162,134 @@ async function handler() {
       failed++;
     }
   }
+  return { processed, failed };
+}
 
-  // Cleanup expired idempotency keys (run once per sweep)
-  const cleaned = await cleanupIdempotencyKeys();
+async function handler() {
+  const startTime = Date.now();
+  const mode = readSignalMode();
+  const now = Date.now();
+
+  let processed = 0;
+  let failed = 0;
+  let cleaned = 0;
+  // `null` = gerbang TIDAK DIBACA (mode `off`). Bukan 'unknown': 'unknown'
+  // adalah pembacaan gerbang yang gagal, dan mencampur keduanya membuat
+  // `sweep.gate.unknown` melaporkan 100 % selama jendela bayangan 7 hari —
+  // dashboard yang dibangun di atasnya jadi derau, bukan sinyal.
+  let verdict: Verdict | null = null;
+  let reconcile = false;
+  let falseIdle = false;
+  // Terlihat di `sweep.complete`: apakah sweep ini MEMBACA Neon karena gerbang
+  // (bukan karena rekonsiliasi). Rekonsiliasi memaksa baca tanpa mengubah
+  // `verdict`.
+  let mustRead = false;
+
+  log.info('sweep.start', { mode });
+
+  if (mode === 'off') {
+    // ── JALUR HARI INI, BYTE-FOR-BYTE ──────────────────────────────────────
+    // Port gerbang TIDAK dibuat dan TIDAK dibaca di cabang ini — bukan
+    // "dibaca lalu diabaikan". `cleanupIdempotencyKeys()` tetap tiap sweep.
+    const r = await claimLoop();
+    processed = r.processed;
+    failed = r.failed;
+    cleaned = await cleanupIdempotencyKeys();
+  } else if (mode === 'shadow') {
+    // ── BUKTI PARITAS ──────────────────────────────────────────────────────
+    // Jalur hari ini dijalankan SEPENUHNYA (claim + cleanup tanpa syarat), lalu
+    // gerbang dibaca dan dicatat apa yang AKAN dilakukannya. `falseIdle` adalah
+    // inti bukti itu: gerbang menyatakan 'idle' padahal ada job ter-claim.
+    // Satu saja bernilai true ⇒ gerbang salah ⇒ mode `on` jangan diaktifkan.
+    const r = await claimLoop();
+    processed = r.processed;
+    failed = r.failed;
+    cleaned = await cleanupIdempotencyKeys();
+
+    const signal = jobSignal();
+    verdict = await signal.peek(now);
+    const actualClaimed = processed + failed;
+    falseIdle = verdict === 'idle' && actualClaimed > 0;
+    log.info('sweep.signal.verdict', {
+      verdict,
+      actualClaimed,
+      wouldSkip: verdict === 'idle',
+      falseIdle,
+    });
+  } else {
+    // ── MODE 'on': GERBANG DULU ────────────────────────────────────────────
+    // Satu handle untuk satu pass: `settle()` memakai nilai mentah yang dibaca
+    // `peek()` pada instance yang sama.
+    const signal = jobSignal();
+    // Rekonsiliasi: sekali per 6 jam, satu sweep DIPAKSA membaca Neon walau
+    // gerbang akan bilang 'idle'. Ini jaring pengaman untuk kasus "Redis hidup
+    // tetapi satu EVAL gagal" — tanpa ini, satu `announce()` yang hilang bisa
+    // menunda job sampai berhari-hari.
+    reconcile = await signal.lease('reconcile');
+    // Gerbang SELALU dibaca: nilai mentahnya adalah operand CAS `settle()`, dan
+    // tanpa itu kunci yang hilang tidak akan pernah dibangun ulang.
+    const gateVerdict = await signal.peek(now);
+    // `verdict` adalah nilai gerbang yang SEBENARNYA, tidak pernah ditimpa oleh
+    // rekonsiliasi. Lease 6 jam pada cron 15 menit berarti 4 dari 96 sweep
+    // (4.17 %), jadi melabelinya 'unknown' membuat gate G2 (≤ 1 %) mustahil
+    // lulus dan MENYEMBUNYIKAN nilai gerbang asli tepat saat insiden.
+    verdict = gateVerdict;
+
+    // Rekonsiliasi menjadi boolean tersendiri yang hanya memaksa pembacaan.
+    mustRead = reconcile || gateVerdict !== 'idle';
+
+    if (!mustRead) {
+      // Nol request Neon: tidak ada claim, tidak ada cleanup. Inilah sweep
+      // kosong yang berbiaya dua-tiga perintah Redis saja.
+      log.info('sweep.signal.idle', { reconcile });
+    } else {
+      const r = await claimLoop();
+      processed = r.processed;
+      failed = r.failed;
+
+      // Satu RPC; predikatnya identik dengan claim_next_job() (061).
+      const due = await nextDueAt();
+      // CAS ketat: kalau `enqueue` menurunkan gerbang di tengah pass,
+      // `settle()` menolak menulis dan nilai yang lebih kecil menang.
+      //
+      // Operandnya `observed` APA ADANYA — termasuk `null` ("kunci harus
+      // absen"), yang justru jalur bangun-ulang setelah eviction/restart.
+      // Menggantinya dengan `now` membuat CAS tidak pernah cocok dan gerbang
+      // terjebak 'unknown' selamanya.
+      const settled = await signal.settle(signal.observed, due);
+      if (!settled) {
+        log.info('sweep.signal.settle-skipped', { verdict: gateVerdict, due });
+      }
+
+      // Cleanup di balik lease 6 jam: 4 DELETE/hari, bukan 96. DILEWATI saat
+      // gerbang 'unknown' (Redis sedang bermasalah): kita sudah membayar
+      // request Neon di jalur itu, dan menahan cleanup hanya akan membuat
+      // `idempotency_keys` tumbuh tanpa batas. Jadi Redis mati = cleanup
+      // berjalan seperti hari ini.
+      if (gateVerdict === 'unknown' || (await signal.lease('cleanup'))) {
+        cleaned = await cleanupIdempotencyKeys();
+      }
+    }
+  }
 
   const durationMs = Date.now() - startTime;
-  log.info('sweep.complete', { processed, failed, cleaned, durationMs });
+  log.info('sweep.complete', {
+    mode, processed, failed, cleaned, durationMs, verdict, reconcile, mustRead,
+  });
 
   // Awaited here, unlike in the request wrappers: a scheduled function returns
   // no body to a user, so the export adding latency costs nothing. It is also
   // the only chance to send it — the instance is frozen the moment this returns.
   // exportMetrics never rejects, so this cannot fail the sweep.
-  await exportMetrics(sweepMetrics({ processed, failed, cleaned, durationMs }));
+  //
+  // Blok tambahan gerbang HANYA dikirim bila gerbang benar-benar dibaca
+  // (`verdict !== null`). Mode `off` karena itu mengirim counter yang PERSIS
+  // sama dengan sebelum fitur ini ada: tanpa `sweep.gate.*`, tanpa
+  // `sweep.reconcile`.
+  await exportMetrics(sweepMetrics(
+    { processed, failed, cleaned, durationMs },
+    verdict === null ? undefined : { verdict, falseIdle, reconcile },
+  ));
 
   return {
     statusCode: 200,

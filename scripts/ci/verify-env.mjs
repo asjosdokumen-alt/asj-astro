@@ -65,6 +65,13 @@ const PROFILES = {
       // other, both, or neither are all valid configurations.
       'GRAFANA_CLOUD_OTLP_ENDPOINT',
       'GRAFANA_CLOUD_BASIC_AUTH_HEADER',
+      // Queue-signal gate (2026-11-20, kernel/job-signal.ts). Optional on
+      // purpose: with no Upstash credentials `jobSignal()` returns a null object
+      // and the sweep behaves exactly as before, so a deploy must be able to
+      // ship WITHOUT them.
+      'UPSTASH_REDIS_REST_URL',
+      'UPSTASH_REDIS_REST_TOKEN',
+      'JOB_SIGNAL_MODE',
     ],
   },
   staging: {
@@ -122,6 +129,13 @@ const PROFILES = {
       // being the only place a variable becomes visible to the check.
       'GRAFANA_CLOUD_OTLP_ENDPOINT',
       'GRAFANA_CLOUD_BASIC_AUTH_HEADER',
+      // Queue-signal gate (2026-11-20, kernel/job-signal.ts). Listed so the
+      // budget arithmetic can SEE them (see the note above), and optional
+      // because a deploy without Upstash must still pass: `jobSignal()` then
+      // returns a null object and the sweep behaves exactly as before.
+      'UPSTASH_REDIS_REST_URL',
+      'UPSTASH_REDIS_REST_TOKEN',
+      'JOB_SIGNAL_MODE',
     ],
   },
 };

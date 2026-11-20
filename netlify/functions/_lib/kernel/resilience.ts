@@ -363,6 +363,18 @@ export const DEPENDENCY_CONFIGS: Record<string, BreakerOpts> = {
   fonnte:    { threshold: 3, windowMs: 60_000, coolDownMs: 60_000 },
   fcm:       { threshold: 10, windowMs: 60_000, coolDownMs: 15_000 },
   storage:   { threshold: 5, windowMs: 60_000, coolDownMs: 15_000 },
+  // Upstash Redis REST (gate sinyal antrean, kernel/job-signal.ts). Wajib punya
+  // label sendiri: tanpa entri ini Redis jatuh ke default DAN tidak ikut
+  // ter-enumerasi `snapshot()`, sehingga /health tidak pernah menampilkannya.
+  // Lebih penting lagi, label bersama 'other' pernah memakan 8 slot bulkhead-nya
+  // dan mematikan permintaan biasa (insiden 2026-10-21, dikutip di http.ts).
+  //
+  // Ambangnya sengaja SAMA dengan postgrest: yang diukur bukan "seberapa sering
+  // Redis gagal" melainkan "sudah berapa kali gerbang berbohong". Setelah 5
+  // kegagalan dalam 30 dtk, breaker membuka 15 dtk dan setiap `peek()` langsung
+  // 'unknown' tanpa menunggu 300 ms — jadi Redis yang sakit berubah menjadi
+  // jalur hari ini dengan biaya nol, bukan menjadi sweep yang lambat.
+  upstash:   { threshold: 5, windowMs: 30_000, coolDownMs: 15_000 },
 };
 
 /** Singleton breaker instance with per-dependency tuned thresholds (§4.3). */

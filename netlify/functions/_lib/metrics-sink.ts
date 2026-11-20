@@ -295,20 +295,81 @@ export async function exportMetrics(payload: MetricsPayload | null): Promise<voi
  * queue silently fills) would export nothing at all. Counters here are named
  * with the same `sweep.*` prefix the structured logs already use, so a receiver
  * can key on one convention for both.
+ *
+ * The four fields in the first argument keep their exact names and meanings.
+ * `extra` is additive and optional: a caller that passes nothing gets the same
+ * payload as before, byte-for-byte — which is what makes `JOB_SIGNAL_MODE=off`
+ * indistinguishable from the pre-gate sweep on the metrics side too.
+ *
+ * The optionality is enforced, not merely documented: the `sweep.gate.*`
+ * counters are emitted ONLY when `extra.verdict` is non-null, i.e. only when the
+ * gate was actually read. Passing `{ verdict: null }` therefore also produces
+ * the pre-gate payload — the `off` branch of `sweep-queue` cannot accidentally
+ * report a gate reading it never took.
  */
-export function sweepMetrics(fields: {
-  processed: number;
-  failed: number;
-  cleaned: number;
-  durationMs: number;
-}): MetricsPayload {
+export function sweepMetrics(
+  fields: {
+    processed: number;
+    failed: number;
+    cleaned: number;
+    durationMs: number;
+  },
+  extra?: SweepSignalFields,
+): MetricsPayload {
+  const counters: Record<string, number> = {
+    'sweep.processed': fields.processed,
+    'sweep.failed': fields.failed,
+    'sweep.cleaned': fields.cleaned,
+  };
+
+  // Gerbang antrean (kernel/job-signal.ts). Dihitung sebagai tiga counter
+  // terpisah, bukan satu counter berlabel, karena `increment()`/payload ini
+  // memakai nama sebagai kunci: `sweep.gate.unknown` / total sweep adalah gate
+  // G2 di docs/RENCANA_ANTREAN_TANPA_NEON.md §10, dan pembagian itu hanya
+  // mungkin kalau tiap verdict punya namanya sendiri.
+  //
+  // DIKIRIM HANYA BILA GERBANG BENAR-BENAR DIBACA (`verdict` non-null). Mode
+  // `off` tidak membaca gerbang sama sekali, jadi ia juga tidak boleh
+  // melaporkan verdict apa pun: satu `sweep.gate.unknown` per sweep `off` akan
+  // membuat rasio G2 terbaca 100 % selama jendela bayangan 7 hari.
+  const gate = extra?.verdict ?? null;
+  if (gate !== null) {
+    if (gate === 'idle') counters['sweep.gate.idle'] = 1;
+    else if (gate === 'due') counters['sweep.gate.due'] = 1;
+    else counters['sweep.gate.unknown'] = 1;
+
+    // `falseIdle` adalah bukti paritas (gate G1): sweep yang dilewati gerbang
+    // padahal ADA job yang ter-claim. Satu saja bernilai 1 berarti gerbang salah
+    // dan mode `on` tidak boleh diaktifkan. Dikirim sebagai 0 secara eksplisit
+    // supaya "tidak ada pelanggaran" terlihat di grafik, bukan hilang.
+    if (extra?.falseIdle !== undefined) {
+      counters['sweep.gate.false_idle'] = extra.falseIdle ? 1 : 0;
+    }
+  }
+
+  // `sweep.reconcile` bukan pembacaan gerbang: ia menghitung sweep yang MEMEGANG
+  // lease rekonsiliasi, dan tetap dilaporkan selama blok tambahan dikirim.
+  if (extra?.reconcile !== undefined) {
+    counters['sweep.reconcile'] = extra.reconcile ? 1 : 0;
+  }
+
   return {
-    counters: {
-      'sweep.processed': fields.processed,
-      'sweep.failed': fields.failed,
-      'sweep.cleaned': fields.cleaned,
-    },
+    counters,
     histograms: {},
     gauges: { 'sweep.duration_ms': fields.durationMs },
   };
+}
+
+/** Field tambahan `sweepMetrics` (semua opsional — lihat catatan di atas). */
+export interface SweepSignalFields {
+  /**
+   * Verdict gerbang pada sweep ini. `null` (atau tidak diisi) berarti gerbang
+   * TIDAK DIBACA — mode `off` — dan tidak ada satu pun counter `sweep.gate.*`
+   * yang dikirim.
+   */
+  verdict?: 'idle' | 'due' | 'unknown' | null;
+  /** Gerbang menyatakan 'idle' padahal ada job ter-claim. Harus selalu false. */
+  falseIdle?: boolean;
+  /** Sweep ini memegang lease rekonsiliasi (memaksa satu pembacaan Neon). */
+  reconcile?: boolean;
 }

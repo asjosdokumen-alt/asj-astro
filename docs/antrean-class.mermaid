@@ -1,0 +1,91 @@
+%% Diagram kelas — sinyal antrean tanpa Neon (Tier A′)
+%% Sumber: docs/RENCANA_ANTREAN_TANPA_NEON.md §3.9
+%% Status: desain 2026-11-27
+
+classDiagram
+  class Job {
+    +string id
+    +string type
+    +Record payload
+    +string? idempotency_key
+    +string status
+    +int attempts
+    +int max_attempts
+    +string run_after
+    +string? locked_until
+    +string? last_error
+    +string created_at
+  }
+
+  class GateReading {
+    +Verdict verdict
+    +number? observed
+  }
+
+  class JobSignalPort {
+    <<interface>>
+    +peek(now) GateReading
+    +announce(runAfter) boolean
+    +settle(observed, nextDue) boolean
+    +lease(name, ttlMs) boolean
+  }
+
+  class UpstashSignal {
+    -string url
+    -string token
+    +peek(now) GateReading
+    +announce(runAfter) boolean
+    +settle(observed, nextDue) boolean
+    +lease(name, ttlMs) boolean
+    -eval(script, keys, argv) any
+  }
+
+  class NullSignal {
+    +peek(now) GateReading
+    +announce(runAfter) boolean
+    +settle(observed, nextDue) boolean
+    +lease(name, ttlMs) boolean
+  }
+
+  class JobQueue {
+    <<module>>
+    +enqueue(type, payload, opts) string
+    +claimJob() Job
+    +completeJob(id) void
+    +recordJobResult(id, payload, result) void
+    +failJob(id, err) void
+    +getJob(id) Job
+    +cleanupIdempotencyKeys() int
+    +sweepQueue(processFn) int
+    +nextDueAt() Date
+    +handleGetJobStatus(payload, token) unknown
+  }
+
+  class SweepQueue {
+    -HANDLERS map
+    +handler() Response
+    -processJob(job) void
+  }
+
+  class HttpKernel {
+    <<module>>
+    +request(url, init) Response
+    +detectDependency(url) string
+    +BUDGETS
+  }
+
+  class MetricsSink {
+    <<module>>
+    +sweepMetrics(fields, extra) MetricsPayload
+    +exportMetrics(payload) void
+  }
+
+  JobSignalPort <|.. UpstashSignal
+  JobSignalPort <|.. NullSignal
+  JobSignalPort --> GateReading : peek()
+  SweepQueue --> JobSignalPort : jobSignal()
+  SweepQueue --> JobQueue : claimJob / completeJob / failJob / nextDueAt
+  SweepQueue --> MetricsSink : sweepMetrics
+  UpstashSignal --> HttpKernel : request(BUDGETS.redis)
+  JobQueue --> Job : menghasilkan / mengonsumsi
+  JobQueue ..> JobSignalPort : enqueue() → announce()

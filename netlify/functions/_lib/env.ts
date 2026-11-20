@@ -83,6 +83,15 @@ const WHITELIST = new Set([
   // Whitelisted so the names are documented in one place.
   'METRICS_RECEIVER_TOKEN',
   'METRICS_NOTIFY_URL',
+  // 2026-11-20 — gerbang sinyal antrean (kernel/job-signal.ts). Redis hanya
+  // menyimpan SATU kunci skalar "instant berikutnya antrean perlu dilihat";
+  // ledger tetap job_queue di Neon. Ketiganya opsional: tanpa URL+TOKEN,
+  // `jobSignal()` mengembalikan null object dan sweep berperilaku persis seperti
+  // sebelum perubahan ini. JOB_SIGNAL_MODE adalah kill switch (off|shadow|on).
+  // TOKEN adalah kredensial server-only — jangan pernah diberi prefix PUBLIC_.
+  'UPSTASH_REDIS_REST_URL',
+  'UPSTASH_REDIS_REST_TOKEN',
+  'JOB_SIGNAL_MODE',
 ]);
 
 // Nama scope pada tabel env Netlify yang ditempel. Nilai pada baris scope ini

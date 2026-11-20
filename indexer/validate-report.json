@@ -28,21 +28,21 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 655,
+    "rootNames": 669,
     "options": {}
   },
-  "universe": 5063,
+  "universe": 5160,
   "counts": {
-    "agreeBound": 5063,
+    "agreeBound": 5160,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
     "libCompilerNone": 0,
-    "libRefs": 1597,
-    "libRefAgree": 1595,
+    "libRefs": 1607,
+    "libRefAgree": 1605,
     "libRefDisagree": 0,
     "libRefFramework": 2,
-    "skippedNonBindable": 2363,
+    "skippedNonBindable": 2381,
     "skippedJsxIntrinsic": 62,
     "skippedAstroTemplate": 74,
     "offsetMismatch": 0,
@@ -51,9 +51,9 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 4980,
+    "match": 5076,
     "alias-vs-chase": 57,
-    "merged-declaration": 24,
+    "merged-declaration": 25,
     "shadowing-disagreement": 2,
     "unmappable": 0
   },
@@ -186,11 +186,11 @@
     },
     {
       "path": "netlify/functions/sweep-queue.ts",
-      "universe": 77,
-      "agreeBound": 77,
+      "universe": 158,
+      "agreeBound": 158,
       "agreeUnresolved": 0,
-      "lib": 11,
-      "skipped": 28,
+      "lib": 16,
+      "skipped": 43,
       "disagree": 0
     },
     {
@@ -231,20 +231,20 @@
     },
     {
       "path": "netlify/functions/contexts/applications/service.ts",
-      "universe": 545,
-      "agreeBound": 545,
+      "universe": 552,
+      "agreeBound": 552,
       "agreeUnresolved": 0,
-      "lib": 184,
-      "skipped": 215,
+      "lib": 187,
+      "skipped": 218,
       "disagree": 0
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
-      "universe": 843,
-      "agreeBound": 843,
+      "universe": 850,
+      "agreeBound": 850,
       "agreeUnresolved": 0,
-      "lib": 252,
-      "skipped": 612,
+      "lib": 253,
+      "skipped": 611,
       "disagree": 0
     },
     {
@@ -258,11 +258,11 @@
     },
     {
       "path": "netlify/functions/_lib/kernel/http.ts",
-      "universe": 145,
-      "agreeBound": 145,
+      "universe": 147,
+      "agreeBound": 147,
       "agreeUnresolved": 0,
-      "lib": 59,
-      "skipped": 31,
+      "lib": 60,
+      "skipped": 32,
       "disagree": 0
     },
     {
@@ -378,39 +378,39 @@
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 10,
+      "line": 11,
       "name": "persistentAtom",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "persistentAtom → indexer src/store/i18n.ts decls 63 · compiler <unmappable>:3027"
+      "compiler": "persistentAtom → indexer src/store/i18n.ts decls 161 · compiler <unmappable>:3027"
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 27,
+      "line": 28,
       "name": "atom",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "atom → indexer src/store/i18n.ts decls 120 · compiler <unmappable>:3466"
+      "compiler": "atom → indexer src/store/i18n.ts decls 218 · compiler <unmappable>:3466"
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 3267,
+      "line": 3273,
       "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "useStore → indexer src/store/i18n.ts decls 155 · compiler <unmappable>:759"
+      "compiler": "useStore → indexer src/store/i18n.ts decls 253 · compiler <unmappable>:759"
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 3268,
+      "line": 3274,
       "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "useStore → indexer src/store/i18n.ts decls 155 · compiler <unmappable>:759"
+      "compiler": "useStore → indexer src/store/i18n.ts decls 253 · compiler <unmappable>:759"
     },
     {
       "path": "src/store/userStore.ts",
@@ -666,12 +666,12 @@
     },
     {
       "path": "netlify/functions/sweep-queue.ts",
-      "line": 64,
+      "line": 85,
       "name": "payload",
       "role": "Read",
       "reason": "shadowing-disagreement",
       "indexer": "bound",
-      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 3022 · compiler netlify/functions/sweep-queue.ts:2892"
+      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 4321 · compiler netlify/functions/sweep-queue.ts:4191"
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
@@ -747,7 +747,7 @@
     },
     {
       "path": "netlify/functions/contexts/applications/service.ts",
-      "line": 126,
+      "line": 127,
       "name": "crypto",
       "role": "Read",
       "reason": "alias-vs-chase",

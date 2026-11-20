@@ -30,6 +30,7 @@ import { JOB_QUEUE_COLS } from '../db/projections';
 import { verifyToken } from '../session';
 import { log } from './log';
 import { Errors } from './errors';
+import { jobSignal } from './job-signal';
 
 const TABLE = 'job_queue';
 
@@ -57,11 +58,14 @@ export async function enqueue(
   payload: Record<string, unknown>,
   opts: { idempotencyKey?: string; runAfter?: Date } = {},
 ): Promise<string> {
+  // Satu Date dipakai dua kali: untuk kolom `run_after` dan untuk mengumumkan
+  // gerbang. Nilainya identik dengan sebelumnya (`opts.runAfter` atau sekarang).
+  const runAfter = opts.runAfter ?? new Date();
   const row: Record<string, unknown> = {
     type,
     payload,
     status: 'pending',
-    run_after: opts.runAfter?.toISOString() ?? new Date().toISOString(),
+    run_after: runAfter.toISOString(),
   };
   if (opts.idempotencyKey) {
     row.idempotency_key = opts.idempotencyKey;
@@ -82,8 +86,59 @@ export async function enqueue(
     throw new Error(`Failed to enqueue job type=${type}`);
   }
 
+  // ── Gerbang sinyal: SETELAH INSERT, best-effort ──────────────────────────
+  //
+  // Urutannya tidak boleh dibalik. Sinyal tanpa baris = claim yang menemukan
+  // null (sia-sia); baris tanpa sinyal = job tertunda sampai rekonsiliasi.
+  // Karena `announce()` hanya MENURUNKAN gerbang, kegagalan di sini hanya
+  // menunda, tidak menghilangkan apa pun — barisnya sudah ada di Postgres dan
+  // `lease('reconcile')` 6 jam adalah jaring pengaman terakhirnya.
+  //
+  // Karena itu kegagalan TIDAK PERNAH menggagalkan enqueue: pemanggil sudah
+  // menerima id job yang sah, dan melempar di sini akan membuat UI melaporkan
+  // "gagal" untuk pekerjaan yang sebenarnya sudah masuk antrean. Biayanya
+  // dibatasi BUDGETS.redis (300 ms, di-clamp deadline).
+  if (!(await jobSignal().announce(runAfter.getTime()))) {
+    log.warn('job.signal.announce-failed', { jobId, type });
+  }
+
   log.info('job.enqueued', { jobId, type });
   return jobId as string;
+}
+
+/**
+ * Instant paling awal ada job yang bisa di-claim, dibaca dari Postgres.
+ *
+ * `null` berarti tidak ada apa pun yang menunggu. Dipakai sweep untuk menaikkan
+ * gerbang setelah satu pass selesai (`settle()`), jadi predikatnya HARUS sama
+ * dengan `claim_next_job()` — lihat migrations/061_next_job_due.sql.
+ *
+ * RPC ini mungkin belum ada (migrasi 061 belum diterapkan) — dan itu bukan
+ * alasan untuk melempar: `null` memetakan ke sentinel jauh, gerbang menjadi
+ * 'idle', lalu `lease('reconcile')` 6 jam yang memulihkannya. Sama seperti
+ * `claimJob()`, kegagalan di sini tidak boleh terlihat seperti "antrean kosong"
+ * tanpa jejak, jadi selalu dicatat.
+ */
+export async function nextDueAt(): Promise<number | null> {
+  try {
+    // PostgREST `rpc/` mengembalikan array bahkan untuk skalar (pola yang sama
+    // dengan kernel/rate-limit.ts).
+    const r = await supabaseJson('POST', 'rpc/next_job_due', { body: {} });
+    const row = Array.isArray(r) ? r[0] : r;
+    if (row === null || row === undefined) return null;
+
+    // Bentuk balasan yang mungkin: ISO string, atau objek `{next_job_due: ISO}`.
+    const iso = typeof row === 'string'
+      ? row
+      : (row as Record<string, unknown>).next_job_due;
+    if (typeof iso !== 'string' || iso === '') return null;
+
+    const ms = new Date(iso).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  } catch (err) {
+    log.error('job.next-due-failed', { err: String(err) });
+    return null;
+  }
 }
 
 /**

@@ -1,0 +1,64 @@
+%% Diagram urutan — sweep antrean tanpa Neon (Tier A′)
+%% Sumber: docs/RENCANA_ANTREAN_TANPA_NEON.md §3.10 dan §3.11
+%% Status: desain 2026-11-27
+
+sequenceDiagram
+  autonumber
+  participant C as Netlify Cron (*/15)
+  participant S as sweep-queue
+  participant Sig as jobSignal (Upstash)
+  participant Q as JobQueue
+  participant N as Neon
+
+  Note over C,N: A. SWEEP KOSONG — 2 perintah Redis, 0 request Neon
+  C->>S: invokasi
+  S->>Sig: lease('reconcile', 6h) [SET NX EX]
+  Sig-->>S: false
+  S->>Sig: peek(now) [EVAL gate]
+  Sig-->>S: { verdict: 'idle', observed: T+1y }
+  S->>Sig: lease('cleanup', 6h) [SET NX EX]
+  Sig-->>S: false
+  S->>S: log sweep.complete { processed:0, gate:'idle' }
+  S-->>C: 200 { processed:0, failed:0, cleaned:0, durationMs:~30 }
+
+  Note over C,N: B. ENQUEUE — Neon dulu, sinyal kemudian (best-effort)
+  U->>Q: enqueue('wa.broadcast', payload)
+  Q->>N: POST job_queue?on_conflict=idempotency_key
+  N-->>Q: [{ id, status:'pending' }]
+  Q->>Sig: announce(run_after) [EVAL min]
+  Sig-->>Q: true
+  Q-->>U: jobId
+
+  Note over C,N: C. SWEEP BERISI — predikat claim tidak berubah
+  C->>S: invokasi
+  S->>Sig: peek(now) [EVAL gate]
+  Sig-->>S: { verdict:'due', observed: T0 }
+  loop maksimum 5
+    S->>Q: claimJob()
+    Q->>N: POST rpc/claim_next_job (FOR UPDATE SKIP LOCKED)
+    N-->>Q: Job { attempts: 1 } | kosong
+  end
+  S->>S: processJob(job) → handleKirimTawaranMassal
+  S->>Q: recordJobResult(job.id, payload, result)
+  Q->>N: PATCH job_queue payload={...payload,result}
+  S->>Q: completeJob(job.id)
+  Q->>N: PATCH job_queue status='done', locked_until=null
+  S->>Q: nextDueAt()
+  Q->>N: POST rpc/next_job_due
+  N-->>Q: null
+  S->>Sig: settle(observed=T0, nextDue=now+1y) [EVAL CAS ketat]
+  S->>Sig: lease('cleanup', 6h)
+  alt lease didapat
+    S->>Q: cleanupIdempotencyKeys()
+    Q->>N: DELETE idempotency_keys?created_at=lt.now-24h
+  end
+
+  Note over C,N: D. KILL SWITCH — JOB_SIGNAL_MODE=off
+  C->>S: invokasi
+  S->>Sig: peek() → null-object
+  Sig-->>S: { verdict:'unknown', observed:null }
+  S->>Q: claimJob()
+  Q->>N: POST rpc/claim_next_job
+  S->>Q: cleanupIdempotencyKeys()
+  Q->>N: DELETE idempotency_keys
+  Note over S,N: persis perilaku hari ini: 2 request Neon
