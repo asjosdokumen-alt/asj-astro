@@ -156,7 +156,7 @@ Sesudah deploy, dua sweep pertama harus terbaca seperti ini:
 |---|---|---|
 | `claim_next_job()` tidak pernah menulis `status='dead'` (031 memfilter, bukan mempromosikan) | job habis percobaan berhenti di `'failed'`; `idx_job_queue_dead` mencocokkan 0 baris | bug lama, di luar lingkup |
 | `reclaim_stuck_jobs()` tidak pernah dipanggil | job yang melewati `locked_until` tetap `'running'` selamanya | bug lama, prasyarat sebelum cron `*/5` |
-| `completeJob()` berada di `try` yang sama dengan `processJob()` | `completeJob` gagal ⇒ `failJob()` pada kerja yang sudah sukses ⇒ `attempts++` ⇒ klaim ulang segera ⇒ **WA terkirim dua kali** | bug lama, dipertahankan demi paritas `off`; perbaiki sebelum cron dipersempit |
+| `completeJob()` menelan error-nya sendiri (`try/catch` di `job-queue.ts`) | Job yang **sudah sukses** tetapi PATCH-nya gagal tetap `running`; `claim_next_job()` tidak pernah mengambil baris `running`, dan `reclaim_stuck_jobs()` tidak pernah dipanggil ⇒ job hilang senyap. **Bukan** duplikat: `completeJob` tidak pernah melempar, jadi `failJob()` tidak bisa terpanggil untuk kerja yang sudah berhasil | bug lama (T9), perbaiki sebelum cron dipersempit |
 | `runAfter` tidak punya pemanggil | semua job jatuh tempo seketika | bukan bug; gerbang tetap menanganinya |
 
 ## Berkas
