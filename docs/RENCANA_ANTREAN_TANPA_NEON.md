@@ -813,9 +813,15 @@ Kalau queue benar-benar kosong sebulan penuh (8 wake/hari = 40 menit/hari), turu
 membangunkan Neon, **`agenda-reminders` menjadi 100 % dari sisa biaya idle** — 48 wake/hari × 5 menit
 = 4 jam/hari = **≈30 CU-h/bulan**, dan ia **tidak bisa dipindah** (§11.1). Jadi total proyek bergerak
 **61 → 35–41 CU-h/bulan (−33…−43 %)**, bukan 61 → 5: sweep-nya sendiri turun 90–95 %, tetapi lantai
-30 CU-h milik `agenda-reminders` tidak tersentuh. Lever berikutnya adalah interval
-`agenda-reminders` (`*/30` → `*/60`, jendelanya selebar 1 jam sehingga aman) yang
-memangkas 30 → 15 CU-h — pekerjaan terpisah.
+30 CU-h milik `agenda-reminders` tidak tersentuh. Lever berikutnya **bukan** memperlebar
+interval menjadi `*/60`. Berkas itu menyatakan sendiri aturannya: sweep harus **lebih sempit**
+dari jendela tersempit (h0 = 0–60 menit), karena kalau tidak, sebuah jadwal bisa masuk dan
+keluar jendela di antara dua run dan tidak pernah terkirim. `*/60` justru **sama lebar** —
+satu percobaan, tanpa ulangan, sehingga satu run yang terlewat (deploy, cold start) menghilangkan
+pengingat itu untuk selamanya, dan yang hilang adalah siswa yang tidak datang wawancara.
+Yang benar adalah gerbang yang sama seperti antrean (satu kunci Redis berisi "kapan pengingat
+berikutnya perlu dilihat"), dan itu pekerjaan terpisah yang belum dirancang — bukan perubahan
+satu baris.
 
 ### 7.3 Baris
 

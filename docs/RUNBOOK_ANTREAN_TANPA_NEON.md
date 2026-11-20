@@ -101,6 +101,12 @@ dua sweep bisa memproses dua broadcast bersamaan — benar secara kebenaran,
 berisiko pada kuota Fonnte. Setelah itu `*/15` → `*/5` gratis dari sisi Neon
 (288 invokasi/hari = 8.640/bulan, 7 % kuota Netlify 125.000).
 
+**Jangan sentuh `agenda-reminders`.** `*/30` → `*/60` terlihat seperti hemat
+15 CU-jam, tetapi berkas itu menyatakan sendiri bahwa sweep harus **lebih
+sempit** dari jendela tersempit (h0 = 0–60 menit). `*/60` sama lebar: satu
+percobaan, tanpa ulangan, dan satu run yang terlewat (deploy, cold start)
+menghilangkan pengingat wawancara seorang siswa untuk selamanya.
+
 ## 6. Rollback
 
 ```
@@ -111,6 +117,36 @@ Tidak ada data yang perlu dibatalkan: tidak ada DDL yang di-undo, tidak ada bari
 yang dipindah, `job_queue` tidak pernah berhenti menjadi ledger. Sisa satu kunci
 Redis yang tidak dibaca siapa pun. Batas jujurnya: env Netlify tertanam saat
 deploy, jadi "matikan" = ubah env + redeploy, bukan satu klik.
+
+## 7. Deploy — satu-satunya langkah yang belum dijalankan
+
+Kode gerbang **belum ada di produksi**. Build yang hidup: `2026-11-18T11:06:36Z`
+(`version.json`), yaitu `2fd0e243` = `origin/main`. Semua commit sesi ini ada di
+atasnya, lokal.
+
+```
+npx netlify-cli deploy --build --prod
+```
+
+Prasyarat di mesin yang menjalankan perintah itu: `NETLIFY_AUTH_TOKEN` (atau
+`netlify login`), dan `.netlify/state.json` sudah menunjuk site
+`8e6e8ed4-9c59-4f35-8c62-39487da3f453`. **Tidak ada token di repo ini** — itu
+sebabnya langkah ini tidak bisa dijalankan dari sesi desain.
+
+Yang ikut terkirim: **23 commit lokal** di atas `origin/main`, bukan hanya fitur
+ini. Tiga di antaranya keamanan (`security(pii)`, `security(docs)`). Pohonnya
+hijau: `tsc` 0 error, suite 282 file / 4017 lulus, `lint-ratchet` PASS,
+`boundary` PASS. Tetap keputusan pemilik, karena 20 commit lain bukan milik sesi
+ini.
+
+Sesudah deploy, dua sweep pertama harus terbaca seperti ini:
+
+| Sweep | `sweep.signal.verdict` |
+|---|---|
+| Pertama | `verdict:"unknown"`, `settled:true` — kunci dibangun lewat operand `null` |
+| Kedua dan seterusnya | `verdict:"idle"`, `wouldSkip:true`, `falseIdle:false`, `settled:true` |
+
+`falseIdle:true` satu kali saja ⇒ jangan nyalakan `on`.
 
 ---
 
