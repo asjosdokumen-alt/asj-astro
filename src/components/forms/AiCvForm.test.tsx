@@ -33,8 +33,16 @@ import { navigateTo } from '../../lib/navigate';
  * lain tetap di 15 detik, jadi tes yang benar-benar menggantung di tempat lain
  * masih ketahuan. Kalau suatu hari kasus ini butuh >40 detik SENDIRIAN, itu
  * regresi performa form — bukan alasan menaikkan angka ini lagi.
+ *
+ * 2026-11-21 — 40 detik ternyata sudah tidak cukup, dan yang bergerak adalah
+ * BEBANNYA, bukan form-nya. Diukur ulang: tiga kasus terberat butuh 22,8 / 20,2
+ * / 22,6 detik SENDIRIAN (jauh di bawah aturan 40 detik di atas), tetapi 54,4 /
+ * 49,1 / 51,3 detik ketika suite penuh berjalan — 282 berkas, bukan 266 lagi.
+ * Suite penuh karena itu merah 3/4.019 pada dua jalannya yang pertama, padahal
+ * ketiganya hijau sendirian. Anggaran dinaikkan ke 60 detik dengan aturan lama
+ * tetap berlaku: >40 detik SENDIRIAN = regresi form, bukan alasan menaikkan ini.
  */
-vi.setConfig({ testTimeout: 40_000 });
+vi.setConfig({ testTimeout: 60_000 });
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../store/i18n', async () => {
