@@ -9,6 +9,7 @@ import kinkiTemplate from './renderers/kinki';
 import jipaTemplate from './renderers/jipa';
 import rirekishoDetailTemplate from './renderers/rirekisho-detail';
 import kaigoHyogoTemplate from './renderers/kaigo-hyogo';
+import tgTemplate from './renderers/tg';
 
 const rirekishoA4Template: CvTemplate = {
   id: 'rirekisho-a4',
@@ -65,6 +66,13 @@ cvFactory.register(rirekishoDetailTemplate);
 // (`CV KAIGO HYOGO履歴書 - 特定技能 2026年.xlsx`) punya 88 merge yang sama —
 // jadi keduanya satu template: satu contoh isian, satu blanko.
 cvFactory.register(kaigoHyogoTemplate);
+// Form ketujuh, dari `D:/TG 2026.07.02.xlsx` (kosong) + dua CV yang diisi pemilik
+// manual (`6. DEVIANA AMANDA PUTRI_CV.xlsx`, `7. RATIH KUSUMA DEWI_CV.xlsx`)
+// pada 2026-11-21. Bukan form portrait seperti enam sebelumnya: ini sheet data
+// induk 68 kolom (A–BP), satu baris per kandidat, pas foto di BP4:BP7. Dropdown
+// ditulis sebagai pasangan `JP ID` seperti pengisian manual; esai memakai kolom
+// `_jp` dan barisnya dipertahankan.
+cvFactory.register(tgTemplate);
 
 export { cvFactory };
 
