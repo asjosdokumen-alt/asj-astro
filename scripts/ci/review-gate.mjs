@@ -632,6 +632,9 @@ function checkMigrations(changes) {
 
   for (const [file, c] of changes) {
     if (!/^migrations\/.*\.sql$/i.test(file)) continue;
+    // The companion rollback scripts live here and are not migrations; counting
+    // them would report "2 new migrations" for a batch that adds one.
+    if (file.startsWith('migrations/rollback/')) continue;
     // Only NEW migrations. An existing migration cannot retroactively gain a
     // rollback plan, and blocking a comment fix on one would be absurd.
     if (c.status !== 'A') continue;
