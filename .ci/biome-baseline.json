@@ -1,6 +1,6 @@
 {
-  "total": 1968,
-  "generatedAt": "2026-11-13T01:48:25.540Z",
+  "total": 1955,
+  "generatedAt": "2026-11-21T01:19:36.877Z",
   "byFile": {
     "netlify/functions/contexts/master-data/service.ts": 130,
     "netlify/functions/contexts/documents/service.ts": 86,
@@ -67,7 +67,6 @@
     "netlify/functions/contexts/notifications/wa-single-durability.test.ts": 9,
     "netlify/functions/_lib/characterisation.test.ts": 8,
     "netlify/functions/_lib/db/client.ts": 8,
-    "netlify/functions/contexts/identity/service.test.ts": 8,
     "server.cjs": 8,
     "src/components/admin/TabMail.tsx": 8,
     "src/components/admin/TabTambah.tsx": 8,
@@ -111,7 +110,6 @@
     "netlify/functions/_lib/otlp.ts": 5,
     "netlify/functions/contexts/master-data/repository.ts": 5,
     "netlify/functions/contexts/notifications/repository.ts": 5,
-    "src/components/DocumentPreviewModal.tsx": 5,
     "src/components/admin/AdminAiCopilot.tsx": 5,
     "src/components/admin/TabKelola.tsx": 5,
     "src/components/admin/TabPelamar.tsx": 5,
@@ -162,7 +160,6 @@
     "netlify/functions/_lib/db/master.ts": 2,
     "netlify/functions/_lib/db/pagination.test.ts": 2,
     "netlify/functions/_lib/kernel/errors.ts": 2,
-    "netlify/functions/contexts/applications/repository.ts": 2,
     "netlify/functions/contexts/configuration/repository.ts": 2,
     "netlify/functions/contexts/diagnostics/repository.ts": 2,
     "netlify/functions/contexts/documents/service-upload.test.ts": 2,
@@ -178,6 +175,7 @@
     "netlify/functions/_lib/fcm-helpers.ts": 2,
     "netlify/functions/_lib/kernel/admission.test.ts": 2,
     "src/components/CvMiniModal.test.tsx": 2,
+    "src/components/DocumentPreviewModal.tsx": 2,
     "src/components/EsignNaiteiModal.tsx": 2,
     "src/components/admin/CandidateProfileModal.test.tsx": 2,
     "src/components/admin/TabWA.test.tsx": 2,
@@ -251,10 +249,10 @@
     "src/lib/berkasCatalog.test.ts": 1
   },
   "byRule": {
-    "lint/style/useTemplate": 709,
+    "lint/style/useTemplate": 703,
     "lint/suspicious/noExplicitAny": 393,
     "lint/style/noNonNullAssertion": 290,
-    "lint/complexity/useOptionalChain": 236,
+    "lint/complexity/useOptionalChain": 229,
     "lint/suspicious/noConsole": 62,
     "lint/suspicious/noAssignInExpressions": 42,
     "lint/suspicious/useIterableCallbackReturn": 41,
