@@ -1,0 +1,29 @@
+-- ROLLBACK untuk migrations/061_next_job_due.sql
+--
+-- KENAPA BERKAS INI TERPISAH, BUKAN KOMENTAR DI DALAM 061
+--   061 SUDAH DITERAPKAN (2026-11-20T13:30:46Z) dan ledger `schema_migrations`
+--   menyimpan sha256 isi berkasnya. Menyunting 061 — termasuk menambah komentar
+--   ROLLBACK — mengubah checksum, membuat `npm run migrate:status` melaporkan
+--   `drifted`, dan `migrate up` lalu menolak SEMUA migrasi berikutnya
+--   (scripts/migrate.mjs: "Never edit a migration that has already run").
+--   Karena itu rencana rollback hidup di berkas pendamping ini; review-gate R5
+--   menerimanya sebagai pengganti penanda di dalam berkas migrasi
+--   (scripts/ci/review-gate.mjs, `rollbackCompanion`).
+--
+-- AMAN DIJALANKAN KAPAN SAJA
+--   `next_job_due()` hanya DIBACA oleh gerbang antrean
+--   (netlify/functions/_lib/kernel/job-signal.ts). Dengan `JOB_SIGNAL_MODE=off`
+--   tidak ada pemanggil sama sekali, dan 061 tidak membuat tabel, baris, atau
+--   indeks — jadi rollback ini tidak menghapus data apa pun.
+--
+-- URUTAN
+--   1. Turunkan kode dulu (`JOB_SIGNAL_MODE=off` + redeploy), baru DROP di sini.
+--      Kalau DROP dijalankan saat mode `on`/`shadow`, setiap sweep akan gagal
+--      membaca gerbang — bukan gagal senyap: `jobSignal()` mengembalikan
+--      'unknown' dan sweep jatuh ke jalur hari ini (mahal, tapi benar).
+--   2. Jalankan blok di bawah lewat `psql`/Neon SQL editor.
+--   3. Hapus `next_job_due` dari daftar required di `.ci/db-contract.json`,
+--      kalau tidak `npm run verify:db` akan melaporkan fungsi yang hilang.
+--   4. `npm run db:schema` lalu `npm run verify:schema` (kontrak generated).
+
+DROP FUNCTION IF EXISTS next_job_due();

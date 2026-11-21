@@ -61,7 +61,7 @@ here.
 | `R2` size budget | a diff too large to have been reviewed, however green everything else is |
 | `R3` risk attestation | a change to `kernel`, `auth`, `migrations`, `ci`, `deploy` or `data` without a stated answer to that area's question |
 | `R4` env declaration | a new env var that never reached `.env.example`, so the next person cannot run the app |
-| `R5` migration rollback | a new migration with no rollback marker and no irreversibility note |
+| `R5` migration rollback | a new migration with no rollback marker and no irreversibility note. The marker may live in `migrations/rollback/<same name>.sql` instead — the only option once the migration has run, because editing it would change the ledger checksum and `migrate up` would then refuse every later migration |
 | `R6` lint on added lines | a hard-rule violation on a line **you** added (no `any`, no `!`, no `console`, no `debugger`) |
 | `R7` Tier-0 gates | the fast gates CI runs, plus the ones only this gate runs |
 

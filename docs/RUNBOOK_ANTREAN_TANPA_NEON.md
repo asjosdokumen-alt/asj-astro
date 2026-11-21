@@ -113,10 +113,19 @@ menghilangkan pengingat wawancara seorang siswa untuk selamanya.
 JOB_SIGNAL_MODE=off  →  redeploy  →  selesai (±2 menit)
 ```
 
-Tidak ada data yang perlu dibatalkan: tidak ada DDL yang di-undo, tidak ada baris
-yang dipindah, `job_queue` tidak pernah berhenti menjadi ledger. Sisa satu kunci
-Redis yang tidak dibaca siapa pun. Batas jujurnya: env Netlify tertanam saat
-deploy, jadi "matikan" = ubah env + redeploy, bukan satu klik.
+Tidak ada data yang perlu dibatalkan: tidak ada baris yang dipindah,
+`job_queue` tidak pernah berhenti menjadi ledger. Sisa satu kunci Redis yang
+tidak dibaca siapa pun. Batas jujurnya: env Netlify tertanam saat deploy, jadi
+"matikan" = ubah env + redeploy, bukan satu klik.
+
+Satu DDL memang sudah diterapkan: `061_next_job_due.sql` (2026-11-20) membuat
+fungsi `next_job_due()`. Fungsi itu **tidak perlu** di-drop untuk rollback —
+dengan `JOB_SIGNAL_MODE=off` tidak ada pemanggilnya, dan membiarkannya tidak
+mengubah perilaku apa pun. Bila tetap ingin dibersihkan, jalankan
+`migrations/rollback/061_next_job_due.sql` **sesudah** kode lama tayang, lalu
+ikuti dua langkah di dalam berkas itu (kontrak `.ci/db-contract.json` +
+`db:schema`). Berkas 061 sendiri tidak boleh disunting: ledger menyimpan
+checksum-nya.
 
 ## 7. Deploy — satu-satunya langkah yang belum dijalankan
 
@@ -133,11 +142,12 @@ Prasyarat di mesin yang menjalankan perintah itu: `NETLIFY_AUTH_TOKEN` (atau
 `8e6e8ed4-9c59-4f35-8c62-39487da3f453`. **Tidak ada token di repo ini** — itu
 sebabnya langkah ini tidak bisa dijalankan dari sesi desain.
 
-Yang ikut terkirim: **23 commit lokal** di atas `origin/main`, bukan hanya fitur
-ini. Tiga di antaranya keamanan (`security(pii)`, `security(docs)`). Pohonnya
-hijau: `tsc` 0 error, suite 282 file / 4017 lulus, `lint-ratchet` PASS,
-`boundary` PASS. Tetap keputusan pemilik, karena 20 commit lain bukan milik sesi
-ini.
+Yang ikut terkirim: **seluruh commit lokal** di atas `origin/main` (ukur dengan
+`git rev-list --count origin/main..HEAD`; **27** pada 2026-11-21), bukan hanya
+fitur ini. Tiga di antaranya keamanan (`security(pii)`, `security(docs)`).
+Pohonnya hijau: `tsc` 0 error, `lint-ratchet` PASS, `boundary` PASS,
+`review:gate` PASS. Tetap keputusan pemilik, karena sebagian besar commit itu
+bukan milik sesi ini.
 
 Sesudah deploy, dua sweep pertama harus terbaca seperti ini:
 

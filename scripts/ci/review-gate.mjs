@@ -637,12 +637,23 @@ function checkMigrations(changes) {
     if (c.status !== 'A') continue;
     checked++;
     const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-    if (!ROLLBACK_RE.test(text)) {
-      failures.push(
-        `${file} is a new migration with no rollback marker — add a comment containing ` +
-          'ROLLBACK / REVERT / UNDO, or IRREVERSIBLE plus the plan'
-      );
+    if (ROLLBACK_RE.test(text)) continue;
+    // A migration that has ALREADY RUN cannot gain the comment retroactively:
+    // the ledger stores a sha256 of the file, so any edit — comments included —
+    // reports `drifted` and `migrate up` then refuses every later migration
+    // (scripts/migrate.mjs: "Never edit a migration that has already run").
+    // For that case the plan lives in a companion file instead. It is a stronger
+    // artifact than a comment, not a weaker one: it is executable.
+    const companion = file.replace(/^migrations\//, 'migrations/rollback/');
+    if (fs.existsSync(companion) && ROLLBACK_RE.test(fs.readFileSync(companion, 'utf8'))) {
+      notes.push(`${file} — rollback plan in ${companion}`);
+      continue;
     }
+    failures.push(
+      `${file} is a new migration with no rollback marker — add a comment containing ` +
+        'ROLLBACK / REVERT / UNDO, or IRREVERSIBLE plus the plan, or a companion ' +
+        'migrations/rollback/<same file name>.sql (the only option once it has run)'
+    );
   }
 
   notes.push(
