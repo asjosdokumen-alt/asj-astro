@@ -77,7 +77,7 @@ const mocks = vi.hoisted(() => {
 // dan `Job` adalah tipe (hilang saat kompilasi). Memakai `importOriginal` di
 // sini akan memuat `_lib/db/client` — persis yang tidak boleh terjadi di berkas
 // ini.
-vi.mock('./_lib/kernel/job-queue', () => ({
+vi.mock('./kernel/job-queue', () => ({
   claimJob: mocks.claimJob,
   completeJob: mocks.completeJob,
   failJob: mocks.failJob,
@@ -86,19 +86,19 @@ vi.mock('./_lib/kernel/job-queue', () => ({
   nextDueAt: mocks.nextDueAt,
 }));
 
-vi.mock('./_lib/kernel/job-signal', () => ({
+vi.mock('./kernel/job-signal', () => ({
   jobSignal: mocks.jobSignal,
 }));
 
 // `sweepMetrics` sengaja ASLI: yang diuji adalah counter yang benar-benar
 // dikirim (mis. `sweep.gate.false_idle`), bukan panggilan fungsinya.
-vi.mock('./_lib/metrics-sink', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./_lib/metrics-sink')>();
+vi.mock('./metrics-sink', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./metrics-sink')>();
   return { ...actual, exportMetrics: mocks.exportMetrics };
 });
 
-vi.mock('./_lib/kernel/log', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./_lib/kernel/log')>();
+vi.mock('./kernel/log', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./kernel/log')>();
   return {
     ...actual,
     log: {
@@ -110,11 +110,11 @@ vi.mock('./_lib/kernel/log', async (importOriginal) => {
   };
 });
 
-vi.mock('./_lib/ai/chat', () => ({
+vi.mock('./ai/chat', () => ({
   handleProcessAiInterview: mocks.aiInterview,
 }));
 
-import type { Job } from './_lib/kernel/job-queue';
+import type { Job } from './kernel/job-queue';
 
 type Verdict = 'idle' | 'due' | 'unknown';
 type SignalMode = 'off' | 'shadow' | 'on';
@@ -187,7 +187,7 @@ function primeMocks(): void {
  */
 async function loadHandler(): Promise<AdaptedHandler> {
   vi.resetModules();
-  const mod = await import('./sweep-queue');
+  const mod = await import('../sweep-queue');
   return mod.default as unknown as AdaptedHandler;
 }
 
